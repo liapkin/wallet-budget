@@ -25,3 +25,5 @@ The server listens on localhost only. The database, exports, `.env` and personal
 ## Credits
 
 Built with Claude Code (Anthropic).
+
+Not affiliated with or endorsed by BudgetBakers. "Wallet" and its logo are trademarks of BudgetBakers; this project only reads data through their public API.
