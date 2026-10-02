@@ -1,7 +1,7 @@
 import { Component, computed, inject, resource, signal } from '@angular/core';
 import { RouterLink, Router } from '@angular/router';
 import { allocation, capsFor, monthStatus, savings } from '../../../shared/src/budget.ts';
-import { fmt } from './format.ts';
+import { currencySymbol, fmt } from './format.ts';
 import { athensMonth } from '../../../shared/src/month.ts';
 import { Api } from './api';
 import { dayLabel, groupColor, HOLLOW } from './format';
@@ -149,7 +149,7 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
           <div class="rows">
             @for (l of v.st.lines; track l.key) {
               <div class="row">
-                <span class="name">{{ l.label }}@if (l.wallet) { <span class="src" title="From Wallet" aria-label="From Wallet"><app-icon name="wallet" [size]="14" /></span> } @else { <span class="src muted" title="Entered by hand" aria-label="Entered by hand"><app-icon name="pencil" [size]="14" /></span> }</span>
+                <span class="name">{{ l.label }}@if (l.wallet) { <span class="src" title="From records" aria-label="From records"><app-icon name="wallet" [size]="14" /></span> } @else { <span class="src muted" title="Entered by hand" aria-label="Entered by hand"><app-icon name="pencil" [size]="14" /></span> }</span>
                 <span class="num">
                   <span [class.err]="l.actual !== null && l.actual > l.plan">{{ l.actual === null ? '—' : fmt(l.actual) }}</span>
                   <span class="muted"> / {{ fmt(l.plan) }}</span>
@@ -292,6 +292,7 @@ export class Month {
   });
 
   protected chart = computed(() => {
+    const symbol = currencySymbol();
     const d = this.daily();
     const budget = this.v()?.budget ?? 0;
     const days = Array.from({ length: d.total }, (_, i) => String(i + 1));
@@ -302,7 +303,7 @@ export class Month {
       grid: { left: 8, right: 16, top: 24, bottom: 8, containLabel: true },
       tooltip: { trigger: 'axis', valueFormatter: (c: number) => eur(c) },
       xAxis: { type: 'category', data: days, boundaryGap: false },
-      yAxis: { type: 'value', axisLabel: { formatter: (c: number) => '€' + Math.round(c / 100) } },
+      yAxis: { type: 'value', axisLabel: { formatter: (c: number) => symbol + Math.round(c / 100) } },
       series: [
         {
           name: 'Spent', type: 'line', data: d.cum, color: accent, symbol: 'none',

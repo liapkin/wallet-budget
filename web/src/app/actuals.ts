@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, resource, signal } from '@angular/core';
 import { coreActuals } from '../../../shared/src/budget.ts';
-import { fmt } from './format.ts';
+import { currencySymbol, fmt } from './format.ts';
 import { toCents } from '../../../shared/src/money.ts';
 import { Api, type Actuals as Typed } from './api';
 import { currentMonth, monthLabel } from './format';
@@ -29,7 +29,7 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0
             <div class="top">
               <strong>{{ a.label }}</strong>
               <div class="badges">
-                @if (a.wallet) { <span class="src" title="From Wallet" aria-label="From Wallet"><app-icon name="wallet" [size]="14" /></span> }
+                @if (a.wallet) { <span class="src" title="From records" aria-label="From records"><app-icon name="wallet" [size]="14" /></span> }
                 @else { <span class="src muted" title="Entered by hand" aria-label="Entered by hand"><app-icon name="pencil" [size]="14" /></span> }
                 @if (a.wallet) {
                   @for (src of sources(a.key)?.split(', ') ?? []; track src) {
@@ -45,7 +45,7 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0
             <div class="progress"><i [class.over]="over(a)" [style.width.%]="pct(a)"></i></div>
             <label class="entry">
               <span class="muted sm">{{ a.wallet ? '+ cash' : 'Actual' }}</span>
-              <span class="affix" data-pre="€">
+              <span class="affix" [attr.data-pre]="currencySymbol()">
                 <input appMoney type="text" [placeholder]="a.wallet ? '0' : ''" [value]="eur(typed()[month()]?.[a.key])" (change)="save(month(), a.key, $event)" (keydown.enter)="blur($event)" />
               </span>
               @if (saved() === month() + a.key) { <span class="ok"><app-icon name="check" [size]="14" /> saved</span> }
@@ -109,6 +109,7 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0
 })
 export class Actuals {
   protected fmt = fmt;
+  protected currencySymbol = currencySymbol;
   protected now = currentMonth();
   private api = inject(Api);
   private toast = inject(Toast);
@@ -165,6 +166,7 @@ export class Actuals {
       else row[key] = cents;
       return { ...t, [m]: row };
     });
+    this.refresh.tick.update((n) => n + 1);
     this.saved.set(m + key);
     setTimeout(() => this.saved() === m + key && this.saved.set(''), 1500);
   }

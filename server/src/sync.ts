@@ -1,4 +1,4 @@
-import { db } from './db.ts';
+import { db, requireWalletCurrency } from './db.ts';
 import { get, pages } from './wallet.ts';
 import { runPipeline } from './pipeline.ts';
 import { toDelete } from './reconcile.ts';
@@ -34,6 +34,7 @@ const exists = db.prepare('SELECT 1 FROM records WHERE ext_id=?');
 // Shared by sync and by record creation, so a Wallet id is stored once (ext_id is UNIQUE) whichever arrives first.
 // Returns 'inserted' | 'updated' | 'same'.
 export function insertApiRecord(r: any): 'inserted' | 'updated' | 'same' {
+  requireWalletCurrency();
   const c = r.convertedAmount;
   const eur = c?.currencyCode === 'EUR' && c.value != null ? c.value : r.amount.currencyCode === 'EUR' ? r.amount.value : null;
   if (eur == null) throw new Error(`no EUR amount for record in ${r.amount.currencyCode}`);
@@ -46,6 +47,7 @@ export function insertApiRecord(r: any): 'inserted' | 'updated' | 'same' {
 }
 
 export async function sync({ full = false } = {}): Promise<{ inserted: number; updated: number; deleted: number }> {
+  requireWalletCurrency();
   const startedAt = new Date().toISOString();
   const state = db.prepare("SELECT value FROM sync_state WHERE key='last_date'").get() as { value: string } | undefined;
   const start = state ? new Date(Date.parse(state.value) - 8 * 864e5) : new Date('2017-01-01');
@@ -54,6 +56,7 @@ export async function sync({ full = false } = {}): Promise<{ inserted: number; u
   let accounts = 0;
   const upAcc = db.prepare('INSERT OR REPLACE INTO accounts (id, name, balance_cents, currency, updated_at) VALUES (?, ?, ?, ?, ?)');
   for await (const a of pages<any>('/v1/api/accounts', 'accounts')) {
+    requireWalletCurrency();
     accounts++;
     const bal = a.balance?.currentBalance;
     upAcc.run(a.id, a.name, bal == null ? null : toCents(bal), a.currencyCode, new Date().toISOString());

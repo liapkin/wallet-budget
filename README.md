@@ -24,6 +24,8 @@ Copy `config/seed-config.example.json` to `config/seed-config.json` and edit it.
 
 Keep personal acceptance checks in `*.local.test.ts` and personal notes in `CLAUDE.local.md` and `docs/SPEC.local.md`; all are git-ignored.
 
+Settings holds database currency, theme and hidden amounts. Normal databases default to EUR; demo uses USD. Choose EUR or USD before storing records, accounts or core actuals, which lock currency. Amounts are never converted; existing EUR history stays EUR. Wallet sync, writes and imports support EUR only. Theme and privacy apply immediately and persist in this browser.
+
 ## Commands
 
 - `pnpm dev` runs the server and the web app together.
@@ -34,7 +36,7 @@ Keep personal acceptance checks in `*.local.test.ts` and personal notes in `CLAU
 
 ## Demo
 
-`pnpm demo` needs no `.env` or Wallet token. It regenerates and runs `data/demo.db`, isolated from `data/budget.db`; sync and "Also add to Wallet" are disabled. Ports 3000 and 4200 must be free.
+`pnpm demo` needs no `.env` or Wallet token. It regenerates and runs `data/demo.db`, isolated from `data/budget.db`; sync and "Also add to Wallet" are disabled. It starts at ports 3001 (API) and 4201 (web), choosing the next available localhost port when needed; `pnpm dev` remains unchanged.
 
 The generic dataset covers the latest 18 months relative to the run date and includes duplicates and unclassified records. `pnpm demo:seed` resets it, discarding demo edits and manual records.
 

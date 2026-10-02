@@ -2,7 +2,7 @@ import XLSX from 'xlsx';
 import * as fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
-import { db } from './db.ts';
+import { db, requireWalletCurrency } from './db.ts';
 import { runPipeline, spendSummary } from './pipeline.ts';
 import { toCents, fmt } from '../../shared/src/money.ts';
 import { athensLocalToUtc } from '../../shared/src/month.ts';
@@ -18,6 +18,7 @@ const serialToIso = (n: number): string => {
 };
 
 export function importFile(file: string): void {
+  requireWalletCurrency();
   const rows = XLSX.utils.sheet_to_json<Row>(XLSX.readFile(file).Sheets.Records, { raw: true });
   const ins = db.prepare(
     `INSERT OR IGNORE INTO records (source, ext_id, account, category, amount_cents, type, payment_type, note, payee, date_utc, raw_json)
@@ -27,6 +28,7 @@ export function importFile(file: string): void {
   db.exec('BEGIN');
   try {
     for (const r of rows) {
+      if (r.currency !== 'EUR') throw new Error('Wallet exports must contain only EUR records; currency conversion is not supported');
       const h = createHash('sha1')
         .update(JSON.stringify([r.account, r.date, r.amount, r.note, r.type, r.payment_type, r.category]))
         .digest('hex');

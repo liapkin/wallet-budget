@@ -8,6 +8,7 @@ test('converts money keys to cents, keeps nulls and non-money numbers', () => {
     coreExpenses: [{ plan: 25.5 }],
     groceryList: { weekly: [{ regularPrice: 4.5, offerPrice: null, qty: 1.7 }] },
     investing: { houseTarget: { propertyPrice: 300000, depositShare: 0.2 } },
+    diet: { ingredientsPerPortion: [{ carbsPer100g: 12.5, fatPer100g: 0 }] },
   });
   assert.equal(c.income.netSalaryPerMonth, 200000);
   assert.equal(c.income.salariesPerYear, 14);
@@ -15,4 +16,7 @@ test('converts money keys to cents, keeps nulls and non-money numbers', () => {
   assert.deepEqual(c.groceryList.weekly[0], { regularPrice: 450, offerPrice: null, qty: 1.7 });
   assert.equal(c.investing.houseTarget.propertyPrice, 30000000);
   assert.equal(c.investing.houseTarget.depositShare, 0.2);
+  assert.deepEqual(c.diet.ingredientsPerPortion[0], { carbsPer100g: 12.5, fatPer100g: 0 });
+  assert.equal(c.currency, 'EUR');
+  assert.equal(seedToConfig({ currency: 'USD' }).currency, 'USD');
 });

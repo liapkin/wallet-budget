@@ -18,6 +18,7 @@ const NAV: { label: string; items: { path: string; label: string; icon: IconName
     ],
   },
   { label: 'Food', items: [{ path: 'meals', label: 'Meals', icon: 'utensils' }, { path: 'groceries', label: 'Groceries', icon: 'cart' }] },
+  { label: 'App', items: [{ path: 'settings', label: 'Settings', icon: 'sliders' }] },
 ];
 
 @Component({
@@ -31,6 +32,7 @@ export class App {
   protected refresh = inject(Refresh);
   private api = inject(Api);
   protected drawer = signal(false);
+  protected ready = signal(false);
   protected hidden = hidden;
   protected togglePrivacy = togglePrivacy;
   protected theme = theme;
@@ -38,7 +40,7 @@ export class App {
   protected themeIcon = { light: 'sun', dark: 'moon' } as const;
   protected themeLabel = themeLabel;
   protected dayLabel = dayLabel;
-  protected meta = resource({ loader: () => this.api.meta() });
+  protected meta = resource({ params: () => this.refresh.tick(), loader: () => this.api.meta() });
 
   constructor() {
     inject(Router).events.subscribe(() => this.drawer.set(false));
@@ -46,8 +48,13 @@ export class App {
       document.body.classList.toggle('privacy', this.hidden());
     });
     effect(() => {
-      if (this.meta.isLoading() || this.meta.error()) this.refresh.demo.set(null);
-      else if (this.meta.hasValue()) this.refresh.demo.set(this.meta.value()!.demo === true);
+      if (this.meta.isLoading() || this.meta.error()) {
+        this.refresh.demo.set(null);
+        this.refresh.currencyLocked.set(true);
+      } else if (this.meta.hasValue()) {
+        this.refresh.applyMeta(this.meta.value()!);
+        this.ready.set(true);
+      }
     });
   }
 

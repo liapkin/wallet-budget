@@ -44,6 +44,7 @@ test('demo stays local, tokenless and example-configured', async () => {
     assert.throws(() => resolveDatabasePath({ DEMO: '1', BUDGET_DB: resolve(root, 'data/budget.db') }), /refuses/);
 
     const expected = seedToConfig(JSON.parse(readFileSync(join(root, 'config', 'seed-config.example.json'), 'utf8')));
+    expected.currency = 'USD';
     assert.deepEqual(getConfig(), expected);
 
     assert.equal(getMeta().demo, true);
@@ -88,6 +89,12 @@ test('demo generator makes 18 months with duplicates and unclassified records', 
   const counts = db.prepare("SELECT COUNT(DISTINCT month) AS months, SUM(is_dup) AS duplicates, SUM(grp='Other') AS unclassified FROM records").get() as {
     months: number; duplicates: number; unclassified: number;
   };
+  const config = JSON.parse((db.prepare('SELECT json FROM config WHERE id=1').get() as { json: string }).json);
+  assert.equal(config.currency, 'USD');
+  assert.equal(config.income.netSalaryPerMonth, 800000);
+  assert.equal(config.coreExpenses.find((line: { key: string }) => line.key === 'rent').plan, 210000);
+  assert.equal((db.prepare("SELECT COUNT(*) AS n FROM accounts WHERE currency='USD'").get() as { n: number }).n, 5);
+  assert.equal((db.prepare("SELECT COUNT(*) AS n FROM records WHERE payee<>''").get() as { n: number }).n, 0);
   db.close();
   assert.equal(counts.months, 18);
   assert.ok(counts.duplicates > 0);

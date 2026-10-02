@@ -35,5 +35,14 @@
     }
   </div>
 </aside>
-<main><router-outlet /></main>
+<main>
+  @if (ready()) {
+    <router-outlet />
+  } @else if (meta.error()) {
+    <p class="err">Failed to load database settings.</p>
+    <button (click)="meta.reload()">Retry</button>
+  } @else {
+    <div class="skeleton" style="height:12rem"></div>
+  }
+</main>
 <app-toasts />

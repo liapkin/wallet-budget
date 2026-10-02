@@ -1,6 +1,6 @@
 import { Component, computed, inject, resource, signal } from '@angular/core';
 import { allocation, annualInvesting, corePlan } from '../../../shared/src/budget.ts';
-import { fmt } from './format.ts';
+import { currency, currencySymbol, fmt } from './format.ts';
 import { groupDot } from './format';
 import { toCents } from '../../../shared/src/money.ts';
 import type { Config } from '../../../shared/src/types.ts';
@@ -92,12 +92,12 @@ const SECTIONS = [
           <section class="card" id="income">
             <h2>Income &amp; allocation</h2>
             <div class="grid">
-              <label class="field">Net salary / month<span class="affix" data-pre="€"><input class="in-affix" appMoney type="text" [value]="eur(c.income.netSalaryPerMonth)" (change)="money('income.netSalaryPerMonth', $event)" /></span></label>
-              <label class="field">Fun / month<span class="affix" data-pre="€"><input class="in-affix" appMoney type="text" [value]="eur(c.allocation.funPerMonth)" (change)="money('allocation.funPerMonth', $event)" /></span></label>
-              <label class="field">Sinking fund top-up / month<span class="affix" data-pre="€"><input class="in-affix" appMoney type="text" [value]="eur(c.allocation.sinkingFundTopUpPerMonth)" (change)="money('allocation.sinkingFundTopUpPerMonth', $event)" /></span></label>
-              <label class="field">Bank savings (fallback)<span class="affix" data-pre="€"><input class="in-affix" appMoney type="text" [value]="eur(c.allocation.bankSavings)" (change)="money('allocation.bankSavings', $event)" /></span></label>
-              <label class="field">Cash savings<span class="affix" data-pre="€"><input class="in-affix" appMoney type="text" [value]="eur(c.allocation.cashSavings)" (change)="money('allocation.cashSavings', $event)" /></span></label>
-              <label class="field">Annual irregulars<span class="affix" data-pre="€"><input class="in-affix" appMoney type="text" [value]="eur(c.allocation.annualIrregulars)" (change)="money('allocation.annualIrregulars', $event)" /></span></label>
+              <label class="field">Net salary / month<span class="affix" [attr.data-pre]="currencySymbol()"><input class="in-affix" appMoney type="text" [value]="eur(c.income.netSalaryPerMonth)" (change)="money('income.netSalaryPerMonth', $event)" /></span></label>
+              <label class="field">Fun / month<span class="affix" [attr.data-pre]="currencySymbol()"><input class="in-affix" appMoney type="text" [value]="eur(c.allocation.funPerMonth)" (change)="money('allocation.funPerMonth', $event)" /></span></label>
+              <label class="field">Sinking fund top-up / month<span class="affix" [attr.data-pre]="currencySymbol()"><input class="in-affix" appMoney type="text" [value]="eur(c.allocation.sinkingFundTopUpPerMonth)" (change)="money('allocation.sinkingFundTopUpPerMonth', $event)" /></span></label>
+              <label class="field">Bank savings (fallback)<span class="affix" [attr.data-pre]="currencySymbol()"><input class="in-affix" appMoney type="text" [value]="eur(c.allocation.bankSavings)" (change)="money('allocation.bankSavings', $event)" /></span></label>
+              <label class="field">Cash savings<span class="affix" [attr.data-pre]="currencySymbol()"><input class="in-affix" appMoney type="text" [value]="eur(c.allocation.cashSavings)" (change)="money('allocation.cashSavings', $event)" /></span></label>
+              <label class="field">Annual irregulars<span class="affix" [attr.data-pre]="currencySymbol()"><input class="in-affix" appMoney type="text" [value]="eur(c.allocation.annualIrregulars)" (change)="money('allocation.annualIrregulars', $event)" /></span></label>
               <label class="field">Emergency fund<span class="affix" data-suf="months of core"><input class="in-affix" inputmode="decimal" [value]="c.allocation.emergencyFundMonthsOfCore" (change)="plain('allocation.emergencyFundMonthsOfCore', $event)" /></span></label>
             </div>
             <h3>Bonus months (multiples of salary)</h3>
@@ -118,7 +118,7 @@ const SECTIONS = [
                   @for (l of c.coreExpenses; track $index; let i = $index) {
                     <tr>
                       <td><input [value]="l.label" (change)="plain('coreExpenses.' + i + '.label', $event, true)" /></td>
-                      <td><span class="affix" data-pre="€"><input appMoney type="text" [value]="eur(l.plan)" (change)="money('coreExpenses.' + i + '.plan', $event)" /></span></td>
+                      <td><span class="affix" [attr.data-pre]="currencySymbol()"><input appMoney type="text" [value]="eur(l.plan)" (change)="money('coreExpenses.' + i + '.plan', $event)" /></span></td>
                       <td>
                         <app-combo [options]="sourceOptions(l.source)" [value]="l.source" ariaLabel="Source" (changed)="set('coreExpenses.' + i + '.source', $event)" />
                       </td>
@@ -145,8 +145,8 @@ const SECTIONS = [
                   @if (c.caps.bufferMonth) { <button class="ghost" (click)="set('caps.bufferMonth', null)">Clear</button> }
                 </span>
               </label>
-              <label class="field">Takeout / month<span class="affix" data-pre="€"><input class="in-affix" appMoney type="text" [value]="eur(c.caps.takeoutPerMonth)" (change)="money('caps.takeoutPerMonth', $event)" /></span></label>
-              <label class="field">Kiosk / month<span class="affix" data-pre="€"><input class="in-affix" appMoney type="text" [value]="eur(c.caps.kioskPerMonth)" (change)="money('caps.kioskPerMonth', $event)" /></span></label>
+              <label class="field">Takeout / month<span class="affix" [attr.data-pre]="currencySymbol()"><input class="in-affix" appMoney type="text" [value]="eur(c.caps.takeoutPerMonth)" (change)="money('caps.takeoutPerMonth', $event)" /></span></label>
+              <label class="field">Kiosk / month<span class="affix" [attr.data-pre]="currencySymbol()"><input class="in-affix" appMoney type="text" [value]="eur(c.caps.kioskPerMonth)" (change)="money('caps.kioskPerMonth', $event)" /></span></label>
             </div>
           </section>
 
@@ -168,7 +168,7 @@ const SECTIONS = [
               <h3>Payroll account</h3>
               <app-combo [options]="payrollOptions()" [value]="c.allocation.payrollAccount ?? ''" ariaLabel="Payroll account" (changed)="set('allocation.payrollAccount', $event || null)" />
             } @else {
-              <p class="muted">No accounts yet; run a Wallet fetch. The bank savings fallback is used.</p>
+              <p class="muted">No accounts yet. The bank savings fallback is used.</p>
             }
           </section>
 
@@ -204,26 +204,28 @@ const SECTIONS = [
               </table>
             </div>
 
-            <h3>Category map</h3>
-            <div class="tools">
-              <input type="search" placeholder="Search categories" [value]="catQ()" (input)="catQ.set(val($event))" />
-              <button (click)="add('wallet.categoryMap', { walletCategory: '', group: c.wallet.groups[0] }); catQ.set('')"><app-icon name="plus" [size]="14" /> Add category</button>
-            </div>
-            <div class="scroll tall" style="box-shadow:none">
-              <table>
-                <tbody>
-                  @for (k of c.wallet.categoryMap; track $index; let i = $index) {
-                    @if (match(k.walletCategory, k.group, catQ())) {
-                      <tr>
-                        <td><input [value]="k.walletCategory" (change)="plain('wallet.categoryMap.' + i + '.walletCategory', $event, true)" /></td>
-                        <td><app-combo [options]="groupOptions()" [value]="k.group" ariaLabel="Group" (changed)="set('wallet.categoryMap.' + i + '.group', $event)" /></td>
-                        <td><button class="icon danger" aria-label="Delete category" (click)="remove('wallet.categoryMap', i)"><app-icon name="trash" /></button></td>
-                      </tr>
+            @if (currency() === 'EUR') {
+              <h3>Wallet category map</h3>
+              <div class="tools">
+                <input type="search" placeholder="Search categories" [value]="catQ()" (input)="catQ.set(val($event))" />
+                <button (click)="add('wallet.categoryMap', { walletCategory: '', group: c.wallet.groups[0] }); catQ.set('')"><app-icon name="plus" [size]="14" /> Add category</button>
+              </div>
+              <div class="scroll tall" style="box-shadow:none">
+                <table>
+                  <tbody>
+                    @for (k of c.wallet.categoryMap; track $index; let i = $index) {
+                      @if (match(k.walletCategory, k.group, catQ())) {
+                        <tr>
+                          <td><input [value]="k.walletCategory" (change)="plain('wallet.categoryMap.' + i + '.walletCategory', $event, true)" /></td>
+                          <td><app-combo [options]="groupOptions()" [value]="k.group" ariaLabel="Group" (changed)="set('wallet.categoryMap.' + i + '.group', $event)" /></td>
+                          <td><button class="icon danger" aria-label="Delete category" (click)="remove('wallet.categoryMap', i)"><app-icon name="trash" /></button></td>
+                        </tr>
+                      }
                     }
-                  }
-                </tbody>
-              </table>
-            </div>
+                  </tbody>
+                </table>
+              </div>
+            }
           </section>
 
           @if (dirty()) {
@@ -244,6 +246,8 @@ const SECTIONS = [
 })
 export class BudgetEdit {
   protected fmt = fmt;
+  protected currency = currency;
+  protected currencySymbol = currencySymbol;
   protected val = val;
   protected sections = SECTIONS;
   protected groupSets = [
@@ -253,7 +257,7 @@ export class BudgetEdit {
   ];
   private api = inject(Api);
   private toast = inject(Toast);
-  private refresh = inject(Refresh);
+  protected refresh = inject(Refresh);
   protected accounts = resource({ params: () => this.refresh.tick(), loader: () => this.api.accounts() });
   private saved = signal<Config | null>(null);
   protected draft = signal<Config | null>(null);
@@ -295,7 +299,7 @@ export class BudgetEdit {
   protected sourceOptions(cur: string): ComboOption[] {
     const groups = this.draft()!.wallet.groups;
     const opts = ['manual', ...groups.map((g) => 'wallet:' + g)];
-    return (opts.includes(cur) ? opts : [...opts, cur]).map((o) => ({ value: o, label: o }));
+    return (opts.includes(cur) ? opts : [...opts, cur]).map((o) => ({ value: o, label: o.startsWith('wallet:') ? 'Records: ' + o.slice(7) : o }));
   }
   protected payrollOptions = computed<ComboOption[]>(() => [
     { value: '', label: 'None' },
@@ -357,6 +361,8 @@ export class BudgetEdit {
     this.saving.set(true);
     try {
       this.load(await this.api.saveConfig(this.draft()!));
+      currency.set(this.saved()!.currency ?? 'EUR');
+      this.refresh.tick.update((n) => n + 1);
       this.toast.show('Budget saved');
     } catch (e: any) {
       this.toast.show(e?.error?.error ?? 'Save failed', 'err');

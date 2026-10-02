@@ -1,11 +1,15 @@
 import type { Config, GroceryItem } from './types.ts';
 
+export type NutritionTotals = { protein: number; kcal: number; carbs: number | undefined; fat: number | undefined };
+const sumKnown = (values: (number | undefined)[]): number | undefined =>
+  values.some(v => v === undefined) ? undefined : Math.round(values.reduce<number>((sum, v) => sum + v!, 0));
+
 export function proteinTarget(diet: Config['diet']): number {
   return Math.round(diet.bodyWeightKg * diet.proteinPerKg);
 }
 
-export function mealTotals(diet: Config['diet']): Record<string, { protein: number; kcal: number }> {
-  const result: Record<string, { protein: number; kcal: number }> = {};
+export function mealTotals(diet: Config['diet']): Record<string, NutritionTotals> {
+  const result: Record<string, NutritionTotals> = {};
   const ingredients = diet.ingredientsPerPortion;
 
   // Group ingredients by meal name
@@ -23,43 +27,54 @@ export function mealTotals(diet: Config['diet']): Record<string, { protein: numb
       protein += (ing.grams * ing.proteinPer100g) / 100;
       kcal += (ing.grams * ing.kcalPer100g) / 100;
     }
-    result[meal] = { protein: Math.round(protein), kcal: Math.round(kcal) };
+    const macro = (key: 'carbsPer100g' | 'fatPer100g') => sumKnown(ings.map(ing =>
+      ing.grams === 0 ? 0 : ing[key] === undefined ? undefined : ing.grams * ing[key]! / 100));
+    result[meal] = { protein: Math.round(protein), kcal: Math.round(kcal), carbs: macro('carbsPer100g'), fat: macro('fatPer100g') };
   }
 
   return result;
 }
 
-export function dayTotals(diet: Config['diet']): Array<{ day: string; protein: number; kcal: number }> {
+export function dayTotals(diet: Config['diet']): Array<NutritionTotals & { day: string }> {
   const meals = mealTotals(diet);
-  const result: Array<{ day: string; protein: number; kcal: number }> = [];
+  const result: Array<NutritionTotals & { day: string }> = [];
 
   for (const dayObj of diet.week) {
     let protein = 0;
     let kcal = 0;
+    const selected: NutritionTotals[] = [];
 
     // Sum across all meal slots (breakfast, lunch, snack, dinner, shake)
     const slots = ['breakfast', 'lunch', 'snack', 'dinner', 'shake'];
     for (const slot of slots) {
       const mealName = (dayObj as Record<string, string>)[slot];
       if (mealName && meals[mealName]) {
+        selected.push(meals[mealName]);
         protein += meals[mealName].protein;
         kcal += meals[mealName].kcal;
       }
     }
 
-    result.push({ day: (dayObj as Record<string, string>)['day'], protein, kcal });
+    result.push({ day: (dayObj as Record<string, string>)['day'], protein, kcal,
+      carbs: sumKnown(selected.map(meal => meal.carbs)), fat: sumKnown(selected.map(meal => meal.fat)) });
   }
 
   return result;
 }
 
-export function weekAverage(diet: Config['diet']): { protein: number; kcal: number } {
+export function weekAverage(diet: Config['diet']): NutritionTotals {
   const days = dayTotals(diet);
   const totalProtein = days.reduce((sum, d) => sum + d.protein, 0);
   const totalKcal = days.reduce((sum, d) => sum + d.kcal, 0);
+  const average = (key: 'carbs' | 'fat') => {
+    const total = sumKnown(days.map(day => day[key]));
+    return total === undefined ? undefined : Math.round(total / days.length);
+  };
   return {
     protein: Math.round(totalProtein / days.length),
     kcal: Math.round(totalKcal / days.length),
+    carbs: average('carbs'),
+    fat: average('fat'),
   };
 }
 

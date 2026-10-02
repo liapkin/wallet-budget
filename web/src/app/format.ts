@@ -1,8 +1,12 @@
+import { computed, signal } from '@angular/core';
 import { athensMonth } from '../../../shared/src/month.ts';
 import { fmt as baseFmt } from '../../../shared/src/money.ts';
+import type { Currency } from '../../../shared/src/types.ts';
 import { hidden } from './ui/privacy.ts';
 
-export const fmt = (cents: number) => (hidden() ? '€ ••••' : baseFmt(cents));
+export const currency = signal<Currency>('EUR');
+export const currencySymbol = computed(() => currency() === 'USD' ? '$' : '€');
+export const fmt = (cents: number) => (hidden() ? `${currencySymbol()} ••••` : baseFmt(cents, currency()));
 
 const TZ = 'Europe/Athens';
 /** 'YYYY-MM-DDTHH:mm' in Europe/Athens. */

@@ -12,8 +12,11 @@ export type Rec = {
   groupOverride: string | null;
 };
 
+export type Currency = 'EUR' | 'USD';
+
 // money fields are integer cents
 export type Config = {
+  currency?: Currency; // omitted in legacy configs = EUR; one denomination per database
   income: {
     netSalaryPerMonth: number;
     salariesPerYear: number;
@@ -85,6 +88,8 @@ export type Config = {
       grams: number;
       proteinPer100g: number;
       kcalPer100g: number;
+      carbsPer100g?: number;
+      fatPer100g?: number;
     }[];
     nutritionNote: string;
   };

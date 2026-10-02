@@ -1,10 +1,11 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { randomUUID } from 'node:crypto';
-import { db, getConfig, setConfig } from './db.ts';
+import { db, getConfig, setConfig, currencyLocked } from './db.ts';
 import { activeSource, runPipeline, spendSummary } from './pipeline.ts';
 import { insertApiRecord, sync } from './sync.ts';
 import { post } from './wallet.ts';
 import { walletPayload } from './wallet-payload.ts';
+import { dietConfigError } from './diet-config.ts';
 import { athensLocalToUtc } from '../../shared/src/month.ts';
 import type { Config } from '../../shared/src/types.ts';
 
@@ -34,14 +35,22 @@ app.get('/api/config', (req, res) => {
   res.json(getConfig());
 });
 
-app.put('/api/config', (req, res) => {
+export function updateConfig(req: Request, res: Response) {
   const body = req.body;
   if (!body || typeof body !== 'object' || Array.isArray(body)) bad('config must be an object');
-  for (const k of Object.keys(getConfig())) if (!(k in body)) bad(`missing config key: ${k}`);
-  setConfig(body as Config);
+  for (const k of Object.keys(getConfig())) if (k !== 'currency' && !(k in body)) bad(`missing config key: ${k}`);
+  const dietError = dietConfigError(body.diet);
+  if (dietError) bad(dietError);
+  try {
+    setConfig(body as Config);
+  } catch (e) {
+    bad((e as Error).message);
+  }
   runPipeline();
   res.json(getConfig());
-});
+}
+
+app.put('/api/config', updateConfig);
 
 const scope = () => ({ sql: "source IN (?, 'manual')", args: [activeSource()] });
 
@@ -49,8 +58,9 @@ export const getMeta = () => {
   const s = scope();
   const col = (c: string, order = '') =>
     (db.prepare(`SELECT DISTINCT ${c} AS v FROM records WHERE ${s.sql} ${order}`).all(...s.args) as { v: string }[]).map((r) => r.v);
-  const { groups, excludedGroups } = getConfig().wallet;
-  return { demo, groups, excludedGroups, accounts: col('account', 'ORDER BY 1'), months: col('month', 'ORDER BY 1 DESC') };
+  const cfg = getConfig();
+  const { groups, excludedGroups } = cfg.wallet;
+  return { demo, currency: cfg.currency, currencyLocked: demo || currencyLocked(), groups, excludedGroups, accounts: col('account', 'ORDER BY 1'), months: col('month', 'ORDER BY 1 DESC') };
 };
 
 app.get('/api/meta', (req, res) => {
@@ -95,12 +105,13 @@ export async function createRecord(req: Request, res: Response) {
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(str(date));
   if (!m) bad('date must be YYYY-MM-DDTHH:mm');
   if (type !== 'Expenses' && type !== 'Income') bad('type must be Expenses or Income');
-  const eur = typeof amount === 'string' && amount.trim() !== '' ? Number(amount.replace(',', '.')) : amount;
-  if (typeof eur !== 'number' || !Number.isFinite(eur) || eur <= 0) bad('amount must be a number > 0');
+  const value = typeof amount === 'string' && amount.trim() !== '' ? Number(amount.replace(',', '.')) : amount;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) bad('amount must be a number > 0');
   const [y, mo, d, h, mi] = m!.slice(1).map(Number);
-  const cents = Math.round(eur * 100);
+  const cents = Math.round(value * 100);
   if (toWallet === true) {
     if (demo) bad('Disabled in demo mode');
+    if (getConfig().currency !== 'EUR') bad('Wallet sync, import and writes support EUR databases only');
     const acc = db.prepare('SELECT currency FROM accounts WHERE id=?').get(str(accountId)) as { currency: string } | undefined;
     if (!acc) bad('unknown Wallet account');
     if (acc!.currency !== 'EUR') bad('only EUR accounts are supported');
@@ -207,6 +218,7 @@ app.get('/api/accounts', (req, res) => {
 
 app.post('/api/sync', (req, res, next) => {
   if (demo) bad('Disabled in demo mode');
+  if (getConfig().currency !== 'EUR') bad('Wallet sync, import and writes support EUR databases only');
   sync().then((r) => res.json(r), next);
 });
 

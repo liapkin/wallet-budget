@@ -7,6 +7,7 @@ import { InvestingComponent } from './investing';
 import { MealsComponent } from './meals';
 import { Month } from './month';
 import { Records } from './records';
+import { Settings } from './settings';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'month' },
@@ -18,4 +19,5 @@ export const routes: Routes = [
   { path: 'meals', component: MealsComponent },
   { path: 'groceries', component: GroceriesComponent },
   { path: 'investing', component: InvestingComponent },
+  { path: 'settings', component: Settings },
 ];

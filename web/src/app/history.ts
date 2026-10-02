@@ -1,5 +1,5 @@
 import { Component, computed, inject, resource, signal } from '@angular/core';
-import { fmt } from './format.ts';
+import { currencySymbol, fmt } from './format.ts';
 import { byYear, type Cell } from '../../../shared/src/summary.ts';
 import { Api } from './api';
 import { chartColor, shortMonth } from './format';
@@ -49,7 +49,7 @@ const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: '
       <div class="card"><div class="skeleton" style="height: 300px"></div></div>
       <div class="card"><div class="skeleton" style="height: 220px"></div></div>
     } @else if (!rows().length) {
-      <div class="card empty"><strong>No history yet</strong><span>Fetch from Wallet or import a file to see spending over time.</span></div>
+      <div class="card empty"><strong>No history yet</strong><span>Add records to see spending over time.</span></div>
     } @else {
       <section class="card">
         <div class="card-head">
@@ -200,6 +200,7 @@ export class History {
   });
 
   protected chart = computed(() => {
+    const symbol = currencySymbol();
     const ps = this.periods();
     const cols = this.cols();
     const daily = this.daily();
@@ -272,7 +273,7 @@ export class History {
       },
       yAxis: {
         type: 'value',
-        axisLabel: { formatter: (c: number) => (c ? '€' + +(c / 100000).toFixed(1) + 'k' : '€0') },
+        axisLabel: { formatter: (c: number) => (c ? symbol + +(c / 100000).toFixed(1) + 'k' : symbol + '0') },
         splitLine: { lineStyle: { type: 'dashed', opacity: 0.35 } },
       },
       series,

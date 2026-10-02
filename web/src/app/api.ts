@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { Config } from '../../../shared/src/types.ts';
+import type { Config, Currency } from '../../../shared/src/types.ts';
 import type { Summary } from '../../../shared/src/summary.ts';
 
 export type Row = {
@@ -20,7 +20,10 @@ export type Row = {
   grp: string;
   month: string;
 };
-export type Meta = { groups: string[]; excludedGroups: string[]; accounts: string[]; months: string[]; demo?: boolean };
+export type Meta = {
+  groups: string[]; excludedGroups: string[]; accounts: string[]; months: string[]; demo?: boolean;
+  currency?: Currency; currencyLocked?: boolean;
+};
 export type Account = { id: string; name: string; balanceCents: number | null; currency: string; updatedAt: string };
 export type Actuals = Record<string, Record<string, number>>;
 export type WalletCategory = { id: string; name: string; parent: string };

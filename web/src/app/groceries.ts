@@ -1,7 +1,7 @@
 import { Component, computed, effect, inject, resource, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { groceryMonthly, weeklyIngredientGrams } from '../../../shared/src/diet.ts';
-import { fmt } from './format.ts';
+import { currencySymbol, fmt } from './format.ts';
 import { toCents } from '../../../shared/src/money.ts';
 import type { Config, GroceryItem } from '../../../shared/src/types.ts';
 import { Api } from './api';
@@ -94,8 +94,8 @@ const val = (e: Event) => (e.target as HTMLInputElement | HTMLSelectElement).val
           <th style="min-width: 16rem">Item</th>
           <th class="num">Qty</th>
           <th>Unit</th>
-          <th class="num">Regular €</th>
-          <th class="num">Offer €</th>
+          <th class="num">Regular {{ currencySymbol() }}</th>
+          <th class="num">Offer {{ currencySymbol() }}</th>
           <th class="num">Cost</th>
           <th>Store</th>
           <th>Note</th>
@@ -195,6 +195,7 @@ const val = (e: Event) => (e.target as HTMLInputElement | HTMLSelectElement).val
 })
 export class GroceriesComponent {
   protected fmt = fmt;
+  protected currencySymbol = currencySymbol;
   protected toCents = toCents;
   protected val = val;
   protected Math = Math;

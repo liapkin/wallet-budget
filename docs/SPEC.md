@@ -1,6 +1,6 @@
 # Spec
 
-All amounts are EUR, stored as integer cents. Starting values come from `config/seed-config.json` if present, else `config/seed-config.example.json`. Acceptance values for a specific dataset live in docs/SPEC.local.md and *.local.test.ts.
+All amounts use one database currency, EUR or USD, stored as integer cents. Missing currency in legacy configs means EUR. Currency can change only before records, core actuals or accounts exist; changing it never converts amounts. New normal databases default to EUR; demo uses USD. Wallet sync, writes and `.xls` imports support EUR databases only; exports containing non-EUR records are rejected. Starting values come from `config/seed-config.json` if present, else `config/seed-config.example.json`. Acceptance values for a specific dataset live in docs/SPEC.local.md and *.local.test.ts.
 
 ## 1. Goal
 
@@ -62,7 +62,7 @@ A record belongs to the month of its date in Europe/Athens. Counts ("orders", "v
 
 ## 4. Budget model
 
-Fixed euro amounts, not percentages.
+Fixed amounts in the database currency, not percentages.
 
 - Net income per year = salary × 12 + bonuses. Bonuses are fractions of a salary in configured months; they can go entirely to investing.
 - Monthly allocation: core expenses (sum of the lines marked in plan), fun, sinking-fund top-up, and investing = salary − core − fun − sinking. The four sum to the salary.
@@ -81,6 +81,7 @@ Fifteen years, yearly steps. Contribution in year n = annual investing × (1 + s
 
 - Protein target = body weight × grams per kg.
 - A meal is a list of ingredients with grams, protein and kcal per 100 g. A week assigns breakfast, lunch, snack, dinner and shake per day. Show protein and kcal per day against the targets.
+- Carbs and fat per 100 g are optional. Show their meal/day/week totals only when every positive-grams ingredient contributing to that total has that macro; missing values stay unknown, explicit zero counts. Calories remain independently entered; no carb/fat targets.
 - Grocery list: weekly items and a monthly pantry. Cost = quantity × (offer price if present, else regular price). Monthly cost = weekly × 52/12 + pantry, compared with the groceries core line.
 - Weekly ingredient quantities are derived from the week's meals.
 

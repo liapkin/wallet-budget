@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { annualInvesting } from '../../../shared/src/budget.ts';
-import { fmt } from './format.ts';
+import { currencySymbol, fmt } from './format.ts';
 import { project } from '../../../shared/src/projection.ts';
 import type { Config } from '../../../shared/src/types.ts';
 import { Api } from './api';
@@ -9,7 +9,7 @@ import { MoneyInput } from './ui/money-input';
 import { Toast } from './ui/toast';
 
 type Inv = Config['investing'];
-type Field = { label: string; unit: '%' | '€'; get: (i: Inv) => number; set: (i: Inv, v: number) => void };
+type Field = { label: string; unit: '%' | 'money'; get: (i: Inv) => number; set: (i: Inv, v: number) => void };
 
 const p = (x: number) => +(x * 100).toFixed(4);
 const pct = (label: string, k: 'grossReturn' | 'ter' | 'inflation' | 'netSalaryGrowth' | 'houseFundReturn'): Field => ({
@@ -24,11 +24,11 @@ const MARKET: Field[] = [
   pct('TER', 'ter'),
   pct('Inflation', 'inflation'),
   pct('Salary growth', 'netSalaryGrowth'),
-  { label: 'Trading cost / year', unit: '€', get: (i) => i.tradingCostPerYear / 100, set: (i, v) => (i.tradingCostPerYear = Math.round(v * 100)) },
+  { label: 'Trading cost / year', unit: 'money', get: (i) => i.tradingCostPerYear / 100, set: (i, v) => (i.tradingCostPerYear = Math.round(v * 100)) },
 ];
 const HOUSE: Field[] = [
   pct('House fund return', 'houseFundReturn'),
-  { label: 'Property price', unit: '€', get: (i) => i.houseTarget.propertyPrice / 100, set: (i, v) => (i.houseTarget.propertyPrice = Math.round(v * 100)) },
+  { label: 'Property price', unit: 'money', get: (i) => i.houseTarget.propertyPrice / 100, set: (i, v) => (i.houseTarget.propertyPrice = Math.round(v * 100)) },
   target('Deposit', 'depositShare'),
   target('Purchase costs', 'purchaseCostsShare'),
 ];
@@ -62,7 +62,7 @@ const HOUSE: Field[] = [
           <h3>Market</h3>
           @for (f of market; track f.label) {
             <label class="field">{{ f.label }}
-              <span class="affix" [attr.data-suf]="f.unit" [attr.data-pre]="f.unit === '€' ? '€' : null">
+              <span class="affix" [attr.data-suf]="f.unit === '%' ? '%' : null" [attr.data-pre]="f.unit === 'money' ? currencySymbol() : null">
                 <input type="text" appMoney [value]="f.get(c.investing)" (change)="editVal(f, $event)" />
               </span>
             </label>
@@ -71,7 +71,7 @@ const HOUSE: Field[] = [
           <label class="switch" style="margin-bottom:var(--sp-3)"><input type="checkbox" [checked]="c.investing.houseFundFirst" (change)="toggleHouse($any($event.target).checked)" /> House fund first</label>
           @for (f of house; track f.label) {
             <label class="field">{{ f.label }}
-              <span class="affix" [attr.data-suf]="f.unit === '%' ? '%' : null" [attr.data-pre]="f.unit === '€' ? '€' : null">
+              <span class="affix" [attr.data-suf]="f.unit === '%' ? '%' : null" [attr.data-pre]="f.unit === 'money' ? currencySymbol() : null">
                 <input type="text" appMoney [value]="f.get(c.investing)" (change)="editVal(f, $event)" />
               </span>
             </label>
@@ -129,6 +129,7 @@ const HOUSE: Field[] = [
 })
 export class InvestingComponent {
   protected fmt = fmt;
+  protected currencySymbol = currencySymbol;
   protected market = MARKET;
   protected house = HOUSE;
   private api = inject(Api);
@@ -162,6 +163,7 @@ export class InvestingComponent {
   protected last = computed(() => this.rows()[this.rows().length - 1]);
 
   protected chart = computed(() => {
+    const symbol = currencySymbol();
     const rows = this.rows();
     const eur = (v: number) => fmt(Math.round(v * 100));
     const line = (name: string, k: 'total' | 'real', extra: object = {}) => ({
@@ -171,7 +173,7 @@ export class InvestingComponent {
       grid: { left: 8, right: 16, top: 36, bottom: 8, containLabel: true },
       tooltip: { trigger: 'axis', valueFormatter: (v: number) => eur(v) },
       xAxis: { type: 'category', data: rows.map((r) => 'Y' + r.year), boundaryGap: false },
-      yAxis: { type: 'value', axisLabel: { formatter: (v: number) => (v >= 1000 ? v / 1000 + 'k' : v) + ' €' } },
+      yAxis: { type: 'value', axisLabel: { formatter: (v: number) => symbol + (v >= 1000 ? v / 1000 + 'k' : v) } },
       series: [
         line('Nominal', 'total', {
           markLine: {

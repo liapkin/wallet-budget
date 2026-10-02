@@ -1,5 +1,10 @@
-export const toCents = (eur: number): number => Math.round(eur * 100);
+import type { Currency } from './types.ts';
 
-const nf = new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' });
+export const toCents = (amount: number): number => Math.round(amount * 100);
 
-export const fmt = (cents: number): string => nf.format(cents / 100);
+const formats = {
+  EUR: new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' }),
+  USD: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }),
+};
+
+export const fmt = (cents: number, currency: Currency = 'EUR'): string => formats[currency].format(cents / 100);

@@ -15,4 +15,7 @@ const walk = (v: unknown): unknown => {
   return v;
 };
 
-export const seedToConfig = (json: unknown): Config => walk(json) as Config;
+export const seedToConfig = (json: unknown): Config => {
+  const cfg = walk(json) as Config;
+  return { ...cfg, currency: cfg.currency ?? 'EUR' };
+};

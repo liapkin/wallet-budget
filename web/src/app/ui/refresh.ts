@@ -1,5 +1,6 @@
 import { computed, Injectable, inject, signal } from '@angular/core';
-import { Api } from '../api';
+import { Api, type Meta } from '../api';
+import { currency } from '../format';
 import { Toast } from './toast';
 
 /** Screens read `refresh()` inside effect/resource params to reload after a Wallet fetch. */
@@ -10,9 +11,16 @@ export class Refresh {
   readonly syncing = signal(false);
   /** `null` means metadata has not confirmed a safe mode yet. */
   readonly demo = signal<boolean | null>(null);
-  readonly walletAvailable = computed(() => this.demo() === false);
+  readonly currencyLocked = signal(true);
+  readonly walletAvailable = computed(() => this.demo() === false && currency() === 'EUR');
   private api = inject(Api);
   private toast = inject(Toast);
+
+  applyMeta(meta: Meta) {
+    currency.set(meta.currency === 'USD' ? 'USD' : 'EUR');
+    this.currencyLocked.set(meta.currencyLocked !== false);
+    this.demo.set(meta.demo === true);
+  }
 
   bump() {
     this.tick.update((n) => n + 1);

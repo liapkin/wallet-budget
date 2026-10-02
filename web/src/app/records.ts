@@ -1,6 +1,6 @@
 import { Component, computed, effect, ElementRef, inject, resource, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { fmt } from './format.ts';
+import { currencySymbol, fmt } from './format.ts';
 import { toCents } from '../../../shared/src/money.ts';
 import { Api, type Row } from './api';
 import { athensNow, currentMonth, dayLabel, groupColor, groupDot, HOLLOW } from './format';
@@ -103,14 +103,14 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
 
     <dialog #dlg (click)="onBackdrop($event)">
       <form (submit)="add($event)">
-        <h2>{{ draft() ? 'Review' : addLabel() }}</h2>
-        <div class="seg" [hidden]="!!draft()" role="group" aria-label="Type">
+        <h2>{{ review() ? 'Review' : addLabel() }}</h2>
+        <div class="seg" [hidden]="!!review()" role="group" aria-label="Type">
           <button type="button" [class.on]="type() === 'Expenses'" (click)="type.set('Expenses')">Expense</button>
           <button type="button" [class.on]="type() === 'Income'" (click)="type.set('Income')">Income</button>
         </div>
-        <div class="dform" [hidden]="!!draft()">
+        <div class="dform" [hidden]="!!review()">
           <label class="field"><span>Amount</span>
-            <span class="affix" data-pre="€"><input name="amount" appMoney type="text" placeholder="0.00" autofocus required (blur)="amountTouched.set(true)" /></span>
+            <span class="affix" [attr.data-pre]="currencySymbol()"><input name="amount" appMoney type="text" placeholder="0.00" autofocus required (blur)="amountTouched.set(true)" /></span>
             @if (amountTouched() && !getAmountValue()) { <div class="hint">Enter an amount</div> }
           </label>
           <label class="field"><span>Note</span><input name="note" autocomplete="off" /></label>
@@ -131,7 +131,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
             </label>
           }
         </div>
-        @if (draft(); as d) {
+        @if (review(); as d) {
           <dl class="review">
             <dt>Type</dt><dd>{{ type() === 'Income' ? 'Income' : 'Expense' }}</dd>
             <dt>Amount</dt><dd>{{ fmt(d.cents) }}</dd>
@@ -142,7 +142,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
           </dl>
         }
         <div class="actions">
-          @if (draft()) {
+          @if (review()) {
             <button type="button" (click)="draft.set(null)" [disabled]="busy()">Back</button>
             <button class="primary" [disabled]="busy()">Add to Wallet</button>
           } @else {
@@ -191,6 +191,7 @@ export class Records {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   protected fmt = fmt;
+  protected currencySymbol = currencySymbol;
   protected val = val;
   protected color = groupColor;
   protected hollow = (g: string) => HOLLOW.has(g);
@@ -209,17 +210,18 @@ export class Records {
   protected addLabel = computed(() => (this.type() === 'Income' ? 'Add income' : 'Add expense'));
   protected busy = signal(false);
   private savedToWallet = signal(this.readAddToWallet());
-  /** Wallet writes require confirmed non-demo metadata; keep saved preference for normal mode. */
+  /** Wallet writes require confirmed non-demo EUR metadata; keep saved preference for normal mode. */
   protected toWallet = computed(() => this.refresh.walletAvailable() && this.savedToWallet());
   protected walletAcc = signal<string | null>(null);
   protected walletCat = signal<string | null>('');
   protected draft = signal<{ cents: number; date: string; time: string; note: string } | null>(null);
+  protected review = computed(() => this.toWallet() ? this.draft() : null);
   protected amountTouched = signal(false);
   private timer?: ReturnType<typeof setTimeout>;
 
   protected meta = resource({ params: () => this.refresh.tick(), loader: () => this.api.meta() });
   protected accounts = resource({ params: () => this.refresh.tick(), loader: () => this.api.accounts() });
-  protected categories = resource({ loader: () => this.api.walletCategories() });
+  protected categories = resource({ params: () => this.refresh.walletAvailable() ? true : undefined, loader: () => this.api.walletCategories() });
   protected rows = resource({
     params: computed(() => ({ month: this.month(), group: this.group(), account: this.account(), tick: this.refresh.tick() })),
     loader: ({ params: { tick, ...p } }) => this.api.records(p),
@@ -229,14 +231,14 @@ export class Records {
   protected addAccount = signal<string | null>('Manual');
   protected addAccounts = computed<ComboOption[]>(() =>
     ['Manual', ...(this.meta.value()?.accounts ?? []).filter((a) => a !== 'Manual')].map((a) => ({ value: a, label: a })));
-  // Amounts are stored in EUR, so only EUR accounts can take the record. `selectedOnly` returns just the chosen one (review step).
+  // Wallet writes only support EUR databases/accounts. `selectedOnly` returns the chosen account (review step).
   protected walletAccountOptions = (selectedOnly = false): ComboOption[] =>
-    (this.accounts.value() ?? [])
+    (this.refresh.walletAvailable() ? this.accounts.value() ?? [] : [])
       .filter((a) => a.currency === 'EUR' && (!selectedOnly || a.id === this.walletAcc()))
       .map((a) => ({ value: a.id, label: a.name, hint: a.balanceCents == null ? '' : fmt(a.balanceCents) }));
   protected walletCategoryOptions = computed<ComboOption[]>(() => [
     { value: '', label: 'No category' },
-    ...(this.categories.value() ?? [])
+    ...(this.refresh.walletAvailable() ? this.categories.value() ?? [] : [])
       .map((c) => {
         const group = c.parent || 'Other';
         const top = !c.parent || c.name === c.parent;
@@ -312,8 +314,7 @@ export class Records {
       return false;
     }
     this.toast.show(ok);
-    this.rows.reload();
-    this.meta.reload();
+    this.refresh.tick.update((n) => n + 1);
     return true;
   }
 
