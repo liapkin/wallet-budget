@@ -1,10 +1,11 @@
 import { Component, computed, effect, inject, resource, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { NgTemplateOutlet } from '@angular/common';
 import { groceryMonthly, weeklyIngredientGrams } from '../../../shared/src/diet.ts';
 import { fmt } from './format.ts';
 import { toCents } from '../../../shared/src/money.ts';
 import type { Config, GroceryItem } from '../../../shared/src/types.ts';
 import { Api } from './api';
+import { Icon } from './ui/icons';
 import { Refresh } from './ui/refresh';
 import { Toast } from './ui/toast';
 
@@ -13,18 +14,27 @@ const val = (e: Event) => (e.target as HTMLInputElement | HTMLSelectElement).val
 @Component({
   selector: 'app-groceries',
   standalone: true,
-  imports: [CommonModule],
+  imports: [NgTemplateOutlet, Icon],
   styles: `
-    .store-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: var(--sp-4); margin-bottom: var(--sp-5); }
-    .items-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
-    .items-table th, .items-table td { padding: var(--sp-2); text-align: left; border-bottom: 1px solid var(--border); }
-    .items-table th { font-weight: 600; color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.04em; background: var(--surface-2); }
-    .items-table input, .items-table select { width: 100%; }
-    .items-table .num { text-align: right; }
-    .items-table tr:hover td { background: var(--surface-2); }
-    .card-footer { padding-top: var(--sp-2); border-top: 1px solid var(--border); font-weight: 600; display: grid; grid-template-columns: 1fr auto auto; gap: var(--sp-2); align-items: center; }
-    .collapsible { cursor: pointer; user-select: none; font-weight: 600; padding: var(--sp-2); margin: -var(--sp-2); border-radius: var(--r-sm); }
-    .collapsible:hover { background: var(--surface-2); }
+    .items-table { width: 100%; min-width: 74rem; table-layout: fixed; border-collapse: collapse; font-size: var(--fs-sm); }
+    .items-table th, .items-table td { padding: var(--sp-1) var(--sp-2); text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .items-table th { position: sticky; top: 0; z-index: 1; font-weight: 600; color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.04em; background: var(--surface-2); }
+    .items-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .items-table input, .items-table select { width: 100%; min-width: 0; font: inherit; color: inherit; background: transparent; border: 1px solid transparent; border-radius: var(--r-sm); padding: var(--sp-1) var(--sp-2); appearance: none; }
+    .items-table select { cursor: pointer; }
+    .items-table input:hover, .items-table input:focus, .items-table select:hover, .items-table select:focus { border-color: var(--border); background: var(--surface-2); }
+    .items-table input.num { text-align: right; }
+    .items-table input[type='number'] { appearance: textfield; }
+    .items-table input::-webkit-inner-spin-button, .items-table input::-webkit-outer-spin-button { display: none; }
+    .items-table .note { color: var(--muted); text-overflow: ellipsis; }
+    .items-table tr.row:hover td { background: var(--surface-2); }
+    .items-table tr.group td { background: var(--surface-2); font-weight: 600; padding: var(--sp-2); }
+    .group-line { display: flex; align-items: center; gap: var(--sp-3); }
+    .group-line .sub { margin-left: auto; }
+    .cost { text-align: right; white-space: nowrap; }
+    .cost.offer { color: var(--good); font-weight: 600; }
+    .table-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); border-top: 1px solid var(--border); font-weight: 600; }
+    .collapsible { cursor: pointer; user-select: none; font-weight: 600; }
     .collapsible-content { margin-top: var(--sp-2); padding-left: var(--sp-3); font-size: var(--fs-sm); }
     .collapsible-item { padding: var(--sp-1) 0; }
     .kpi-badges { display: flex; gap: var(--sp-2); flex-wrap: wrap; align-items: center; }
@@ -43,11 +53,64 @@ const val = (e: Event) => (e.target as HTMLInputElement | HTMLSelectElement).val
     @if (data.error()) {
       <p class="err">Failed to load config.</p>
     }
-    <datalist id="stores">
-      @for (st of stores(); track st) {
-        <option [value]="st"></option>
-      }
-    </datalist>
+
+    <ng-template #rowTpl let-list="list" let-it="it" let-i="i">
+      <tr class="row">
+        <td><input type="text" [value]="it.item" (change)="upd(list, i, { item: val($event) })" /></td>
+        <td><input class="num" type="text" inputmode="decimal" [value]="it.qty" (change)="setNum(list, i, 'qty', $event)" /></td>
+        <td><input type="text" [value]="it.unit" (change)="upd(list, i, { unit: val($event) })" /></td>
+        <td><input class="num" type="text" inputmode="decimal" [value]="it.regularPrice / 100" (change)="setNum(list, i, 'regularPrice', $event)" /></td>
+        <td><input class="num" type="text" inputmode="decimal" placeholder="–" [value]="it.offerPrice == null ? '' : it.offerPrice / 100" (change)="setNum(list, i, 'offerPrice', $event)" /></td>
+        <td class="cost" [class.offer]="useOffers() && it.offerPrice != null">
+          {{ fmt(itemCostCents(it)) }}
+          @if (useOffers() && it.offerPrice != null) {
+            <span class="badge">offer</span>
+          }
+        </td>
+        <td>
+          @if (newStore() === list + ':' + i) {
+            <input type="text" placeholder="Store name" [value]="''" (change)="setStore(list, i, val($event))" (blur)="newStore.set(null)" />
+          } @else {
+            <select [value]="it.where" (change)="pickStore(list, i, val($event))">
+              @for (st of stores(); track st) {
+                <option [value]="st" [selected]="st === it.where">{{ st }}</option>
+              }
+              <option value="__new__">New store…</option>
+            </select>
+          }
+        </td>
+        <td><input class="note" type="text" [value]="it.note" [title]="it.note" (change)="upd(list, i, { note: val($event) })" /></td>
+        <td><button class="ghost icon danger" (click)="remove(list, i)" title="Delete"><app-icon name="trash" /></button></td>
+      </tr>
+    </ng-template>
+
+    <ng-template #head>
+      <colgroup>
+        <col />
+        <col style="width: 5rem" />
+        <col style="width: 5rem" />
+        <col style="width: 7rem" />
+        <col style="width: 7rem" />
+        <col style="width: 9rem" />
+        <col style="width: 9rem" />
+        <col style="width: 12rem" />
+        <col style="width: 3rem" />
+      </colgroup>
+      <thead>
+        <tr>
+          <th style="min-width: 16rem">Item</th>
+          <th class="num">Qty</th>
+          <th>Unit</th>
+          <th class="num">Regular €</th>
+          <th class="num">Offer €</th>
+          <th class="num">Cost</th>
+          <th>Store</th>
+          <th>Note</th>
+          <th></th>
+        </tr>
+      </thead>
+    </ng-template>
+
     @if (cfg(); as c) {
       <div class="kpis">
         <div class="kpi">
@@ -72,7 +135,51 @@ const val = (e: Event) => (e.target as HTMLInputElement | HTMLSelectElement).val
         </div>
       </div>
 
-      <details style="margin-bottom: var(--sp-4)">
+      <h2>Weekly items</h2>
+      <div class="scroll">
+        <table class="items-table">
+          <ng-container *ngTemplateOutlet="head" />
+          <tbody>
+            @for (g of storeGroupedItems(); track g.store) {
+              <tr class="group">
+                <td colspan="9">
+                  <div class="group-line">
+                    <span>{{ g.store }}</span>
+                    <span class="muted">{{ g.rows.length }} {{ g.rows.length === 1 ? 'item' : 'items' }}</span>
+                    <button class="link" (click)="add('weekly', g.store)">+ Add item</button>
+                    <span class="sub">{{ fmt(storeTotal(g.rows)) }}</span>
+                  </div>
+                </td>
+              </tr>
+              @for (r of g.rows; track r.i) {
+                <ng-container *ngTemplateOutlet="rowTpl; context: { list: 'weekly', it: r.it, i: r.i }" />
+              }
+            }
+          </tbody>
+        </table>
+        <div class="table-foot">
+          <button class="link" (click)="add('weekly', stores()[0] ?? 'Other')">+ Add item</button>
+          <span>Weekly total: {{ fmt(monthlyData().weekly) }}</span>
+        </div>
+      </div>
+
+      <h2 style="margin-top: var(--sp-5)">Monthly pantry</h2>
+      <div class="scroll">
+        <table class="items-table">
+          <ng-container *ngTemplateOutlet="head" />
+          <tbody>
+            @for (item of draft()?.groceryList?.pantryMonthly ?? []; track $index; let i = $index) {
+              <ng-container *ngTemplateOutlet="rowTpl; context: { list: 'pantryMonthly', it: item, i: i }" />
+            }
+          </tbody>
+        </table>
+        <div class="table-foot">
+          <button class="link" (click)="add('pantryMonthly', 'Pantry')">+ Add item</button>
+          <span>Pantry total: {{ fmt(monthlyData().pantry) }}</span>
+        </div>
+      </div>
+
+      <details class="card" style="margin-top: var(--sp-5)">
         <summary class="collapsible">Needed per week from meal plan <span class="muted" style="font-size: var(--fs-sm)">({{ weeklyNeeded().size }} items)</span></summary>
         <div class="collapsible-content">
           @for (ing of weeklyIngredientsArray(); track ing[0]) {
@@ -82,91 +189,6 @@ const val = (e: Event) => (e.target as HTMLInputElement | HTMLSelectElement).val
           }
         </div>
       </details>
-
-      <h2>Weekly items</h2>
-      <div class="store-cards">
-        @for (storeGroup of storeGroupedItems(); track storeGroup.store) {
-          <div class="card">
-            <div class="card-head">
-              <h3>{{ storeGroup.store }}</h3>
-            </div>
-            <table class="items-table">
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th>Store</th>
-                  <th class="num">Qty / unit</th>
-                  <th class="num">Regular</th>
-                  <th class="num">Offer</th>
-                  <th class="num">Cost</th>
-                  <th style="width: 80px">Note</th>
-                  <th style="width: 40px"></th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (r of storeGroup.rows; track $index) {
-                  <tr>
-                    <td><input type="text" [value]="r.it.item" (change)="upd('weekly', r.i, { item: val($event) })" /></td>
-                    <td><input type="text" list="stores" [value]="r.it.where" (change)="upd('weekly', r.i, { where: val($event) })" style="width: 6rem" /></td>
-                    <td class="num">
-                      <input type="number" step="0.01" [value]="r.it.qty" (change)="setNum('weekly', r.i, 'qty', $event)" style="width: 4rem" />
-                      <input type="text" [value]="r.it.unit" (change)="upd('weekly', r.i, { unit: val($event) })" style="width: 4rem" />
-                    </td>
-                    <td class="num"><input type="number" step="0.01" [value]="r.it.regularPrice / 100" (change)="setNum('weekly', r.i, 'regularPrice', $event)" style="width: 4rem" /></td>
-                    <td class="num"><input type="number" step="0.01" [value]="(r.it.offerPrice ?? 0) / 100" (change)="setNum('weekly', r.i, 'offerPrice', $event)" style="width: 4rem" /></td>
-                    <td class="num">{{ fmt(itemCostCents(r.it)) }}</td>
-                    <td><input type="text" [value]="r.it.note" (change)="upd('weekly', r.i, { note: val($event) })" style="width: 100%" /></td>
-                    <td><button class="icon danger" (click)="remove('weekly', r.i)" title="Delete">−</button></td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-            <div class="card-footer">
-              <div>Total: {{ fmt(storeTotal(storeGroup.rows)) }}</div>
-              <button class="link" (click)="add('weekly', storeGroup.store)">+ Add item</button>
-            </div>
-          </div>
-        }
-      </div>
-
-      <h2 style="margin-top: var(--sp-5)">Monthly pantry</h2>
-      <div class="card">
-        <table class="items-table">
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Store</th>
-              <th class="num">Qty / unit</th>
-              <th class="num">Regular</th>
-              <th class="num">Offer</th>
-              <th class="num">Cost</th>
-              <th style="width: 80px">Note</th>
-              <th style="width: 40px"></th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (item of draft()?.groceryList.pantryMonthly ?? []; track $index; let i = $index) {
-              <tr>
-                    <td><input type="text" [value]="item.item" (change)="upd('pantryMonthly', i, { item: val($event) })" /></td>
-                    <td><input type="text" list="stores" [value]="item.where" (change)="upd('pantryMonthly', i, { where: val($event) })" style="width: 6rem" /></td>
-                    <td class="num">
-                      <input type="number" step="0.01" [value]="item.qty" (change)="setNum('pantryMonthly', i, 'qty', $event)" style="width: 4rem" />
-                      <input type="text" [value]="item.unit" (change)="upd('pantryMonthly', i, { unit: val($event) })" style="width: 4rem" />
-                    </td>
-                    <td class="num"><input type="number" step="0.01" [value]="item.regularPrice / 100" (change)="setNum('pantryMonthly', i, 'regularPrice', $event)" style="width: 4rem" /></td>
-                    <td class="num"><input type="number" step="0.01" [value]="(item.offerPrice ?? 0) / 100" (change)="setNum('pantryMonthly', i, 'offerPrice', $event)" style="width: 4rem" /></td>
-                    <td class="num">{{ fmt(itemCostCents(item)) }}</td>
-                    <td><input type="text" [value]="item.note" (change)="upd('pantryMonthly', i, { note: val($event) })" style="width: 100%" /></td>
-                    <td><button class="icon danger" (click)="remove('pantryMonthly', i)" title="Delete">−</button></td>
-                  </tr>
-            }
-          </tbody>
-        </table>
-        <div class="card-footer">
-          <div>Total: {{ fmt(monthlyData().pantry) }}</div>
-          <button class="link" (click)="add('pantryMonthly', 'Pantry')">+ Add item</button>
-        </div>
-      </div>
 
       @if (dirty()) {
         <div class="savebar">
@@ -184,6 +206,7 @@ export class GroceriesComponent {
   protected val = val;
   protected Math = Math;
   protected useOffers = signal(false);
+  protected newStore = signal<string | null>(null);
   private api = inject(Api);
   private toast = inject(Toast);
   private refresh = inject(Refresh);
@@ -244,7 +267,10 @@ export class GroceriesComponent {
       .map(([store, rows]) => ({ store, rows }));
   });
 
-  protected stores = computed(() => [...new Set((this.draft()?.groceryList.weekly ?? []).map((i) => i.where).filter(Boolean))].sort());
+  protected stores = computed(() => {
+    const g = this.draft()?.groceryList;
+    return [...new Set([...(g?.weekly ?? []), ...(g?.pantryMonthly ?? [])].map((i) => i.where).filter(Boolean))].sort();
+  });
 
   protected itemCostCents(item: GroceryItem): number {
     const price = this.useOffers() && item.offerPrice != null ? item.offerPrice : item.regularPrice;
@@ -270,17 +296,29 @@ export class GroceriesComponent {
 
   protected setNum(list: 'weekly' | 'pantryMonthly', i: number, k: 'qty' | 'regularPrice' | 'offerPrice', e: Event) {
     const el = e.target as HTMLInputElement;
-    const n = Number(el.value);
+    const n = Number(el.value.replace(',', '.'));
+    if (k === 'offerPrice' && el.value.trim() === '') return this.upd(list, i, { offerPrice: null });
     if (el.value.trim() === '' || !isFinite(n) || n < 0) {
       const cur = this.draft()!.groceryList[list][i][k];
-      el.value = String(k === 'qty' ? cur : (cur ?? 0) / 100);
+      el.value = cur == null ? '' : String(k === 'qty' ? cur : cur / 100);
       return;
     }
     if (k === 'qty') this.upd(list, i, { qty: n });
     else this.upd(list, i, { [k]: k === 'offerPrice' && n === 0 ? null : toCents(n) });
   }
 
+  protected pickStore(list: 'weekly' | 'pantryMonthly', i: number, v: string) {
+    if (v === '__new__') this.newStore.set(list + ':' + i);
+    else this.upd(list, i, { where: v });
+  }
+
+  protected setStore(list: 'weekly' | 'pantryMonthly', i: number, v: string) {
+    this.newStore.set(null);
+    if (v.trim()) this.upd(list, i, { where: v.trim() });
+  }
+
   protected remove(list: 'weekly' | 'pantryMonthly', i: number) {
+    this.newStore.set(null);
     this.edit((c) => c.groceryList[list].splice(i, 1));
   }
 
