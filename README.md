@@ -32,6 +32,21 @@ Keep personal acceptance checks in `*.local.test.ts` and personal notes in `CLAU
 - `pnpm run import <file.xls>` runs the same pipeline from a Wallet export.
 - `pnpm test`, `pnpm lint`
 
+## Demo
+
+`pnpm demo` runs the app on generated mock data (`data/demo.db`, separate from your real database). `pnpm demo:seed` regenerates it. Sync and "Also add to Wallet" are disabled in demo mode.
+
+## Screenshots
+
+![Month](docs/screenshots/month.png)
+![History](docs/screenshots/history.png)
+![Records](docs/screenshots/records.png)
+![Budget](docs/screenshots/budget.png)
+![Meals](docs/screenshots/meals.png)
+![Investing](docs/screenshots/investing.png)
+
+Capture these from `pnpm demo` with privacy off.
+
 ## Data
 
 The server listens on localhost only. The database, exports, `.env` and personal config stay on your machine and are git-ignored.

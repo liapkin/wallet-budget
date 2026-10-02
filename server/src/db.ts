@@ -1,11 +1,12 @@
 import { DatabaseSync } from 'node:sqlite';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import type { Config } from '../../shared/src/types.ts';
 import { seedToConfig } from '../../shared/src/seed.ts';
 
 const root = join(import.meta.dirname, '..', '..');
-const path = process.env.BUDGET_DB ?? join(root, 'data', 'budget.db');
+// relative BUDGET_DB resolves against the repo root so it works from any workspace
+const path = process.env.BUDGET_DB === ':memory:' ? ':memory:' : resolve(root, process.env.BUDGET_DB ?? 'data/budget.db');
 if (path !== ':memory:') mkdirSync(join(path, '..'), { recursive: true });
 
 export const db = new DatabaseSync(path);

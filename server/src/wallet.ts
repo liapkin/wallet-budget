@@ -1,6 +1,8 @@
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-process.loadEnvFile(join(import.meta.dirname, '..', '..', '.env'));
+const envFile = join(import.meta.dirname, '..', '..', '.env');
+if (existsSync(envFile)) process.loadEnvFile(envFile);
 
 type Params = Record<string, string | number | string[]>;
 
@@ -8,6 +10,7 @@ const BASE = 'https://rest.budgetbakers.com/wallet';
 
 // GET for sync; POST only for user-confirmed record creation. Errors carry status, path and the API's short error code, never headers or bodies.
 async function call<T>(method: 'GET' | 'POST', url: string, path: string, body?: unknown): Promise<T> {
+  if (!process.env.WALLET_API_TOKEN) throw new Error('WALLET_API_TOKEN is not set; add it to .env');
   for (;;) {
     const res = await fetch(url, {
       method,

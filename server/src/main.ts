@@ -8,6 +8,7 @@ import { walletPayload } from './wallet-payload.ts';
 import { athensLocalToUtc } from '../../shared/src/month.ts';
 import type { Config } from '../../shared/src/types.ts';
 
+const demo = process.env.DEMO === '1';
 const app = express();
 app.use(express.json({ limit: '5mb' }));
 
@@ -49,7 +50,7 @@ app.get('/api/meta', (req, res) => {
   const col = (c: string, order = '') =>
     (db.prepare(`SELECT DISTINCT ${c} AS v FROM records WHERE ${s.sql} ${order}`).all(...s.args) as { v: string }[]).map((r) => r.v);
   const { groups, excludedGroups } = getConfig().wallet;
-  res.json({ groups, excludedGroups, accounts: col('account', 'ORDER BY 1'), months: col('month', 'ORDER BY 1 DESC') });
+  res.json({ demo, groups, excludedGroups, accounts: col('account', 'ORDER BY 1'), months: col('month', 'ORDER BY 1 DESC') });
 });
 
 app.get('/api/summary', (req, res) => {
@@ -95,6 +96,7 @@ async function createRecord(req: Request, res: Response) {
   const [y, mo, d, h, mi] = m!.slice(1).map(Number);
   const cents = Math.round(eur * 100);
   if (toWallet === true) {
+    if (demo) bad('Disabled in demo mode');
     const acc = db.prepare('SELECT currency FROM accounts WHERE id=?').get(str(accountId)) as { currency: string } | undefined;
     if (!acc) bad('unknown Wallet account');
     if (acc!.currency !== 'EUR') bad('only EUR accounts are supported');
@@ -200,6 +202,7 @@ app.get('/api/accounts', (req, res) => {
 });
 
 app.post('/api/sync', (req, res, next) => {
+  if (demo) bad('Disabled in demo mode');
   sync().then((r) => res.json(r), next);
 });
 
