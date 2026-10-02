@@ -2,7 +2,9 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { randomUUID } from 'node:crypto';
 import { db, getConfig, setConfig } from './db.ts';
 import { activeSource, runPipeline, spendSummary } from './pipeline.ts';
-import { sync } from './sync.ts';
+import { insertApiRecord, sync } from './sync.ts';
+import { post } from './wallet.ts';
+import { walletPayload } from './wallet-payload.ts';
 import { athensLocalToUtc } from '../../shared/src/month.ts';
 import type { Config } from '../../shared/src/types.ts';
 
@@ -75,8 +77,16 @@ app.get('/api/records', (req, res) => {
   res.json(rows.map(present));
 });
 
-app.post('/api/records', (req, res) => {
-  const { date, amount, note, category, type = 'Expenses', account } = req.body ?? {};
+app.post('/api/records', async (req, res, next) => {
+  try {
+    await createRecord(req, res);
+  } catch (e) {
+    next(e);
+  }
+});
+
+async function createRecord(req: Request, res: Response) {
+  const { date, amount, note, category, type = 'Expenses', account, toWallet, accountId, categoryId } = req.body ?? {};
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(str(date));
   if (!m) bad('date must be YYYY-MM-DDTHH:mm');
   if (type !== 'Expenses' && type !== 'Income') bad('type must be Expenses or Income');
@@ -84,6 +94,26 @@ app.post('/api/records', (req, res) => {
   if (typeof eur !== 'number' || !Number.isFinite(eur) || eur <= 0) bad('amount must be a number > 0');
   const [y, mo, d, h, mi] = m!.slice(1).map(Number);
   const cents = Math.round(eur * 100);
+  if (toWallet === true) {
+    const acc = db.prepare('SELECT currency FROM accounts WHERE id=?').get(str(accountId)) as { currency: string } | undefined;
+    if (!acc) bad('unknown Wallet account');
+    if (acc!.currency !== 'EUR') bad('only EUR accounts are supported');
+    if (str(categoryId) && !db.prepare('SELECT 1 FROM categories WHERE id=?').get(str(categoryId))) bad('unknown Wallet category');
+    const payload = walletPayload({ accountId: str(accountId), categoryId: str(categoryId) || undefined, type, cents, date: str(date), note: str(note) });
+    let result: any;
+    try {
+      result = (await post('/v1/api/records', [payload])).results?.[0];
+    } catch (e) {
+      return void res.status(502).json({ error: `Wallet rejected the record: ${(e as Error).message}` });
+    }
+    if (!result?.success || !result.record) {
+      return void res.status(502).json({ error: `Wallet rejected the record: ${String(result?.error ?? 'no result').slice(0, 120)}` });
+    }
+    // ext_id is the Wallet id, so the next sync's INSERT OR IGNORE skips it.
+    insertApiRecord(result.record);
+    runPipeline();
+    return void res.status(201).json(present(db.prepare(`${SELECT} WHERE ext_id=?`).get(result.record.id)));
+  }
   const info = db
     .prepare(
       `INSERT INTO records (source, ext_id, account, category, amount_cents, type, payment_type, note, date_utc)
@@ -100,7 +130,7 @@ app.post('/api/records', (req, res) => {
     );
   runPipeline();
   res.status(201).json(getRecord(info.lastInsertRowid));
-});
+}
 
 app.delete('/api/records/:id', (req, res) => {
   const r = getRecord(req.params.id);
@@ -161,8 +191,12 @@ app.put('/api/actuals/:month', (req, res) => {
   res.status(204).end();
 });
 
+app.get('/api/wallet-categories', (req, res) => {
+  res.json(db.prepare('SELECT id, name, parent FROM categories ORDER BY parent, name').all());
+});
+
 app.get('/api/accounts', (req, res) => {
-  res.json(db.prepare('SELECT name, balance_cents AS balanceCents, currency, updated_at AS updatedAt FROM accounts ORDER BY name').all());
+  res.json(db.prepare('SELECT id, name, balance_cents AS balanceCents, currency, updated_at AS updatedAt FROM accounts ORDER BY name').all());
 });
 
 app.post('/api/sync', (req, res, next) => {

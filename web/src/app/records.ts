@@ -101,12 +101,12 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
 
     <dialog #dlg (click)="onBackdrop($event)">
       <form (submit)="add($event)">
-        <h2>Add record</h2>
-        <div class="seg" role="group" aria-label="Type">
+        <h2>{{ draft() ? 'Review' : 'Add record' }}</h2>
+        <div class="seg" [hidden]="!!draft()" role="group" aria-label="Type">
           <button type="button" [class.on]="type() === 'Expenses'" (click)="type.set('Expenses')">Expense</button>
           <button type="button" [class.on]="type() === 'Income'" (click)="type.set('Income')">Income</button>
         </div>
-        <div class="dform">
+        <div class="dform" [hidden]="!!draft()">
           <label class="field"><span>Amount</span>
             <span class="affix" data-pre="€"><input name="amount" inputmode="decimal" placeholder="0.00" autocomplete="off" autofocus required /></span>
           </label>
@@ -115,13 +115,38 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
             <label class="field"><span>Date</span><input type="date" name="date" [value]="now().slice(0, 10)" required /></label>
             <label class="field"><span>Time</span><input type="time" name="time" [value]="now().slice(11)" required /></label>
           </div>
-          <label class="field"><span>Account</span>
-            <app-combo [options]="addAccounts()" [(value)]="addAccount" ariaLabel="Account" />
-          </label>
+          <label class="switch"><input type="checkbox" [checked]="toWallet()" (change)="setToWallet($event)" /> Also add to Wallet</label>
+          @if (toWallet()) {
+            <label class="field"><span>Wallet account</span>
+              <app-combo [options]="walletAccountOptions()" [(value)]="walletAcc" ariaLabel="Wallet account" />
+            </label>
+            <label class="field"><span>Wallet category</span>
+              <app-combo [options]="walletCategoryOptions()" [(value)]="walletCat" ariaLabel="Wallet category" />
+            </label>
+          } @else {
+            <label class="field"><span>Account</span>
+              <app-combo [options]="addAccounts()" [(value)]="addAccount" ariaLabel="Account" />
+            </label>
+          }
         </div>
+        @if (draft(); as d) {
+          <dl class="review">
+            <dt>Type</dt><dd>{{ type() === 'Income' ? 'Income' : 'Expense' }}</dd>
+            <dt>Amount</dt><dd>{{ fmt(d.cents) }}</dd>
+            <dt>Account</dt><dd>{{ walletAccountOptions(true)[0]?.label }}</dd>
+            <dt>Category</dt><dd>{{ walletCategoryLabel() }}</dd>
+            <dt>Date</dt><dd>{{ d.date }} {{ d.time }}</dd>
+            <dt>Note</dt><dd>{{ d.note || '—' }}</dd>
+          </dl>
+        }
         <div class="actions">
-          <button type="button" (click)="dlg.close()">Cancel</button>
-          <button class="primary" [disabled]="busy()">Add</button>
+          @if (draft()) {
+            <button type="button" (click)="draft.set(null)" [disabled]="busy()">Back</button>
+            <button class="primary" [disabled]="busy()">Add to Wallet</button>
+          } @else {
+            <button type="button" (click)="dlg.close()">Cancel</button>
+            <button class="primary" [disabled]="busy()">{{ toWallet() ? 'Review' : 'Add' }}</button>
+          }
         </div>
       </form>
     </dialog>
@@ -149,6 +174,10 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
     .dform { display: flex; flex-direction: column; gap: var(--sp-3); margin-top: var(--sp-4); }
     .dform .affix input { width: 100%; text-align: left; }
     .dform .affix { display: flex; }
+    [hidden] { display: none !important; }
+    .review { display: grid; grid-template-columns: auto 1fr; gap: var(--sp-2) var(--sp-4); margin: var(--sp-4) 0 0; }
+    .review dt { color: var(--muted); }
+    .review dd { margin: 0; overflow-wrap: anywhere; }
     .two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
     .field input:not([type='checkbox']), .field select { width: 100%; }
   `,
@@ -174,9 +203,15 @@ export class Records {
   protected type = signal<'Expenses' | 'Income'>('Expenses');
   protected now = signal(athensNow());
   protected busy = signal(false);
+  protected toWallet = signal(localStorage.getItem('addToWallet') === '1');
+  protected walletAcc = signal<string | null>(null);
+  protected walletCat = signal<string | null>('');
+  protected draft = signal<{ cents: number; date: string; time: string; note: string } | null>(null);
   private timer?: ReturnType<typeof setTimeout>;
 
   protected meta = resource({ params: () => this.refresh.tick(), loader: () => this.api.meta() });
+  protected accounts = resource({ params: () => this.refresh.tick(), loader: () => this.api.accounts() });
+  protected categories = resource({ loader: () => this.api.walletCategories() });
   protected rows = resource({
     params: computed(() => ({ month: this.month(), group: this.group(), account: this.account(), tick: this.refresh.tick() })),
     loader: ({ params: { tick, ...p } }) => this.api.records(p),
@@ -186,6 +221,16 @@ export class Records {
   protected addAccount = signal<string | null>('Manual');
   protected addAccounts = computed<ComboOption[]>(() =>
     ['Manual', ...(this.meta.value()?.accounts ?? []).filter((a) => a !== 'Manual')].map((a) => ({ value: a, label: a })));
+  // Amounts are stored in EUR, so only EUR accounts can take the record. `selectedOnly` returns just the chosen one (review step).
+  protected walletAccountOptions = (selectedOnly = false): ComboOption[] =>
+    (this.accounts.value() ?? [])
+      .filter((a) => a.currency === 'EUR' && (!selectedOnly || a.id === this.walletAcc()))
+      .map((a) => ({ value: a.id, label: a.name, hint: a.balanceCents == null ? '' : fmt(a.balanceCents) }));
+  protected walletCategoryOptions = computed<ComboOption[]>(() => [
+    { value: '', label: 'No category' },
+    ...(this.categories.value() ?? []).map((c) => ({ value: c.id, label: c.name, hint: c.parent })),
+  ]);
+  protected walletCategoryLabel = () => this.walletCategoryOptions().find((o) => o.value === this.walletCat())?.label ?? 'No category';
   protected ruleGroups = computed<ComboOption[]>(() => (this.meta.value()?.groups ?? []).map((g) => ({ value: g, label: g, ...groupDot(g) })));
   protected visible = computed(() => {
     const q = this.search().trim().toLowerCase();
@@ -248,11 +293,20 @@ export class Records {
     this.now.set(athensNow());
     this.type.set('Expenses');
     this.addAccount.set('Manual');
+    this.draft.set(null);
+    this.walletCat.set('');
+    this.walletAcc.set(this.walletAccountOptions()[0]?.value ?? null);
     const form = this.dialogEl().nativeElement.querySelector('form')!;
     form.reset();
     form['date'].value = this.now().slice(0, 10);
     form['time'].value = this.now().slice(11);
     this.dialogEl().nativeElement.showModal();
+  }
+
+  protected setToWallet(e: Event) {
+    const on = (e.target as HTMLInputElement).checked;
+    this.toWallet.set(on);
+    localStorage.setItem('addToWallet', on ? '1' : '0');
   }
 
   protected onBackdrop(e: MouseEvent) {
@@ -264,10 +318,17 @@ export class Records {
     const f = Object.fromEntries(new FormData(e.target as HTMLFormElement)) as Record<string, string>;
     const n = Number((f['amount'] ?? '').trim().replace(',', '.'));
     if (!Number.isFinite(n) || n <= 0) return void this.toast.show('Enter a positive amount', 'err');
+    const wallet = this.toWallet();
+    if (wallet && !this.walletAcc()) return void this.toast.show('Pick a Wallet account', 'err');
+    const cents = toCents(n);
+    if (wallet && !this.draft()) return void this.draft.set({ cents, date: f['date']!, time: f['time']!, note: (f['note'] ?? '').trim() });
     this.busy.set(true);
     const done = await this.run(
-      () => this.api.addRecord({ date: `${f['date']}T${f['time']}`, amount: String(toCents(n) / 100), note: f['note'], type: this.type(), account: this.addAccount() ?? 'Manual' }),
-      'Record added',
+      () => this.api.addRecord({
+        date: `${f['date']}T${f['time']}`, amount: String(cents / 100), note: f['note'] ?? '', type: this.type(), account: this.addAccount() ?? 'Manual',
+        ...(wallet ? { toWallet: true, accountId: this.walletAcc()!, categoryId: this.walletCat() ?? '' } : {}),
+      }),
+      wallet ? 'Added to Wallet' : 'Record added',
     );
     this.busy.set(false);
     if (done) this.dialogEl().nativeElement.close();

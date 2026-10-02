@@ -21,9 +21,13 @@ export type Row = {
   month: string;
 };
 export type Meta = { groups: string[]; excludedGroups: string[]; accounts: string[]; months: string[] };
-export type Account = { name: string; balanceCents: number | null; currency: string; updatedAt: string };
+export type Account = { id: string; name: string; balanceCents: number | null; currency: string; updatedAt: string };
 export type Actuals = Record<string, Record<string, number>>;
-export type NewRecord = { date: string; amount: string; note: string; type: string; account: string };
+export type WalletCategory = { id: string; name: string; parent: string };
+export type NewRecord = {
+  date: string; amount: string; note: string; type: string; account: string;
+  toWallet?: boolean; accountId?: string; categoryId?: string;
+};
 
 @Injectable({ providedIn: 'root' })
 export class Api {
@@ -40,6 +44,7 @@ export class Api {
   config = () => firstValueFrom(this.http.get<Config>('/api/config'));
   saveConfig = (c: Config) => firstValueFrom(this.http.put<Config>('/api/config', c));
   accounts = () => firstValueFrom(this.http.get<Account[]>('/api/accounts'));
+  walletCategories = () => firstValueFrom(this.http.get<WalletCategory[]>('/api/wallet-categories'));
   actuals = () => firstValueFrom(this.http.get<Actuals>('/api/actuals'));
   setActual = (month: string, key: string, cents: number | null) =>
     firstValueFrom(this.http.put<void>(`/api/actuals/${month}`, { [key]: cents }));

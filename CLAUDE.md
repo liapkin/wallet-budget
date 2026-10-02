@@ -39,7 +39,7 @@ Use pnpm only. Never npm or npx; use `pnpm dlx` for one-off tools.
 
 - **Secrets and data stay local.** The Wallet token is read from `.env` (`WALLET_API_TOKEN`). Never print it, never commit it. `data/`, `.env` and any `*.xls*` are git-ignored from the first commit.
 - **Bind to localhost only.** No auth layer is planned, so the server must not listen on other interfaces.
-- **Read-only against Wallet by default.** No create, update or delete call to the Wallet API unless the user asks for it in that session, and then behind an explicit `--write` flag with a dry run first.
+- **Wallet writes: only creating a record, only when the user turns on "Also add to Wallet" and confirms the preview.** No update or delete calls.
 - **Payee data is sensitive.** The Wallet `payee` field holds names and IBANs. Store it if needed for matching, never log it, never show it in the UI.
 - **Money is integer cents.** No floats in storage or arithmetic. Format at the edge.
 - **Time zone is Europe/Athens.** Month boundaries are local, not UTC.

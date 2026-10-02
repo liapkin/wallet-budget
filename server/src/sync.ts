@@ -10,7 +10,7 @@ const paymentType = (r: any): string =>
   r.source === 'backend' || r.accountIsBankSync ? 'TRANSFER' : r.source === 'android' || r.source === 'ios' ? 'MOBILE_PAYMENT' : 'CASH';
 
 // The API renames some categories the export names differently; keep the export names so the category map matches.
-const CATEGORY_ALIAS: Record<string, string> = {
+export const CATEGORY_ALIAS: Record<string, string> = {
   'Restaurants & fast food': 'Restaurant, fast-food', 'Bar cafe': 'Bar, cafe', 'Holidays, trips, hotels': 'Holiday, trips, hotels',
   'Unknown expense': 'Unknown Expense', 'Phone, cell phones': 'Phone, cell phone', 'Electronics & accessories': 'Electronics, accessories',
   'Home & garden': 'Home, garden', 'Energy & utilities': 'Energy, utilities', Drugstore: 'Drug-store, chemist',
@@ -18,6 +18,22 @@ const CATEGORY_ALIAS: Record<string, string> = {
   'Gifts & joy': 'Gifts, joy', 'Education & development': 'Education, development',
   'Books, audio, subscription': 'Books, audio, subscriptions', 'Fin. investments': 'Financial investments',
 };
+
+const ins = db.prepare(
+  `INSERT OR IGNORE INTO records (source, ext_id, account, category, amount_cents, type, payment_type, note, payee, date_utc, raw_json)
+   VALUES ('api', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+);
+
+// Shared by sync and by record creation, so a Wallet id is stored once (ext_id is UNIQUE) whichever arrives first.
+export function insertApiRecord(r: any): number {
+  const c = r.convertedAmount;
+  const eur = c?.currencyCode === 'EUR' && c.value != null ? c.value : r.amount.currencyCode === 'EUR' ? r.amount.value : null;
+  if (eur == null) throw new Error(`no EUR amount for record in ${r.amount.currencyCode}`);
+  return ins.run(
+    r.id, r.accountName, CATEGORY_ALIAS[r.category?.name] ?? r.category?.name ?? '', toCents(eur), r.recordType === 'income' ? 'Income' : 'Expenses',
+    paymentType(r), r.note ?? '', r.counterParty ?? '', new Date(r.recordDate).toISOString(), JSON.stringify(r),
+  ).changes as number;
+}
 
 export async function sync(): Promise<{ inserted: number }> {
   const state = db.prepare("SELECT value FROM sync_state WHERE key='last_date'").get() as { value: string } | undefined;
@@ -32,11 +48,14 @@ export async function sync(): Promise<{ inserted: number }> {
     upAcc.run(a.id, a.name, bal == null ? null : toCents(bal), a.currencyCode, new Date().toISOString());
   }
 
-  const ins = db.prepare(
-    `INSERT OR IGNORE INTO records (source, ext_id, account, category, amount_cents, type, payment_type, note, payee, date_utc, raw_json)
-     VALUES ('api', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  );
   const save = db.prepare("INSERT OR REPLACE INTO sync_state (key, value) VALUES ('last_date', ?)");
+  let categories = 0;
+  const upCat = db.prepare('INSERT OR REPLACE INTO categories (id, name, parent) VALUES (?, ?, ?)');
+  for await (const c of pages<any>('/v1/api/categories', 'categories')) {
+    categories++;
+    upCat.run(c.id, CATEGORY_ALIAS[c.name] ?? c.name, c.group?.name ?? c.parentName ?? '');
+  }
+
   let windows = 0, fetched = 0, inserted = 0;
   for (let from = start; from < end; ) {
     const to = new Date(Math.min(Date.UTC(from.getUTCFullYear() + 1, 0, 1), end.getTime()));
@@ -49,13 +68,7 @@ export async function sync(): Promise<{ inserted: number }> {
         sortBy: '+recordDate',
       })) {
         fetched++;
-        const c = r.convertedAmount;
-        const eur = c?.currencyCode === 'EUR' && c.value != null ? c.value : r.amount.currencyCode === 'EUR' ? r.amount.value : null;
-        if (eur == null) throw new Error(`no EUR amount for record in ${r.amount.currencyCode}`);
-        inserted += ins.run(
-          r.id, r.accountName, CATEGORY_ALIAS[r.category?.name] ?? r.category?.name ?? '', toCents(eur), r.recordType === 'income' ? 'Income' : 'Expenses',
-          paymentType(r), r.note ?? '', r.counterParty ?? '', new Date(r.recordDate).toISOString(), JSON.stringify(r),
-        ).changes as number;
+        inserted += insertApiRecord(r);
       }
       save.run(day(new Date(Math.min(to.getTime(), Date.now()))));
       db.exec('COMMIT');
@@ -66,7 +79,7 @@ export async function sync(): Promise<{ inserted: number }> {
     from = to;
   }
   runPipeline();
-  console.log(`windows ${windows}, fetched ${fetched}, inserted ${inserted}, accounts ${accounts}`);
+  console.log(`windows ${windows}, fetched ${fetched}, inserted ${inserted}, accounts ${accounts}, categories ${categories}`);
   return { inserted };
 }
 

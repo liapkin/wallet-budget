@@ -28,6 +28,7 @@ Keep personal acceptance checks in `*.local.test.ts` and personal notes in `CLAU
 
 - `pnpm dev` runs the server and the web app together.
 - `pnpm sync` pulls Wallet records, then dedupes and classifies.
+- Add record has an "Also add to Wallet" switch that creates the record in Wallet after a preview.
 - `pnpm run import <file.xls>` runs the same pipeline from a Wallet export.
 - `pnpm test`, `pnpm lint`
 
@@ -39,4 +40,4 @@ The server listens on localhost only. The database, exports, `.env` and personal
 
 Built with Claude Code (Anthropic).
 
-Not affiliated with or endorsed by BudgetBakers. "Wallet" and its logo are trademarks of BudgetBakers; this project only reads data through their public API.
+Not affiliated with or endorsed by BudgetBakers. "Wallet" and its logo are trademarks of BudgetBakers; this project reads data through their public API and creates a record only when you turn on "Also add to Wallet".
