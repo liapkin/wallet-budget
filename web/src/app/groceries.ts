@@ -1,7 +1,8 @@
 import { Component, computed, effect, inject, resource, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { groceryMonthly, weeklyIngredientGrams } from '../../../shared/src/diet.ts';
-import { fmt, toCents } from '../../../shared/src/money.ts';
+import { fmt } from './format.ts';
+import { toCents } from '../../../shared/src/money.ts';
 import type { Config, GroceryItem } from '../../../shared/src/types.ts';
 import { Api } from './api';
 import { Refresh } from './ui/refresh';

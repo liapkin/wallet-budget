@@ -1,8 +1,9 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, HostListener, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Api } from './api';
 import { dayLabel } from './format';
 import { Icon, IconName } from './ui/icons';
+import { hidden, togglePrivacy } from './ui/privacy';
 import { Refresh } from './ui/refresh';
 import { Toast, Toasts } from './ui/toast';
 
@@ -28,12 +29,29 @@ export class App {
   protected nav = NAV;
   protected refresh = inject(Refresh);
   protected drawer = signal(false);
+  protected hidden = hidden;
+  protected togglePrivacy = togglePrivacy;
   private api = inject(Api);
   private toast = inject(Toast);
   protected dayLabel = dayLabel;
 
   constructor() {
     inject(Router).events.subscribe(() => this.drawer.set(false));
+    effect(() => {
+      document.body.classList.toggle('privacy', this.hidden());
+    });
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  handleKeydown(event: KeyboardEvent) {
+    if (event.shiftKey && event.code === 'KeyH') {
+      const target = event.target as any;
+      if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target?.contentEditable === 'true') {
+        return;
+      }
+      event.preventDefault();
+      this.togglePrivacy();
+    }
   }
 
   protected async sync() {

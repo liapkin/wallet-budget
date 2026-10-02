@@ -1,4 +1,5 @@
 import { Component, effect, ElementRef, input, OnDestroy, viewChild } from '@angular/core';
+import { hidden } from './privacy.ts';
 import { BarChart, LineChart, PieChart } from 'echarts/charts';
 import { DatasetComponent, GridComponent, LegendComponent, MarkLineComponent, TooltipComponent } from 'echarts/components';
 import * as echarts from 'echarts/core';
@@ -49,6 +50,7 @@ export class ChartView implements OnDestroy {
     this.mq.addEventListener('change', this.retheme);
     effect(() => {
       this.option();
+      hidden();
       this.render();
     });
   }
@@ -60,7 +62,29 @@ export class ChartView implements OnDestroy {
       this.chart = echarts.init(el, 'app');
       this.ro.observe(el);
     }
-    const opt = this.option() as { series?: unknown };
+    let opt = this.option() as { series?: unknown; xAxis?: unknown; yAxis?: unknown; tooltip?: unknown };
+    if (hidden()) {
+      opt = JSON.parse(JSON.stringify(opt));
+      const hideAxis = (axis: unknown) => {
+        if (Array.isArray(axis)) {
+          axis.forEach((a: any) => { if (a && a.type === 'value') a.axisLabel = { ...a.axisLabel, show: false }; });
+        } else if (axis && typeof axis === 'object') {
+          const a = axis as any;
+          if (a.type === 'value') a.axisLabel = { ...a.axisLabel, show: false };
+        }
+      };
+      hideAxis(opt.xAxis);
+      hideAxis(opt.yAxis);
+      (opt as any).tooltip = { show: false };
+      if (Array.isArray(opt.series)) {
+        (opt.series as any[]).forEach((s) => {
+          if (s && typeof s === 'object') {
+            if (s.label) s.label.show = false;
+            if (s.markLine?.label) s.markLine.label.show = false;
+          }
+        });
+      }
+    }
     const n = Array.isArray(opt.series) ? opt.series.length : opt.series ? 1 : 0;
     this.chart.setOption({ tooltip: { show: true, trigger: 'item' }, legend: { show: n >= 2 }, ...opt }, true);
   }

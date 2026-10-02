@@ -1,7 +1,7 @@
 import { Component, computed, inject, resource, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { allocation, capsFor, monthStatus, savings } from '../../../shared/src/budget.ts';
-import { fmt } from '../../../shared/src/money.ts';
+import { fmt } from './format.ts';
 import { athensMonth } from '../../../shared/src/month.ts';
 import { Api } from './api';
 import { dayLabel, groupColor } from './format';

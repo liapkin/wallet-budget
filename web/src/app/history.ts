@@ -1,5 +1,5 @@
 import { Component, computed, inject, resource, signal } from '@angular/core';
-import { fmt } from '../../../shared/src/money.ts';
+import { fmt } from './format.ts';
 import { byYear, type Cell } from '../../../shared/src/summary.ts';
 import { Api } from './api';
 import { chartColor, shortMonth } from './format';

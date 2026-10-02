@@ -1,6 +1,7 @@
 import { Component, computed, effect, inject, resource, signal } from '@angular/core';
 import { coreActuals } from '../../../shared/src/budget.ts';
-import { fmt, toCents } from '../../../shared/src/money.ts';
+import { fmt } from './format.ts';
+import { toCents } from '../../../shared/src/money.ts';
 import { Api, type Actuals as Typed } from './api';
 import { currentMonth, monthLabel } from './format';
 import { Icon } from './ui/icons';

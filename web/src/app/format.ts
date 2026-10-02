@@ -1,6 +1,8 @@
 import { athensMonth } from '../../../shared/src/month.ts';
+import { fmt as baseFmt } from '../../../shared/src/money.ts';
+import { hidden } from './ui/privacy.ts';
 
-export { fmt } from '../../../shared/src/money.ts';
+export const fmt = (cents: number) => (hidden() ? '€ ••••' : baseFmt(cents));
 
 const TZ = 'Europe/Athens';
 const monthDate = (m: string) => new Date(Date.UTC(+m.slice(0, 4), +m.slice(5, 7) - 1, 1));

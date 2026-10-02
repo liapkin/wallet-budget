@@ -1,7 +1,7 @@
 import { Component, computed, effect, inject, resource, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { dayTotals, mealTotals, proteinTarget, weekAverage } from '../../../shared/src/diet.ts';
-import { fmt } from '../../../shared/src/money.ts';
+import { fmt } from './format.ts';
 import type { Config } from '../../../shared/src/types.ts';
 import { Api } from './api';
 import { Toast } from './ui/toast';

@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { annualInvesting } from '../../../shared/src/budget.ts';
-import { fmt } from '../../../shared/src/money.ts';
+import { fmt } from './format.ts';
 import { project } from '../../../shared/src/projection.ts';
 import type { Config } from '../../../shared/src/types.ts';
 import { Api } from './api';

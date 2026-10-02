@@ -1,5 +1,6 @@
 import { Component, computed, effect, ElementRef, inject, resource, signal, viewChild } from '@angular/core';
-import { fmt, toCents } from '../../../shared/src/money.ts';
+import { fmt } from './format.ts';
+import { toCents } from '../../../shared/src/money.ts';
 import { Api, type Row } from './api';
 import { currentMonth, dayLabel, groupColor } from './format';
 import { Icon } from './ui/icons';

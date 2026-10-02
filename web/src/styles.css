@@ -209,3 +209,7 @@ dialog .actions { display: flex; justify-content: flex-end; gap: var(--sp-2); ma
 
 /* Popover (position the parent relatively) */
 .popover { position: absolute; z-index: 30; top: calc(100% + var(--sp-1)); left: 0; min-width: 14rem; padding: var(--sp-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-pop); }
+
+/* Privacy mode */
+.privacy .affix input, .privacy input.cell { filter: blur(6px); }
+.privacy .affix input:focus, .privacy input.cell:focus { filter: none; }
