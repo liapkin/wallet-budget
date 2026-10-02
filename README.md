@@ -34,18 +34,22 @@ Keep personal acceptance checks in `*.local.test.ts` and personal notes in `CLAU
 
 ## Demo
 
-`pnpm demo` runs the app on generated mock data (`data/demo.db`, separate from your real database). `pnpm demo:seed` regenerates it. Sync and "Also add to Wallet" are disabled in demo mode.
+`pnpm demo` needs no `.env` or Wallet token. It regenerates and runs `data/demo.db`, isolated from `data/budget.db`; sync and "Also add to Wallet" are disabled. Ports 3000 and 4200 must be free.
+
+The generic dataset covers the latest 18 months relative to the run date and includes duplicates and unclassified records. `pnpm demo:seed` resets it, discarding demo edits and manual records.
 
 ## Screenshots
 
-![Month](docs/screenshots/month.png)
-![History](docs/screenshots/history.png)
-![Records](docs/screenshots/records.png)
-![Budget](docs/screenshots/budget.png)
-![Meals](docs/screenshots/meals.png)
-![Investing](docs/screenshots/investing.png)
+Screenshot placeholders, to capture from `pnpm demo` with privacy off:
 
-Capture these from `pnpm demo` with privacy off.
+- `docs/screenshots/month.png`
+- `docs/screenshots/history.png`
+- `docs/screenshots/records.png`
+- `docs/screenshots/budget.png`
+- `docs/screenshots/core-actuals.png`
+- `docs/screenshots/meals.png`
+- `docs/screenshots/groceries.png`
+- `docs/screenshots/investing.png`
 
 ## Data
 
