@@ -3,21 +3,21 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { fmt } from './format.ts';
 import { toCents } from '../../../shared/src/money.ts';
 import { Api, type Row } from './api';
-import { currentMonth, dayLabel, groupColor, groupDot, HOLLOW } from './format';
+import { athensNow, currentMonth, dayLabel, groupColor, groupDot, HOLLOW } from './format';
 import { Combo, type ComboOption } from './ui/combo';
+import { DateTime } from './ui/date-time';
 import { Icon } from './ui/icons';
 import { MoneyInput } from './ui/money-input';
 import { MonthPicker } from './ui/month-picker';
 import { Refresh } from './ui/refresh';
 import { Toast } from './ui/toast';
 
-const athensNow = () => new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Athens' }).slice(0, 16).replace(' ', 'T');
 const val = (e: Event) => (e.target as HTMLInputElement | HTMLSelectElement).value;
 const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 'Request failed');
 
 @Component({
   selector: 'app-records',
-  imports: [Combo, Icon, MoneyInput, MonthPicker],
+  imports: [Combo, DateTime, Icon, MoneyInput, MonthPicker],
   template: `
     <div class="page-head">
       <h1>Records</h1>
@@ -103,7 +103,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
 
     <dialog #dlg (click)="onBackdrop($event)">
       <form (submit)="add($event)">
-        <h2>{{ draft() ? 'Review' : 'Add record' }}</h2>
+        <h2>{{ draft() ? 'Review' : addLabel() }}</h2>
         <div class="seg" [hidden]="!!draft()" role="group" aria-label="Type">
           <button type="button" [class.on]="type() === 'Expenses'" (click)="type.set('Expenses')">Expense</button>
           <button type="button" [class.on]="type() === 'Income'" (click)="type.set('Income')">Income</button>
@@ -114,10 +114,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
             @if (amountTouched() && !getAmountValue()) { <div class="hint">Enter an amount</div> }
           </label>
           <label class="field"><span>Note</span><input name="note" autocomplete="off" /></label>
-          <div class="two">
-            <label class="field"><span>Date</span><input type="date" name="date" [value]="now().slice(0, 10)" required /></label>
-            <label class="field"><span>Time</span><input type="time" name="time" [value]="now().slice(11)" required /></label>
-          </div>
+          <div class="field"><span>Date and time</span><app-date-time [(value)]="when" /></div>
           <label class="switch"><input type="checkbox" [checked]="toWallet()" (change)="setToWallet($event)" /> Also add to Wallet</label>
           @if (toWallet()) {
             <label class="field"><span>Wallet account</span>
@@ -148,7 +145,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
             <button class="primary" [disabled]="busy()">Add to Wallet</button>
           } @else {
             <button type="button" (click)="dlg.close()">Cancel</button>
-            <button class="primary" [disabled]="busy() || !getAmountValue()">{{ toWallet() ? 'Review' : 'Add' }}</button>
+            <button class="primary" [disabled]="busy() || !getAmountValue()">{{ toWallet() ? 'Review' : addLabel() }}</button>
           }
         </div>
       </form>
@@ -172,7 +169,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
     .pform .row { display: flex; justify-content: flex-end; gap: var(--sp-2); }
     .act { text-align: right; }
     .act button { margin-left: var(--sp-1); }
-    dialog { width: 24rem; }
+    dialog { width: 24rem; overflow: visible; }
     dialog h2 { margin-bottom: var(--sp-3); }
     .dform { display: flex; flex-direction: column; gap: var(--sp-3); margin-top: var(--sp-4); }
     .dform .affix input { width: 100%; text-align: left; }
@@ -181,7 +178,6 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
     .review { display: grid; grid-template-columns: auto 1fr; gap: var(--sp-2) var(--sp-4); margin: var(--sp-4) 0 0; }
     .review dt { color: var(--muted); }
     .review dd { margin: 0; overflow-wrap: anywhere; }
-    .two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
     .field input:not([type='checkbox']), .field select { width: 100%; }
     .hint { color: var(--muted); font-size: var(--fs-sm); margin-top: var(--sp-1); }
   `,
@@ -207,7 +203,8 @@ export class Records {
   protected kw = signal<{ id: number; keyword: string; group: string } | null>(null);
   protected confirmId = signal<number | null>(null);
   protected type = signal<'Expenses' | 'Income'>('Expenses');
-  protected now = signal(athensNow());
+  protected when = signal(athensNow());
+  protected addLabel = computed(() => (this.type() === 'Income' ? 'Add income' : 'Add expense'));
   protected busy = signal(false);
   protected toWallet = signal(localStorage.getItem('addToWallet') === '1');
   protected walletAcc = signal<string | null>(null);
@@ -310,7 +307,7 @@ export class Records {
   }
 
   protected openAdd() {
-    this.now.set(athensNow());
+    this.when.set(athensNow());
     this.type.set('Expenses');
     this.addAccount.set('Manual');
     this.draft.set(null);
@@ -319,8 +316,6 @@ export class Records {
     this.amountTouched.set(false);
     const form = this.dialogEl().nativeElement.querySelector('form')!;
     form.reset();
-    form['date'].value = this.now().slice(0, 10);
-    form['time'].value = this.now().slice(11);
     this.dialogEl().nativeElement.showModal();
   }
 
@@ -342,11 +337,11 @@ export class Records {
     const wallet = this.toWallet();
     if (wallet && !this.walletAcc()) return void this.toast.show('Pick a Wallet account', 'err');
     const cents = toCents(n);
-    if (wallet && !this.draft()) return void this.draft.set({ cents, date: f['date']!, time: f['time']!, note: (f['note'] ?? '').trim() });
+    if (wallet && !this.draft()) return void this.draft.set({ cents, date: this.when().slice(0, 10), time: this.when().slice(11), note: (f['note'] ?? '').trim() });
     this.busy.set(true);
     const done = await this.run(
       () => this.api.addRecord({
-        date: `${f['date']}T${f['time']}`, amount: String(cents / 100), note: f['note'] ?? '', type: this.type(), account: this.addAccount() ?? 'Manual',
+        date: this.when(), amount: String(cents / 100), note: f['note'] ?? '', type: this.type(), account: this.addAccount() ?? 'Manual',
         ...(wallet ? { toWallet: true, accountId: this.walletAcc()!, categoryId: this.walletCat() ?? '' } : {}),
       }),
       wallet ? 'Added to Wallet' : 'Record added',

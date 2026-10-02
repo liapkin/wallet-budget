@@ -5,6 +5,8 @@ import { hidden } from './ui/privacy.ts';
 export const fmt = (cents: number) => (hidden() ? '€ ••••' : baseFmt(cents));
 
 const TZ = 'Europe/Athens';
+/** 'YYYY-MM-DDTHH:mm' in Europe/Athens. */
+export const athensNow = () => new Date().toLocaleString('sv-SE', { timeZone: TZ }).slice(0, 16).replace(' ', 'T');
 const monthDate = (m: string) => new Date(Date.UTC(+m.slice(0, 4), +m.slice(5, 7) - 1, 1));
 const monthFmt = (o: Intl.DateTimeFormatOptions) => (m: string) =>
   new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', ...o }).format(monthDate(m));

@@ -6,6 +6,7 @@ import { toCents } from '../../../shared/src/money.ts';
 import type { Config } from '../../../shared/src/types.ts';
 import { Api } from './api';
 import { Combo, type ComboOption } from './ui/combo';
+import { DateTime } from './ui/date-time';
 import { Icon } from './ui/icons';
 import { MoneyInput } from './ui/money-input';
 import { Refresh } from './ui/refresh';
@@ -24,7 +25,7 @@ const SECTIONS = [
 
 @Component({
   selector: 'app-budget-edit',
-  imports: [Combo, Icon, MoneyInput],
+  imports: [Combo, DateTime, Icon, MoneyInput],
   host: { '(window:keydown)': 'key($event)', '(window:beforeunload)': 'unload($event)' },
   styles: `
     .layout { display: grid; grid-template-columns: 11rem 1fr; gap: var(--sp-5); align-items: start; }
@@ -137,7 +138,7 @@ const SECTIONS = [
           <section class="card" id="caps">
             <h2>Caps</h2>
             <div class="grid">
-              <label class="field">Apply from<input type="date" [value]="c.caps.applyFrom" (change)="plain('caps.applyFrom', $event, true)" /></label>
+              <div class="field">Apply from<app-date-time dateOnly [value]="c.caps.applyFrom" (valueChange)="set('caps.applyFrom', $event)" /></div>
               <label class="field">Buffer month (no caps)
                 <span style="display:flex;gap:var(--sp-2)">
                   <input type="month" style="flex:1" [value]="c.caps.bufferMonth ?? ''" (change)="set('caps.bufferMonth', val($event) || null)" />
