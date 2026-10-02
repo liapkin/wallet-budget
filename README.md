@@ -42,16 +42,16 @@ The generic dataset covers the latest 18 months relative to the run date and inc
 
 ## Screenshots
 
-Screenshot placeholders, to capture from `pnpm demo` with privacy off:
+Screenshots from the USD demo.
 
-- `docs/screenshots/month.png`
-- `docs/screenshots/history.png`
-- `docs/screenshots/records.png`
-- `docs/screenshots/budget.png`
-- `docs/screenshots/core-actuals.png`
-- `docs/screenshots/meals.png`
-- `docs/screenshots/groceries.png`
-- `docs/screenshots/investing.png`
+![Month overview](docs/screenshots/1.png)
+![Spending history](docs/screenshots/2.png)
+![Transaction records](docs/screenshots/3.png)
+![Budget income and allocation](docs/screenshots/4.png)
+![Budget core lines and settings](docs/screenshots/5.png)
+![Monthly core actuals](docs/screenshots/6.png)
+![Grocery list](docs/screenshots/8.png)
+![Meal plan](docs/screenshots/9.png)
 
 ## Data
 
