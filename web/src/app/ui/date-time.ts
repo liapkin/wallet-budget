@@ -34,13 +34,6 @@ const HOURS = Array.from({ length: 24 }, (_, i) => pad(i));
   imports: [Icon],
   template: `
     <div class="dt">
-      @if (!dateOnly()) {
-        <div class="quick" role="group" aria-label="Quick pick">
-          <button type="button" class="chip" [class.on]="date() === today() && time() === nowTime()" (click)="value.set(now())">Now</button>
-          <button type="button" class="chip" [class.on]="date() === day(-1)" (click)="setDate(day(-1))">Yesterday</button>
-          <button type="button" class="chip" [class.on]="date() === day(-2)" (click)="setDate(day(-2))">2 days ago</button>
-        </div>
-      }
       <div class="fields">
         <span class="anc">
           <button type="button" class="datebtn" aria-haspopup="dialog" [attr.aria-expanded]="pop() === 'cal'" [attr.aria-label]="'Date, ' + label()" (click)="toggle('cal')">
@@ -93,7 +86,7 @@ const HOURS = Array.from({ length: 24 }, (_, i) => pad(i));
   styles: `
     :host { display: block; }
     .dt { display: flex; flex-direction: column; gap: var(--sp-2); }
-    .quick, .fields { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+    .fields { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
     .anc { position: relative; }
     .datebtn { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--text); font-weight: 600; }
     .timebox { display: inline-flex; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); box-shadow: var(--shadow-sm); }
@@ -141,7 +134,6 @@ export class DateTime {
   protected now = athensNow;
   protected today = () => athensNow().slice(0, 10);
   protected nowTime = () => athensNow().slice(11);
-  protected day = (n: number) => shiftDay(this.today(), n);
   protected dayName = (d: string) => dateLabel(d);
 
   constructor() {
