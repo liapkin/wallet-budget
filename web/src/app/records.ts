@@ -2,7 +2,7 @@ import { Component, computed, effect, ElementRef, inject, resource, signal, view
 import { fmt } from './format.ts';
 import { toCents } from '../../../shared/src/money.ts';
 import { Api, type Row } from './api';
-import { currentMonth, dayLabel, groupColor } from './format';
+import { currentMonth, dayLabel, groupColor, groupDot, HOLLOW } from './format';
 import { Combo, type ComboOption } from './ui/combo';
 import { Icon } from './ui/icons';
 import { MonthPicker } from './ui/month-picker';
@@ -30,7 +30,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
     </div>
     <div class="chips">
       @for (g of groups(); track g) {
-        <button class="chip" [class.on]="group() === g" (click)="toggle(g)"><span class="dot" [style.--dot]="color(g)"></span>{{ g }}</button>
+        <button class="chip" [class.on]="group() === g" (click)="toggle(g)"><span class="dot" [class.hollow]="hollow(g)" [style.--dot]="color(g)"></span>{{ g }}</button>
       }
       <button class="chip unclassified" [class.on]="group() === 'Other'" (click)="toggle('Other')"><span class="dot" [style.--dot]="color('Other')"></span>Unclassified</button>
     </div>
@@ -160,6 +160,7 @@ export class Records {
   protected fmt = fmt;
   protected val = val;
   protected color = groupColor;
+  protected hollow = (g: string) => HOLLOW.has(g);
   protected day = dayLabel;
   protected dialogEl = viewChild.required<ElementRef<HTMLDialogElement>>('dlg');
 
@@ -185,7 +186,7 @@ export class Records {
   protected addAccount = signal<string | null>('Manual');
   protected addAccounts = computed<ComboOption[]>(() =>
     ['Manual', ...(this.meta.value()?.accounts ?? []).filter((a) => a !== 'Manual')].map((a) => ({ value: a, label: a })));
-  protected ruleGroups = computed<ComboOption[]>(() => (this.meta.value()?.groups ?? []).map((g) => ({ value: g, label: g, dot: groupColor(g) })));
+  protected ruleGroups = computed<ComboOption[]>(() => (this.meta.value()?.groups ?? []).map((g) => ({ value: g, label: g, ...groupDot(g) })));
   protected visible = computed(() => {
     const q = this.search().trim().toLowerCase();
     return (this.rows.value() ?? []).filter((r) => (this.showDups() || !r.isDup) && (!q || r.note.toLowerCase().includes(q)));
@@ -219,8 +220,8 @@ export class Records {
     ...(this.meta.value()?.accounts ?? []).map((a) => ({ value: a, label: a })),
   ]);
   protected groupOptions = (r: Row): ComboOption[] => [
-    { value: '', label: r.groupOverride ? 'Auto (computed)' : `Auto (${r.grp})`, dot: r.groupOverride ? undefined : groupColor(r.grp) },
-    ...this.groupsFor(r).map((g) => ({ value: g, label: g, dot: groupColor(g) })),
+    { value: '', label: r.groupOverride ? 'Auto (computed)' : `Auto (${r.grp})`, ...(r.groupOverride ? {} : groupDot(r.grp)) },
+    ...this.groupsFor(r).map((g) => ({ value: g, label: g, ...groupDot(g) })),
   ];
   protected toggle = (g: string) => this.group.set(this.group() === g ? '' : g);
 

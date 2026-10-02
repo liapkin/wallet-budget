@@ -4,7 +4,7 @@ import { allocation, capsFor, monthStatus, savings } from '../../../shared/src/b
 import { fmt } from './format.ts';
 import { athensMonth } from '../../../shared/src/month.ts';
 import { Api } from './api';
-import { dayLabel, groupColor } from './format';
+import { dayLabel, groupColor, HOLLOW } from './format';
 import { ChartView } from './ui/chart';
 import { Icon } from './ui/icons';
 import { MonthPicker } from './ui/month-picker';
@@ -130,7 +130,7 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
           <div class="rows">
             @for (b of v.bars; track b.group) {
               <div class="row" [style.--dot]="b.color">
-                <span class="name"><span class="dot"></span>{{ b.group }}</span>
+                <span class="name"><span class="dot" [class.hollow]="b.hollow"></span>{{ b.group }}</span>
                 <span class="num" [class.err]="b.over">{{ fmt(b.cents) }}@if (b.target) { <span class="muted"> / {{ fmt(b.target) }}</span> }</span>
                 <div class="progress"><i [class.over]="b.over" [style.width.%]="b.pct"></i>@if (b.mark !== null) { <b [style.left.%]="b.mark" title="cap"></b> }</div>
               </div>
@@ -173,7 +173,7 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
                 <div class="note">{{ r.note || r.category }}</div>
                 <small class="muted">{{ dayLabel(r.dateUtc) }}</small>
               </div>
-              <span class="chip" style="grid-column:3; justify-self:end"><span class="dot" [style.--dot]="color(r.grp)"></span>{{ r.grp }}</span>
+              <span class="chip" style="grid-column:3; justify-self:end"><span class="dot" [class.hollow]="hollow(r.grp)" [style.--dot]="color(r.grp)"></span>{{ r.grp }}</span>
               <span class="num" [class.pos]="r.amountCents > 0" style="grid-column:3; text-align:right">{{ fmt(r.amountCents) }}</span>
             </li>
           }
@@ -195,6 +195,7 @@ export class Month {
   protected pct = pct;
   protected dayLabel = dayLabel;
   protected color = groupColor;
+  protected hollow = (g: string) => HOLLOW.has(g);
   private api = inject(Api);
   private tick = inject(Refresh).tick;
   protected month = signal(athensMonth(new Date().toISOString()));
@@ -236,7 +237,7 @@ export class Month {
     const bars = shown
       .map(([group, cents]) => {
         const target = (caps as Record<string, number> | null)?.[group] ?? 0;
-        return { group, cents, target, color: groupColor(group), over: !!target && cents > target, pct: (cents / max) * 100, mark: target ? (target / max) * 100 : null };
+        return { group, cents, target, color: groupColor(group), hollow: HOLLOW.has(group), over: !!target && cents > target, pct: (cents / max) * 100, mark: target ? (target / max) * 100 : null };
       })
       .sort((a, b) => b.cents - a.cents);
     const takeout = cells['Takeout'] ?? { cents: 0, count: 0 };

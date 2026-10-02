@@ -31,6 +31,15 @@
 
   --c1: #1f6fa6; --c2: #c4622d; --c3: #16916f; --c4: #8b5a9f; --c5: #b07f0e; --c6: #b8435a; --c7: #4659a8; --c8: #6b8a2a;
   --c-other: #9a958a;
+  --c-income: var(--good);
+  --c1-l: color-mix(in oklab, var(--c1) 62%, var(--surface)); --c1-d: color-mix(in oklab, var(--c1) 72%, var(--text));
+  --c2-l: color-mix(in oklab, var(--c2) 62%, var(--surface)); --c2-d: color-mix(in oklab, var(--c2) 72%, var(--text));
+  --c3-l: color-mix(in oklab, var(--c3) 62%, var(--surface)); --c3-d: color-mix(in oklab, var(--c3) 72%, var(--text));
+  --c4-l: color-mix(in oklab, var(--c4) 62%, var(--surface)); --c4-d: color-mix(in oklab, var(--c4) 72%, var(--text));
+  --c5-l: color-mix(in oklab, var(--c5) 62%, var(--surface)); --c5-d: color-mix(in oklab, var(--c5) 72%, var(--text));
+  --c6-l: color-mix(in oklab, var(--c6) 62%, var(--surface)); --c6-d: color-mix(in oklab, var(--c6) 72%, var(--text));
+  --c7-l: color-mix(in oklab, var(--c7) 62%, var(--surface)); --c7-d: color-mix(in oklab, var(--c7) 72%, var(--text));
+  --c8-l: color-mix(in oklab, var(--c8) 62%, var(--surface)); --c8-d: color-mix(in oklab, var(--c8) 72%, var(--text));
 
   /* legacy aliases */
   --danger: var(--bad); --pos: var(--good); --badge: #ebe6da;
@@ -157,6 +166,7 @@ button.icon:hover:not(:disabled) { background: var(--surface-2); color: var(--te
 
 /* Chip and dot */
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--dot, var(--c-other)); flex: none; }
+.dot.hollow { background: transparent; box-shadow: inset 0 0 0 2px var(--dot, var(--c-other)); }
 .chip { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.2rem 0.65rem; border-radius: 999px; font-size: var(--fs-sm); box-shadow: none; background: var(--surface); color: var(--muted); }
 .chip.on, .chip[aria-pressed='true'] { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
 .chip:not(.on):not([aria-pressed='true']) .dot { opacity: 0.4; }

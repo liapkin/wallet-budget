@@ -1,7 +1,7 @@
 import { booleanAttribute, Component, DestroyRef, computed, effect, ElementRef, HostListener, inject, input, model, output, signal, viewChild } from '@angular/core';
 import { Icon } from './icons';
 
-export interface ComboOption { value: string; label: string; dot?: string; hint?: string }
+export interface ComboOption { value: string; label: string; dot?: string; hollow?: boolean; hint?: string }
 
 const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 let uid = 0;
@@ -13,7 +13,7 @@ let uid = 0;
   template: `
     <button #trigger type="button" class="trigger" aria-haspopup="listbox" [attr.aria-expanded]="open()" [attr.aria-label]="ariaLabel()" [title]="selected()?.label ?? ''"
       (click)="toggle()" (keydown)="onTriggerKey($event)">
-      @if (selected()?.dot) { <span class="dot" [style.--dot]="selected()!.dot"></span> }
+      @if (selected()?.dot) { <span class="dot" [class.hollow]="selected()!.hollow" [style.--dot]="selected()!.dot"></span> }
       <span class="lbl" [class.ph]="!selected()">{{ selected()?.label ?? placeholder() }}</span>
       <svg class="caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
     </button>
@@ -25,7 +25,7 @@ let uid = 0;
         <ul class="list" role="listbox" [id]="id + '-list'" [attr.aria-label]="ariaLabel()">
           @for (o of rows(); track o.value; let i = $index) {
             <li role="option" [id]="id + '-' + i" [class.act]="i === active()" [attr.aria-selected]="o.value === value() && !o.create" (mousemove)="active.set(i)" (click)="pick(o)">
-              @if (o.dot) { <span class="dot" [style.--dot]="o.dot"></span> }
+              @if (o.dot) { <span class="dot" [class.hollow]="o.hollow" [style.--dot]="o.dot"></span> }
               <span class="lbl">{{ o.create ? 'Create "' + o.label + '"' : o.label }}</span>
               @if (o.hint) { <span class="hint">{{ o.hint }}</span> }
               @if (o.value === value() && !o.create) { <app-icon name="check" [size]="14" /> }
@@ -44,6 +44,7 @@ let uid = 0;
     .ph, .hint { color: var(--muted); }
     .caret { flex: none; color: var(--muted); }
     .dot { flex: none; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--dot, var(--c-other)); }
+    .dot.hollow { background: transparent; box-shadow: inset 0 0 0 2px var(--dot, var(--c-other)); }
     .pop { position: fixed; z-index: 50; display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-1); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-pop); }
     .pop input { width: 100%; }
     .list { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow-y: auto; }

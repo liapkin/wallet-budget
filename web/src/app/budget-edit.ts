@@ -1,7 +1,7 @@
 import { Component, computed, inject, resource, signal } from '@angular/core';
 import { allocation, annualInvesting, corePlan } from '../../../shared/src/budget.ts';
 import { fmt } from './format.ts';
-import { groupColor } from './format';
+import { groupDot } from './format';
 import { toCents } from '../../../shared/src/money.ts';
 import type { Config } from '../../../shared/src/types.ts';
 import { Api } from './api';
@@ -299,7 +299,7 @@ export class BudgetEdit {
     { value: '', label: 'None' },
     ...(this.accounts.value() ?? []).map((a) => ({ value: a.name, label: a.name })),
   ]);
-  protected groupOptions = computed<ComboOption[]>(() => (this.draft()?.wallet.groups ?? []).map((g) => ({ value: g, label: g, dot: groupColor(g) })));
+  protected groupOptions = computed<ComboOption[]>(() => (this.draft()?.wallet.groups ?? []).map((g) => ({ value: g, label: g, ...groupDot(g) })));
 
   // ponytail: edits are applied by dotted path on a cloned draft; no per-field handlers
   private edit(fn: (c: any) => void) {
