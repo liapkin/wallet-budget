@@ -1,4 +1,5 @@
 import { Component, computed, effect, ElementRef, inject, resource, signal, viewChild } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { fmt } from './format.ts';
 import { toCents } from '../../../shared/src/money.ts';
 import { Api, type Row } from './api';
@@ -186,6 +187,8 @@ export class Records {
   private api = inject(Api);
   private toast = inject(Toast);
   private refresh = inject(Refresh);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
   protected fmt = fmt;
   protected val = val;
   protected color = groupColor;
@@ -251,6 +254,13 @@ export class Records {
       this.month();
       this.confirmId.set(null);
       this.kw.set(null);
+    });
+    effect(() => {
+      const add = this.route.snapshot.queryParamMap.get('add');
+      if (add === '1') {
+        this.openAdd();
+        this.router.navigate([], { queryParams: { add: null }, queryParamsHandling: 'merge', replaceUrl: true });
+      }
     });
   }
 

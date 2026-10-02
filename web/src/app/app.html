@@ -21,7 +21,7 @@
     }
   </nav>
   <div class="foot">
-    <button class="primary" type="button" [disabled]="refresh.syncing()" (click)="sync()">
+    <button class="primary" type="button" [disabled]="refresh.syncing()" (click)="refresh.fetchWallet()">
       @if (refresh.syncing()) { <span class="spin"></span> Fetching… } @else { <app-icon name="refresh" [size]="16" /> Fetch from Wallet }
     </button>
     @if (refresh.lastFetch(); as t) {
