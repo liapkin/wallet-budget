@@ -6,6 +6,7 @@ import { Api, type Row } from './api';
 import { currentMonth, dayLabel, groupColor, groupDot, HOLLOW } from './format';
 import { Combo, type ComboOption } from './ui/combo';
 import { Icon } from './ui/icons';
+import { MoneyInput } from './ui/money-input';
 import { MonthPicker } from './ui/month-picker';
 import { Refresh } from './ui/refresh';
 import { Toast } from './ui/toast';
@@ -16,7 +17,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
 
 @Component({
   selector: 'app-records',
-  imports: [Combo, Icon, MonthPicker],
+  imports: [Combo, Icon, MoneyInput, MonthPicker],
   template: `
     <div class="page-head">
       <h1>Records</h1>
@@ -109,7 +110,8 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
         </div>
         <div class="dform" [hidden]="!!draft()">
           <label class="field"><span>Amount</span>
-            <span class="affix" data-pre="€"><input name="amount" inputmode="decimal" placeholder="0.00" autocomplete="off" autofocus required /></span>
+            <span class="affix" data-pre="€"><input name="amount" appMoney type="text" placeholder="0.00" autofocus required (blur)="amountTouched.set(true)" /></span>
+            @if (amountTouched() && !getAmountValue()) { <div class="hint">Enter an amount</div> }
           </label>
           <label class="field"><span>Note</span><input name="note" autocomplete="off" /></label>
           <div class="two">
@@ -146,7 +148,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
             <button class="primary" [disabled]="busy()">Add to Wallet</button>
           } @else {
             <button type="button" (click)="dlg.close()">Cancel</button>
-            <button class="primary" [disabled]="busy()">{{ toWallet() ? 'Review' : 'Add' }}</button>
+            <button class="primary" [disabled]="busy() || !getAmountValue()">{{ toWallet() ? 'Review' : 'Add' }}</button>
           }
         </div>
       </form>
@@ -181,6 +183,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
     .review dd { margin: 0; overflow-wrap: anywhere; }
     .two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
     .field input:not([type='checkbox']), .field select { width: 100%; }
+    .hint { color: var(--muted); font-size: var(--fs-sm); margin-top: var(--sp-1); }
   `,
 })
 export class Records {
@@ -210,6 +213,7 @@ export class Records {
   protected walletAcc = signal<string | null>(null);
   protected walletCat = signal<string | null>('');
   protected draft = signal<{ cents: number; date: string; time: string; note: string } | null>(null);
+  protected amountTouched = signal(false);
   private timer?: ReturnType<typeof setTimeout>;
 
   protected meta = resource({ params: () => this.refresh.tick(), loader: () => this.api.meta() });
@@ -265,6 +269,12 @@ export class Records {
   }
 
   protected amount = (r: Row) => (r.type === 'Income' ? '+' + fmt(Math.abs(r.amountCents)) : '−' + fmt(Math.abs(r.amountCents)));
+  protected getAmountValue = () => {
+    const input = this.dialogEl().nativeElement.querySelector('input[name="amount"]') as HTMLInputElement | null;
+    if (!input) return 0;
+    const val = Number((input.value ?? '').trim().replace(',', '.'));
+    return Number.isFinite(val) && val > 0 ? val : 0;
+  };
   protected groupsFor = (r: Row) => {
     const g = this.meta.value()?.groups ?? [];
     const o = r.groupOverride;
@@ -306,6 +316,7 @@ export class Records {
     this.draft.set(null);
     this.walletCat.set('');
     this.walletAcc.set(this.walletAccountOptions()[0]?.value ?? null);
+    this.amountTouched.set(false);
     const form = this.dialogEl().nativeElement.querySelector('form')!;
     form.reset();
     form['date'].value = this.now().slice(0, 10);

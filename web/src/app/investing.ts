@@ -5,6 +5,7 @@ import { project } from '../../../shared/src/projection.ts';
 import type { Config } from '../../../shared/src/types.ts';
 import { Api } from './api';
 import { ChartView } from './ui/chart';
+import { MoneyInput } from './ui/money-input';
 import { Toast } from './ui/toast';
 
 type Inv = Config['investing'];
@@ -34,7 +35,7 @@ const HOUSE: Field[] = [
 
 @Component({
   selector: 'app-investing',
-  imports: [ChartView],
+  imports: [ChartView, MoneyInput],
   host: { '(window:keydown)': 'key($event)', '(window:beforeunload)': 'unload($event)' },
   styles: `
     .callout { padding: var(--sp-3) var(--sp-4); border: 1px solid var(--accent); border-left-width: 4px; border-radius: var(--r); background: var(--accent-soft); margin-bottom: var(--sp-4); }
@@ -62,7 +63,7 @@ const HOUSE: Field[] = [
           @for (f of market; track f.label) {
             <label class="field">{{ f.label }}
               <span class="affix" [attr.data-suf]="f.unit" [attr.data-pre]="f.unit === '€' ? '€' : null">
-                <input type="number" step="any" [value]="f.get(c.investing)" (change)="edit(f, $any($event.target).valueAsNumber)" />
+                <input type="text" appMoney [value]="f.get(c.investing)" (change)="editVal(f, $event)" />
               </span>
             </label>
           }
@@ -71,7 +72,7 @@ const HOUSE: Field[] = [
           @for (f of house; track f.label) {
             <label class="field">{{ f.label }}
               <span class="affix" [attr.data-suf]="f.unit === '%' ? '%' : null" [attr.data-pre]="f.unit === '€' ? '€' : null">
-                <input type="number" step="any" [value]="f.get(c.investing)" (change)="edit(f, $any($event.target).valueAsNumber)" />
+                <input type="text" appMoney [value]="f.get(c.investing)" (change)="editVal(f, $event)" />
               </span>
             </label>
           }
@@ -187,6 +188,17 @@ export class InvestingComponent {
   });
 
   protected edit(f: Field, v: number) {
+    if (Number.isNaN(v)) return;
+    this.draft.update((c) => {
+      const n = structuredClone(c!);
+      f.set(n.investing, v);
+      return n;
+    });
+  }
+
+  protected editVal(f: Field, e: Event) {
+    const val = (e.target as HTMLInputElement).value.trim().replace(',', '.');
+    const v = Number(val) || 0;
     if (Number.isNaN(v)) return;
     this.draft.update((c) => {
       const n = structuredClone(c!);

@@ -7,6 +7,7 @@ import type { Config, GroceryItem } from '../../../shared/src/types.ts';
 import { Api } from './api';
 import { Combo } from './ui/combo';
 import { Icon } from './ui/icons';
+import { MoneyInput } from './ui/money-input';
 import { Refresh } from './ui/refresh';
 import { Toast } from './ui/toast';
 
@@ -15,7 +16,7 @@ const val = (e: Event) => (e.target as HTMLInputElement | HTMLSelectElement).val
 @Component({
   selector: 'app-groceries',
   standalone: true,
-  imports: [NgTemplateOutlet, Combo, Icon],
+  imports: [NgTemplateOutlet, Combo, Icon, MoneyInput],
   styles: `
     .items-table { width: 100%; min-width: 74rem; table-layout: fixed; border-collapse: collapse; font-size: var(--fs-sm); }
     .items-table th, .items-table td { padding: var(--sp-1) var(--sp-2); text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
@@ -58,10 +59,10 @@ const val = (e: Event) => (e.target as HTMLInputElement | HTMLSelectElement).val
     <ng-template #rowTpl let-list="list" let-it="it" let-i="i">
       <tr class="row">
         <td><input type="text" [value]="it.item" (change)="upd(list, i, { item: val($event) })" /></td>
-        <td><input class="num" type="text" inputmode="decimal" [value]="it.qty" (change)="setNum(list, i, 'qty', $event)" /></td>
+        <td><input class="num" type="text" appMoney [value]="it.qty" (change)="setNum(list, i, 'qty', $event)" /></td>
         <td><input type="text" [value]="it.unit" (change)="upd(list, i, { unit: val($event) })" /></td>
-        <td><input class="num" type="text" inputmode="decimal" [value]="it.regularPrice / 100" (change)="setNum(list, i, 'regularPrice', $event)" /></td>
-        <td><input class="num" type="text" inputmode="decimal" placeholder="–" [value]="it.offerPrice == null ? '' : it.offerPrice / 100" (change)="setNum(list, i, 'offerPrice', $event)" /></td>
+        <td><input class="num" type="text" appMoney [value]="it.regularPrice / 100" (change)="setNum(list, i, 'regularPrice', $event)" /></td>
+        <td><input class="num" type="text" appMoney placeholder="–" [value]="it.offerPrice == null ? '' : it.offerPrice / 100" (change)="setNum(list, i, 'offerPrice', $event)" /></td>
         <td class="cost" [class.offer]="useOffers() && it.offerPrice != null">
           {{ fmt(itemCostCents(it)) }}
           @if (useOffers() && it.offerPrice != null) {

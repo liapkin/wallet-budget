@@ -7,6 +7,7 @@ import type { Config } from '../../../shared/src/types.ts';
 import { Api } from './api';
 import { Combo, type ComboOption } from './ui/combo';
 import { Icon } from './ui/icons';
+import { MoneyInput } from './ui/money-input';
 import { Refresh } from './ui/refresh';
 import { Toast } from './ui/toast';
 
@@ -23,7 +24,7 @@ const SECTIONS = [
 
 @Component({
   selector: 'app-budget-edit',
-  imports: [Combo, Icon],
+  imports: [Combo, Icon, MoneyInput],
   host: { '(window:keydown)': 'key($event)', '(window:beforeunload)': 'unload($event)' },
   styles: `
     .layout { display: grid; grid-template-columns: 11rem 1fr; gap: var(--sp-5); align-items: start; }
@@ -90,12 +91,12 @@ const SECTIONS = [
           <section class="card" id="income">
             <h2>Income &amp; allocation</h2>
             <div class="grid">
-              <label class="field">Net salary / month<span class="affix" data-pre="€"><input class="in-affix" inputmode="decimal" [value]="eur(c.income.netSalaryPerMonth)" (change)="money('income.netSalaryPerMonth', $event)" /></span></label>
-              <label class="field">Fun / month<span class="affix" data-pre="€"><input class="in-affix" inputmode="decimal" [value]="eur(c.allocation.funPerMonth)" (change)="money('allocation.funPerMonth', $event)" /></span></label>
-              <label class="field">Sinking fund top-up / month<span class="affix" data-pre="€"><input class="in-affix" inputmode="decimal" [value]="eur(c.allocation.sinkingFundTopUpPerMonth)" (change)="money('allocation.sinkingFundTopUpPerMonth', $event)" /></span></label>
-              <label class="field">Bank savings (fallback)<span class="affix" data-pre="€"><input class="in-affix" inputmode="decimal" [value]="eur(c.allocation.bankSavings)" (change)="money('allocation.bankSavings', $event)" /></span></label>
-              <label class="field">Cash savings<span class="affix" data-pre="€"><input class="in-affix" inputmode="decimal" [value]="eur(c.allocation.cashSavings)" (change)="money('allocation.cashSavings', $event)" /></span></label>
-              <label class="field">Annual irregulars<span class="affix" data-pre="€"><input class="in-affix" inputmode="decimal" [value]="eur(c.allocation.annualIrregulars)" (change)="money('allocation.annualIrregulars', $event)" /></span></label>
+              <label class="field">Net salary / month<span class="affix" data-pre="€"><input class="in-affix" appMoney type="text" [value]="eur(c.income.netSalaryPerMonth)" (change)="money('income.netSalaryPerMonth', $event)" /></span></label>
+              <label class="field">Fun / month<span class="affix" data-pre="€"><input class="in-affix" appMoney type="text" [value]="eur(c.allocation.funPerMonth)" (change)="money('allocation.funPerMonth', $event)" /></span></label>
+              <label class="field">Sinking fund top-up / month<span class="affix" data-pre="€"><input class="in-affix" appMoney type="text" [value]="eur(c.allocation.sinkingFundTopUpPerMonth)" (change)="money('allocation.sinkingFundTopUpPerMonth', $event)" /></span></label>
+              <label class="field">Bank savings (fallback)<span class="affix" data-pre="€"><input class="in-affix" appMoney type="text" [value]="eur(c.allocation.bankSavings)" (change)="money('allocation.bankSavings', $event)" /></span></label>
+              <label class="field">Cash savings<span class="affix" data-pre="€"><input class="in-affix" appMoney type="text" [value]="eur(c.allocation.cashSavings)" (change)="money('allocation.cashSavings', $event)" /></span></label>
+              <label class="field">Annual irregulars<span class="affix" data-pre="€"><input class="in-affix" appMoney type="text" [value]="eur(c.allocation.annualIrregulars)" (change)="money('allocation.annualIrregulars', $event)" /></span></label>
               <label class="field">Emergency fund<span class="affix" data-suf="months of core"><input class="in-affix" inputmode="decimal" [value]="c.allocation.emergencyFundMonthsOfCore" (change)="plain('allocation.emergencyFundMonthsOfCore', $event)" /></span></label>
             </div>
             <h3>Bonus months (multiples of salary)</h3>
@@ -116,7 +117,7 @@ const SECTIONS = [
                   @for (l of c.coreExpenses; track $index; let i = $index) {
                     <tr>
                       <td><input [value]="l.label" (change)="plain('coreExpenses.' + i + '.label', $event, true)" /></td>
-                      <td><span class="affix" data-pre="€"><input inputmode="decimal" [value]="eur(l.plan)" (change)="money('coreExpenses.' + i + '.plan', $event)" /></span></td>
+                      <td><span class="affix" data-pre="€"><input appMoney type="text" [value]="eur(l.plan)" (change)="money('coreExpenses.' + i + '.plan', $event)" /></span></td>
                       <td>
                         <app-combo [options]="sourceOptions(l.source)" [value]="l.source" ariaLabel="Source" (changed)="set('coreExpenses.' + i + '.source', $event)" />
                       </td>
@@ -143,8 +144,8 @@ const SECTIONS = [
                   @if (c.caps.bufferMonth) { <button class="ghost" (click)="set('caps.bufferMonth', null)">Clear</button> }
                 </span>
               </label>
-              <label class="field">Takeout / month<span class="affix" data-pre="€"><input class="in-affix" inputmode="decimal" [value]="eur(c.caps.takeoutPerMonth)" (change)="money('caps.takeoutPerMonth', $event)" /></span></label>
-              <label class="field">Kiosk / month<span class="affix" data-pre="€"><input class="in-affix" inputmode="decimal" [value]="eur(c.caps.kioskPerMonth)" (change)="money('caps.kioskPerMonth', $event)" /></span></label>
+              <label class="field">Takeout / month<span class="affix" data-pre="€"><input class="in-affix" appMoney type="text" [value]="eur(c.caps.takeoutPerMonth)" (change)="money('caps.takeoutPerMonth', $event)" /></span></label>
+              <label class="field">Kiosk / month<span class="affix" data-pre="€"><input class="in-affix" appMoney type="text" [value]="eur(c.caps.kioskPerMonth)" (change)="money('caps.kioskPerMonth', $event)" /></span></label>
             </div>
           </section>
 

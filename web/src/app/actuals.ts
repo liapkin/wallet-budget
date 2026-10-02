@@ -5,6 +5,7 @@ import { toCents } from '../../../shared/src/money.ts';
 import { Api, type Actuals as Typed } from './api';
 import { currentMonth, monthLabel } from './format';
 import { Icon } from './ui/icons';
+import { MoneyInput } from './ui/money-input';
 import { MonthPicker } from './ui/month-picker';
 import { Refresh } from './ui/refresh';
 import { Toast } from './ui/toast';
@@ -14,7 +15,7 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0
 
 @Component({
   selector: 'app-actuals',
-  imports: [Icon, MonthPicker],
+  imports: [Icon, MoneyInput, MonthPicker],
   template: `
     <div class="page-head">
       <h1>Core actuals</h1>
@@ -45,7 +46,7 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0
             <label class="entry">
               <span class="muted sm">{{ a.wallet ? '+ cash' : 'Actual' }}</span>
               <span class="affix" data-pre="€">
-                <input inputmode="decimal" [placeholder]="a.wallet ? '0' : ''" [value]="eur(typed()[month()]?.[a.key])" (change)="save(month(), a.key, $event)" (keydown.enter)="blur($event)" />
+                <input appMoney type="text" [placeholder]="a.wallet ? '0' : ''" [value]="eur(typed()[month()]?.[a.key])" (change)="save(month(), a.key, $event)" (keydown.enter)="blur($event)" />
               </span>
               @if (saved() === month() + a.key) { <span class="ok"><app-icon name="check" [size]="14" /> saved</span> }
             </label>
