@@ -4,6 +4,7 @@ import { dayTotals, mealTotals, proteinTarget, weekAverage } from '../../../shar
 import { fmt } from './format.ts';
 import type { Config } from '../../../shared/src/types.ts';
 import { Api } from './api';
+import { Combo } from './ui/combo';
 import { Toast } from './ui/toast';
 
 const val = (e: Event) => (e.target as HTMLInputElement | HTMLSelectElement).value;
@@ -12,7 +13,7 @@ type Row = Record<string, string>;
 @Component({
   selector: 'app-meals',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, Combo],
   styles: `
     .card.plan { padding: 0; overflow: hidden; }
     .card.plan .scroll { border: 0; box-shadow: none; border-radius: 0; }
@@ -20,7 +21,7 @@ type Row = Record<string, string>;
     .plan th, .plan td { padding: var(--sp-2); min-width: 150px; vertical-align: middle; }
     .plan th:first-child, .plan td:first-child { width: 96px; min-width: 96px; position: sticky; left: 0; background: var(--surface); z-index: 1; text-align: left; }
     .plan thead th { text-align: left; }
-    .plan select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+    .plan app-combo { display: block; width: 100%; min-width: 0; }
     .plan tfoot td { border-top: 1px solid var(--border); }
     .plan .val { font-weight: 700; }
     .plan .val.over { color: var(--bad); }
@@ -97,12 +98,7 @@ type Row = Record<string, string>;
                   @for (day of days(); track day.day) {
                     @let cur = dayMealSelection(day.day, slot);
                     <td>
-                      <select [title]="cur" (change)="setMeal(day.day, slot, val($event))">
-                        <option value="" [selected]="!cur">—</option>
-                        @for (m of mealNames(); track m) {
-                          <option [value]="m" [selected]="m === cur">{{ m }}</option>
-                        }
-                      </select>
+                      <app-combo [options]="mealOptions()" [value]="cur" placeholder="—" [ariaLabel]="slot + ' ' + day.day" (changed)="setMeal(day.day, slot, $event)" />
                     </td>
                   }
                 </tr>
@@ -266,6 +262,8 @@ export class MealsComponent {
       return c;
     });
   }
+
+  protected mealOptions = computed(() => [{ value: '', label: '—' }, ...this.mealNames().map((m) => ({ value: m, label: m }))]);
 
   protected setMeal(day: string, slot: string, mealName: string) {
     this.edit((c) => {

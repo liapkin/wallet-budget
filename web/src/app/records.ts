@@ -3,6 +3,7 @@ import { fmt } from './format.ts';
 import { toCents } from '../../../shared/src/money.ts';
 import { Api, type Row } from './api';
 import { currentMonth, dayLabel, groupColor } from './format';
+import { Combo, type ComboOption } from './ui/combo';
 import { Icon } from './ui/icons';
 import { MonthPicker } from './ui/month-picker';
 import { Refresh } from './ui/refresh';
@@ -14,7 +15,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
 
 @Component({
   selector: 'app-records',
-  imports: [Icon, MonthPicker],
+  imports: [Combo, Icon, MonthPicker],
   template: `
     <div class="page-head">
       <h1>Records</h1>
@@ -24,12 +25,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
     <div class="filters">
       <input class="search" type="search" placeholder="Search notes" aria-label="Search notes" (input)="onSearch($event)" />
       <app-month-picker [(month)]="month" [months]="meta.value()?.months ?? null" />
-      <select [value]="account()" (change)="account.set(val($event))" aria-label="Account">
-        <option value="">All accounts</option>
-        @for (a of meta.value()?.accounts ?? []; track a) {
-          <option [selected]="a === account()">{{ a }}</option>
-        }
-      </select>
+      <app-combo [options]="accountOptions()" [value]="account()" (changed)="account.set($event)" ariaLabel="Account" />
       <label class="switch"><input type="checkbox" [checked]="showDups()" (change)="showDups.set(!showDups())" /> Show duplicates</label>
     </div>
     <div class="chips">
@@ -69,12 +65,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
                   </div>
                 </td>
                 <td class="gcell">
-                  <label class="gsel"><span class="dot" [style.--dot]="color(r.grp)"></span>
-                    <select (change)="setGroup(r, val($event) || null)" aria-label="Group">
-                      <option value="" [selected]="!r.groupOverride">{{ r.groupOverride ? 'Auto' : 'Auto (' + r.grp + ')' }}</option>
-                      @for (g of groupsFor(r); track g) { <option [selected]="g === r.groupOverride">{{ g }}</option> }
-                    </select>
-                  </label>
+                  <app-combo [options]="groupOptions(r)" [value]="r.groupOverride ?? ''" (changed)="setGroup(r, $event || null)" ariaLabel="Group" />
                   @if (r.groupOverride) { <span class="badge">manual</span> }
                   <button class="link" (click)="kw.set(kw()?.id === r.id ? null : { id: r.id, keyword: r.note, group: r.grp })">Always</button>
                   @if (kw()?.id === r.id) {
@@ -83,9 +74,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
                         <span>Always classify notes containing</span>
                         <input name="keyword" [value]="kw()!.keyword" required />
                         <span>as</span>
-                        <select name="group">
-                          @for (g of meta.value()?.groups ?? []; track g) { <option [selected]="g === kw()!.group">{{ g }}</option> }
-                        </select>
+                        <app-combo [options]="ruleGroups()" [value]="kw()!.group" ariaLabel="Group" (changed)="kw.set({ ...kw()!, group: $event })" />
                         <div class="row"><button type="button" class="ghost" (click)="kw.set(null)">Cancel</button><button class="primary">Save rule</button></div>
                       </div>
                     </form>
@@ -127,10 +116,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
             <label class="field"><span>Time</span><input type="time" name="time" [value]="now().slice(11)" required /></label>
           </div>
           <label class="field"><span>Account</span>
-            <select name="account">
-              <option>Manual</option>
-              @for (a of otherAccounts(); track a) { <option>{{ a }}</option> }
-            </select>
+            <app-combo [options]="addAccounts()" [(value)]="addAccount" ariaLabel="Account" />
           </label>
         </div>
         <div class="actions">
@@ -153,8 +139,6 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
     .sm { font-size: var(--fs-xs); }
     .meta { display: flex; gap: var(--sp-2); align-items: center; margin-top: var(--sp-1); }
     .gcell { position: relative; white-space: nowrap; }
-    .gsel { display: inline-flex; align-items: center; gap: var(--sp-2); padding-left: var(--sp-3); border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
-    .gsel select { border: 0; box-shadow: none; background: none; min-height: 1.75rem; padding-left: 0; }
     .popover { white-space: normal; min-width: 18rem; }
     .pform { display: flex; flex-direction: column; gap: var(--sp-2); font-size: var(--fs-sm); }
     .pform .row { display: flex; justify-content: flex-end; gap: var(--sp-2); }
@@ -198,7 +182,10 @@ export class Records {
   });
 
   protected groups = computed(() => (this.meta.value()?.groups ?? []).filter((g) => g !== 'Other'));
-  protected otherAccounts = computed(() => (this.meta.value()?.accounts ?? []).filter((a) => a !== 'Manual'));
+  protected addAccount = signal<string | null>('Manual');
+  protected addAccounts = computed<ComboOption[]>(() =>
+    ['Manual', ...(this.meta.value()?.accounts ?? []).filter((a) => a !== 'Manual')].map((a) => ({ value: a, label: a })));
+  protected ruleGroups = computed<ComboOption[]>(() => (this.meta.value()?.groups ?? []).map((g) => ({ value: g, label: g, dot: groupColor(g) })));
   protected visible = computed(() => {
     const q = this.search().trim().toLowerCase();
     return (this.rows.value() ?? []).filter((r) => (this.showDups() || !r.isDup) && (!q || r.note.toLowerCase().includes(q)));
@@ -227,6 +214,14 @@ export class Records {
     const o = r.groupOverride;
     return !o || g.includes(o) ? g : [o, ...g];
   };
+  protected accountOptions = computed<ComboOption[]>(() => [
+    { value: '', label: 'All accounts' },
+    ...(this.meta.value()?.accounts ?? []).map((a) => ({ value: a, label: a })),
+  ]);
+  protected groupOptions = (r: Row): ComboOption[] => [
+    { value: '', label: r.groupOverride ? 'Auto (computed)' : `Auto (${r.grp})`, dot: r.groupOverride ? undefined : groupColor(r.grp) },
+    ...this.groupsFor(r).map((g) => ({ value: g, label: g, dot: groupColor(g) })),
+  ];
   protected toggle = (g: string) => this.group.set(this.group() === g ? '' : g);
 
   protected onSearch(e: Event) {
@@ -251,6 +246,7 @@ export class Records {
   protected openAdd() {
     this.now.set(athensNow());
     this.type.set('Expenses');
+    this.addAccount.set('Manual');
     const form = this.dialogEl().nativeElement.querySelector('form')!;
     form.reset();
     form['date'].value = this.now().slice(0, 10);
@@ -269,7 +265,7 @@ export class Records {
     if (!Number.isFinite(n) || n <= 0) return void this.toast.show('Enter a positive amount', 'err');
     this.busy.set(true);
     const done = await this.run(
-      () => this.api.addRecord({ date: `${f['date']}T${f['time']}`, amount: String(toCents(n) / 100), note: f['note'], type: this.type(), account: f['account'] }),
+      () => this.api.addRecord({ date: `${f['date']}T${f['time']}`, amount: String(toCents(n) / 100), note: f['note'], type: this.type(), account: this.addAccount() ?? 'Manual' }),
       'Record added',
     );
     this.busy.set(false);
@@ -287,7 +283,7 @@ export class Records {
     e.preventDefault();
     const f = new FormData(e.target as HTMLFormElement);
     const keyword = String(f.get('keyword')).trim();
-    const group = String(f.get('group'));
+    const group = this.kw()!.group;
     if (await this.run(() => this.api.addKeyword(keyword, group), `Rule saved: "${keyword}" → ${group}`)) this.kw.set(null);
   }
 }

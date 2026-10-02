@@ -188,6 +188,7 @@ tbody tr:hover td { background: var(--surface-2); }
 .sticky-first thead th:first-child { z-index: 3; }
 .sticky-first tbody tr:hover td:first-child { background: var(--surface-2); }
 .card td input:not([type]), .card td select { width: 100%; }
+td app-combo { display: block; }
 th.num, td.num, .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 td.walletcell { background: var(--surface-2); color: var(--muted); }
 input.cell { width: 6rem; text-align: right; }

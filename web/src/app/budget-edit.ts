@@ -1,9 +1,11 @@
 import { Component, computed, inject, resource, signal } from '@angular/core';
 import { allocation, annualInvesting, corePlan } from '../../../shared/src/budget.ts';
 import { fmt } from './format.ts';
+import { groupColor } from './format';
 import { toCents } from '../../../shared/src/money.ts';
 import type { Config } from '../../../shared/src/types.ts';
 import { Api } from './api';
+import { Combo, type ComboOption } from './ui/combo';
 import { Icon } from './ui/icons';
 import { Refresh } from './ui/refresh';
 import { Toast } from './ui/toast';
@@ -21,7 +23,7 @@ const SECTIONS = [
 
 @Component({
   selector: 'app-budget-edit',
-  imports: [Icon],
+  imports: [Combo, Icon],
   host: { '(window:keydown)': 'key($event)', '(window:beforeunload)': 'unload($event)' },
   styles: `
     .layout { display: grid; grid-template-columns: 11rem 1fr; gap: var(--sp-5); align-items: start; }
@@ -116,11 +118,7 @@ const SECTIONS = [
                       <td><input [value]="l.label" (change)="plain('coreExpenses.' + i + '.label', $event, true)" /></td>
                       <td><span class="affix" data-pre="€"><input inputmode="decimal" [value]="eur(l.plan)" (change)="money('coreExpenses.' + i + '.plan', $event)" /></span></td>
                       <td>
-                        <select (change)="plain('coreExpenses.' + i + '.source', $event, true)">
-                          @for (o of sourceOptions(l.source); track o) {
-                            <option [value]="o" [selected]="o === l.source">{{ o }}</option>
-                          }
-                        </select>
+                        <app-combo [options]="sourceOptions(l.source)" [value]="l.source" ariaLabel="Source" (changed)="set('coreExpenses.' + i + '.source', $event)" />
                       </td>
                       <td><label class="switch"><input type="checkbox" aria-label="Standing" [checked]="l.standing !== false" (change)="check('coreExpenses.' + i + '.standing', $event)" /></label></td>
                       <td><label class="switch"><input type="checkbox" aria-label="In plan" [checked]="l.inPlan !== false" (change)="check('coreExpenses.' + i + '.inPlan', $event)" /></label></td>
@@ -166,12 +164,7 @@ const SECTIONS = [
                 }
               </div>
               <h3>Payroll account</h3>
-              <select (change)="set('allocation.payrollAccount', val($event) || null)">
-                <option value="" [selected]="!c.allocation.payrollAccount">None</option>
-                @for (a of accounts.value()!; track a.name) {
-                  <option [selected]="a.name === c.allocation.payrollAccount">{{ a.name }}</option>
-                }
-              </select>
+              <app-combo [options]="payrollOptions()" [value]="c.allocation.payrollAccount ?? ''" ariaLabel="Payroll account" (changed)="set('allocation.payrollAccount', $event || null)" />
             } @else {
               <p class="muted">No accounts yet; run a Wallet fetch. The bank savings fallback is used.</p>
             }
@@ -200,7 +193,7 @@ const SECTIONS = [
                     @if (match(k.keyword, k.group, kwQ())) {
                       <tr>
                         <td><input [value]="k.keyword" (change)="plain('wallet.merchantKeywords.' + i + '.keyword', $event, true)" /></td>
-                        <td><select (change)="plain('wallet.merchantKeywords.' + i + '.group', $event, true)">@for (g of c.wallet.groups; track g) { <option [selected]="g === k.group">{{ g }}</option> }</select></td>
+                        <td><app-combo [options]="groupOptions()" [value]="k.group" ariaLabel="Group" (changed)="set('wallet.merchantKeywords.' + i + '.group', $event)" /></td>
                         <td><button class="icon danger" aria-label="Delete keyword" (click)="remove('wallet.merchantKeywords', i)"><app-icon name="trash" /></button></td>
                       </tr>
                     }
@@ -221,7 +214,7 @@ const SECTIONS = [
                     @if (match(k.walletCategory, k.group, catQ())) {
                       <tr>
                         <td><input [value]="k.walletCategory" (change)="plain('wallet.categoryMap.' + i + '.walletCategory', $event, true)" /></td>
-                        <td><select (change)="plain('wallet.categoryMap.' + i + '.group', $event, true)">@for (g of c.wallet.groups; track g) { <option [selected]="g === k.group">{{ g }}</option> }</select></td>
+                        <td><app-combo [options]="groupOptions()" [value]="k.group" ariaLabel="Group" (changed)="set('wallet.categoryMap.' + i + '.group', $event)" /></td>
                         <td><button class="icon danger" aria-label="Delete category" (click)="remove('wallet.categoryMap', i)"><app-icon name="trash" /></button></td>
                       </tr>
                     }
@@ -297,11 +290,16 @@ export class BudgetEdit {
   protected eur = (c: number) => String(c / 100);
   protected go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   protected match = (a: string, b: string, q: string) => !q || (a + ' ' + b).toLowerCase().includes(q.toLowerCase());
-  protected sourceOptions(cur: string) {
+  protected sourceOptions(cur: string): ComboOption[] {
     const groups = this.draft()!.wallet.groups;
     const opts = ['manual', ...groups.map((g) => 'wallet:' + g)];
-    return opts.includes(cur) ? opts : [...opts, cur];
+    return (opts.includes(cur) ? opts : [...opts, cur]).map((o) => ({ value: o, label: o }));
   }
+  protected payrollOptions = computed<ComboOption[]>(() => [
+    { value: '', label: 'None' },
+    ...(this.accounts.value() ?? []).map((a) => ({ value: a.name, label: a.name })),
+  ]);
+  protected groupOptions = computed<ComboOption[]>(() => (this.draft()?.wallet.groups ?? []).map((g) => ({ value: g, label: g, dot: groupColor(g) })));
 
   // ponytail: edits are applied by dotted path on a cloned draft; no per-field handlers
   private edit(fn: (c: any) => void) {

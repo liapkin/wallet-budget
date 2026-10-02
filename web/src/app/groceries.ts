@@ -5,6 +5,7 @@ import { fmt } from './format.ts';
 import { toCents } from '../../../shared/src/money.ts';
 import type { Config, GroceryItem } from '../../../shared/src/types.ts';
 import { Api } from './api';
+import { Combo } from './ui/combo';
 import { Icon } from './ui/icons';
 import { Refresh } from './ui/refresh';
 import { Toast } from './ui/toast';
@@ -14,7 +15,7 @@ const val = (e: Event) => (e.target as HTMLInputElement | HTMLSelectElement).val
 @Component({
   selector: 'app-groceries',
   standalone: true,
-  imports: [NgTemplateOutlet, Icon],
+  imports: [NgTemplateOutlet, Combo, Icon],
   styles: `
     .items-table { width: 100%; min-width: 74rem; table-layout: fixed; border-collapse: collapse; font-size: var(--fs-sm); }
     .items-table th, .items-table td { padding: var(--sp-1) var(--sp-2); text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
@@ -68,16 +69,7 @@ const val = (e: Event) => (e.target as HTMLInputElement | HTMLSelectElement).val
           }
         </td>
         <td>
-          @if (newStore() === list + ':' + i) {
-            <input type="text" placeholder="Store name" [value]="''" (change)="setStore(list, i, val($event))" (blur)="newStore.set(null)" />
-          } @else {
-            <select [value]="it.where" (change)="pickStore(list, i, val($event))">
-              @for (st of stores(); track st) {
-                <option [value]="st" [selected]="st === it.where">{{ st }}</option>
-              }
-              <option value="__new__">New store…</option>
-            </select>
-          }
+          <app-combo [options]="storeOptions()" [value]="it.where" allowCreate ariaLabel="Store" (changed)="upd(list, i, { where: $event })" />
         </td>
         <td><input class="note" type="text" [value]="it.note" [title]="it.note" (change)="upd(list, i, { note: val($event) })" /></td>
         <td><button class="ghost icon danger" (click)="remove(list, i)" title="Delete"><app-icon name="trash" /></button></td>
@@ -206,7 +198,6 @@ export class GroceriesComponent {
   protected val = val;
   protected Math = Math;
   protected useOffers = signal(false);
-  protected newStore = signal<string | null>(null);
   private api = inject(Api);
   private toast = inject(Toast);
   private refresh = inject(Refresh);
@@ -272,6 +263,8 @@ export class GroceriesComponent {
     return [...new Set([...(g?.weekly ?? []), ...(g?.pantryMonthly ?? [])].map((i) => i.where).filter(Boolean))].sort();
   });
 
+  protected storeOptions = computed(() => this.stores().map((s) => ({ value: s, label: s })));
+
   protected itemCostCents(item: GroceryItem): number {
     const price = this.useOffers() && item.offerPrice != null ? item.offerPrice : item.regularPrice;
     return Math.round(item.qty * price);
@@ -307,18 +300,7 @@ export class GroceriesComponent {
     else this.upd(list, i, { [k]: k === 'offerPrice' && n === 0 ? null : toCents(n) });
   }
 
-  protected pickStore(list: 'weekly' | 'pantryMonthly', i: number, v: string) {
-    if (v === '__new__') this.newStore.set(list + ':' + i);
-    else this.upd(list, i, { where: v });
-  }
-
-  protected setStore(list: 'weekly' | 'pantryMonthly', i: number, v: string) {
-    this.newStore.set(null);
-    if (v.trim()) this.upd(list, i, { where: v.trim() });
-  }
-
   protected remove(list: 'weekly' | 'pantryMonthly', i: number) {
-    this.newStore.set(null);
     this.edit((c) => c.groceryList[list].splice(i, 1));
   }
 
