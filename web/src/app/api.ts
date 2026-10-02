@@ -20,7 +20,7 @@ export type Row = {
   grp: string;
   month: string;
 };
-export type Meta = { groups: string[]; excludedGroups: string[]; accounts: string[]; months: string[] };
+export type Meta = { groups: string[]; excludedGroups: string[]; accounts: string[]; months: string[]; demo?: boolean };
 export type Account = { id: string; name: string; balanceCents: number | null; currency: string; updatedAt: string };
 export type Actuals = Record<string, Record<string, number>>;
 export type WalletCategory = { id: string; name: string; parent: string };

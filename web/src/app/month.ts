@@ -43,9 +43,6 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
       <h1>Overview</h1>
       <div class="actions">
         <button class="primary" (click)="addExpense()"><app-icon name="plus" [size]="16" /> Add expense</button>
-        <button class="ghost" [disabled]="refresh.syncing()" (click)="refresh.fetchWallet()" [title]="refresh.syncing() ? 'Syncing...' : 'Fetch from Wallet'">
-          @if (refresh.syncing()) { <span class="spin"></span> } <app-icon name="refresh" [size]="16" /> Fetch
-        </button>
         <app-month-picker [(month)]="month" />
       </div>
     </div>

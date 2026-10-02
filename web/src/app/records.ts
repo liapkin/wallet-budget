@@ -115,7 +115,9 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
           </label>
           <label class="field"><span>Note</span><input name="note" autocomplete="off" /></label>
           <div class="field"><span>Date and time</span><app-date-time [(value)]="when" /></div>
-          <label class="switch"><input type="checkbox" [checked]="toWallet()" (change)="setToWallet($event)" /> Also add to Wallet</label>
+          @if (refresh.walletAvailable()) {
+            <label class="switch"><input type="checkbox" [checked]="toWallet()" (change)="setToWallet($event)" /> Also add to Wallet</label>
+          }
           @if (toWallet()) {
             <label class="field"><span>Wallet account</span>
               <app-combo [options]="walletAccountOptions()" [(value)]="walletAcc" ariaLabel="Wallet account" />
@@ -206,7 +208,9 @@ export class Records {
   protected when = signal(athensNow());
   protected addLabel = computed(() => (this.type() === 'Income' ? 'Add income' : 'Add expense'));
   protected busy = signal(false);
-  protected toWallet = signal(localStorage.getItem('addToWallet') === '1');
+  private savedToWallet = signal(this.readAddToWallet());
+  /** Wallet writes require confirmed non-demo metadata; keep saved preference for normal mode. */
+  protected toWallet = computed(() => this.refresh.walletAvailable() && this.savedToWallet());
   protected walletAcc = signal<string | null>(null);
   protected walletCat = signal<string | null>('');
   protected draft = signal<{ cents: number; date: string; time: string; note: string } | null>(null);
@@ -328,8 +332,12 @@ export class Records {
 
   protected setToWallet(e: Event) {
     const on = (e.target as HTMLInputElement).checked;
-    this.toWallet.set(on);
-    localStorage.setItem('addToWallet', on ? '1' : '0');
+    this.savedToWallet.set(on);
+    try { localStorage.setItem('addToWallet', on ? '1' : '0'); } catch { /* preference remains for this session */ }
+  }
+
+  private readAddToWallet() {
+    try { return localStorage.getItem('addToWallet') === '1'; } catch { return false; }
   }
 
   protected onBackdrop(e: MouseEvent) {

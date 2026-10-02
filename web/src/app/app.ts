@@ -1,6 +1,7 @@
-import { Component, effect, HostListener, inject, signal } from '@angular/core';
+import { Component, effect, HostListener, inject, resource, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { dayLabel } from './format';
+import { Api } from './api';
 import { Icon, IconName } from './ui/icons';
 import { hidden, togglePrivacy } from './ui/privacy';
 import { cycleTheme, theme, themeLabel } from './ui/theme';
@@ -28,19 +29,25 @@ const NAV: { label: string; items: { path: string; label: string; icon: IconName
 export class App {
   protected nav = NAV;
   protected refresh = inject(Refresh);
+  private api = inject(Api);
   protected drawer = signal(false);
   protected hidden = hidden;
   protected togglePrivacy = togglePrivacy;
   protected theme = theme;
   protected cycleTheme = cycleTheme;
-  protected themeIcon = { system: 'monitor', light: 'sun', dark: 'moon' } as const;
+  protected themeIcon = { light: 'sun', dark: 'moon' } as const;
   protected themeLabel = themeLabel;
   protected dayLabel = dayLabel;
+  protected meta = resource({ loader: () => this.api.meta() });
 
   constructor() {
     inject(Router).events.subscribe(() => this.drawer.set(false));
     effect(() => {
       document.body.classList.toggle('privacy', this.hidden());
+    });
+    effect(() => {
+      if (this.meta.isLoading() || this.meta.error()) this.refresh.demo.set(null);
+      else if (this.meta.hasValue()) this.refresh.demo.set(this.meta.value()!.demo === true);
     });
   }
 

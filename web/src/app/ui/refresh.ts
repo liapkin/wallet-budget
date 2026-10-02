@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { computed, Injectable, inject, signal } from '@angular/core';
 import { Api } from '../api';
 import { Toast } from './toast';
 
@@ -8,6 +8,9 @@ export class Refresh {
   readonly tick = signal(0);
   readonly lastFetch = signal<Date | null>(null);
   readonly syncing = signal(false);
+  /** `null` means metadata has not confirmed a safe mode yet. */
+  readonly demo = signal<boolean | null>(null);
+  readonly walletAvailable = computed(() => this.demo() === false);
   private api = inject(Api);
   private toast = inject(Toast);
 
@@ -17,6 +20,7 @@ export class Refresh {
   }
 
   async fetchWallet() {
+    if (!this.walletAvailable()) return;
     this.syncing.set(true);
     try {
       const r = await this.api.sync();
