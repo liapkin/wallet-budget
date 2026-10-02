@@ -28,3 +28,10 @@ test('precedence', () => {
   assert.equal(classify(rec({ groupOverride: 'Car', note: 'ATM NB1 ' }), cfg), 'Car');
   assert.equal(classify(rec({ category: 'Other', note: 'x' }), cfg), 'Other');
 });
+
+test('unmapped category falls back to its parent category', () => {
+  const c = { wallet: { ...cfg.wallet, categoryMap: [{ walletCategory: 'Shopping', group: 'Shopping' }, { walletCategory: 'Fuel', group: 'Fuel' }] } } as Config;
+  assert.equal(classify(rec({ category: 'Kids', parentCategory: 'Shopping' }), c), 'Shopping');
+  assert.equal(classify(rec({ category: 'Fuel', parentCategory: 'Shopping' }), c), 'Fuel');
+  assert.equal(classify(rec({ category: 'Missing', parentCategory: 'Others' }), c), 'Other');
+});

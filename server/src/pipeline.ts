@@ -11,8 +11,8 @@ export function runPipeline(): void {
   const cfg = getConfig();
   const active = activeSource();
   const inactive = active === 'api' ? 'import' : 'api';
-  const recs = (db.prepare('SELECT * FROM records').all() as Record<string, any>[]).map((r): Rec => ({
-    id: r.id, source: r.source, account: r.account, category: r.category, amountCents: r.amount_cents, type: r.type,
+  const recs = (db.prepare("SELECT *, json_extract(raw_json, '$.category.group.name') AS parent FROM records").all() as Record<string, any>[]).map((r): Rec => ({
+    id: r.id, source: r.source, account: r.account, category: r.category, parentCategory: r.parent, amountCents: r.amount_cents, type: r.type,
     paymentType: r.payment_type, note: r.note, dateUtc: r.date_utc, groupOverride: r.group_override,
   }));
   // the inactive source must not pair with the active one

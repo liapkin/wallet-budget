@@ -9,5 +9,7 @@ export function classify(rec: Rec, cfg: Config): string {
   if (skip) return skip.group;
   if (rec.type === 'Income') return 'Income';
   if (hits[0]) return hits[0].group;
-  return cfg.wallet.categoryMap.find((c) => c.walletCategory === rec.category)?.group ?? 'Other';
+  const map = cfg.wallet.categoryMap;
+  const byCat = (name?: string | null) => map.find((c) => c.walletCategory === name)?.group;
+  return byCat(rec.category) ?? byCat(rec.parentCategory) ?? 'Other';
 }

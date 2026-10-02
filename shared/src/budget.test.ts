@@ -52,7 +52,7 @@ test('core actuals: wallet-fed plus typed, manual null, non-standing hidden', ()
 });
 
 test('month status', () => {
-  const s = monthStatus(real, { Groceries: 10000, Takeout: 2000, Housing: 999, Car: 3000, Transfer: 5000, Income: 100 }, { rent: 40000 });
+  const s = monthStatus(real, { Groceries: 10000, Takeout: 2000, Car: 3000, Transfer: 5000, Income: 100 }, { rent: 40000 });
   assert.equal(s.fun, 2000);
   assert.equal(s.unplanned, 3000);
   assert.equal(s.core, 50000);

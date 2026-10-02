@@ -11,6 +11,19 @@ cp config/seed-config.example.json config/seed-config.json
 
 Create `.env` with `WALLET_API_TOKEN=<your token>`. Edit `config/seed-config.json`; it seeds the database on first run.
 
+## Personalise
+
+Copy `config/seed-config.example.json` to `config/seed-config.json` and edit it. The database is seeded from this file only on first run; afterwards change settings on the Budget screen, or delete `data/budget.db` to reseed (this also deletes imported records and typed actuals).
+
+- `wallet.groups`: the spending groups shown in the app. `Other` collects what nothing else matches.
+- `wallet.categoryMap`: Wallet category name to group. A category with no entry falls back to its Wallet parent category's entry, then to `Other`. API categories are stored under the names the export uses.
+- `wallet.merchantKeywords`: case-insensitive substring of the record note to group. A keyword wins over the category map; the first match in list order wins, so put specific keywords first.
+- `wallet.excludedGroups`: groups that are not spending (transfers, investing) and are left out of spend totals. A keyword for such a group also wins over `Income`.
+- `allocation.funGroups`: groups that count against the monthly fun budget. Other groups without a core line count as unplanned spending.
+- `coreExpenses`: fixed monthly lines. `source` is `manual` (typed each month) or `wallet:Group` / `wallet:Group+Group` (summed from those groups). Typed values are added on top of Wallet-fed ones.
+
+Keep personal acceptance checks in `*.local.test.ts` and personal notes in `CLAUDE.local.md` and `docs/SPEC.local.md`; all are git-ignored.
+
 ## Commands
 
 - `pnpm dev` runs the server and the web app together.

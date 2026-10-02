@@ -3,6 +3,7 @@ export type Rec = {
   source: 'import' | 'api' | 'manual';
   account: string;
   category: string;
+  parentCategory?: string | null; // Wallet parent category, used when category itself is unmapped
   amountCents: number; // negative = expense
   type: 'Expenses' | 'Income';
   paymentType: string;
