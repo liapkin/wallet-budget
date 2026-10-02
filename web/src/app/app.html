@@ -2,6 +2,7 @@
   <button class="icon" type="button" aria-label="Menu" [attr.aria-expanded]="drawer()" (click)="drawer.set(!drawer())"><app-icon name="menu" [size]="20" /></button>
   <strong>Budget</strong>
   <span class="grow"></span>
+  <button class="icon ghost eye" type="button" (click)="cycleTheme()" [title]="themeLabel(theme())" [attr.aria-label]="themeLabel(theme())"><app-icon [name]="themeIcon[theme()]" [size]="20" /></button>
   <button class="icon ghost eye" type="button" [class.on]="hidden()" [attr.aria-pressed]="hidden()" (click)="togglePrivacy()" [title]="hidden() ? 'Show amounts (Shift+H)' : 'Hide amounts (Shift+H)'" [attr.aria-label]="hidden() ? 'Show amounts (Shift+H)' : 'Hide amounts (Shift+H)'"><app-icon [name]="hidden() ? 'eyeOff' : 'eye'" [size]="20" /></button>
 </header>
 @if (drawer()) {
@@ -9,6 +10,7 @@
 }
 <aside class="side" [class.open]="drawer()">
   <div class="brand"><span class="mark"><app-icon name="logo" [size]="18" /></span> <span class="grow">Budget</span>
+    <button class="icon ghost eye" type="button" (click)="cycleTheme()" [title]="themeLabel(theme())" [attr.aria-label]="themeLabel(theme())"><app-icon [name]="themeIcon[theme()]" [size]="18" /></button>
     <button class="icon ghost eye" type="button" [class.on]="hidden()" [attr.aria-pressed]="hidden()" (click)="togglePrivacy()" [title]="hidden() ? 'Show amounts (Shift+H)' : 'Hide amounts (Shift+H)'" [attr.aria-label]="hidden() ? 'Show amounts (Shift+H)' : 'Hide amounts (Shift+H)'"><app-icon [name]="hidden() ? 'eyeOff' : 'eye'" [size]="18" /></button>
   </div>
   @if (hidden()) { <span class="chip on hid">Amounts hidden</span> }

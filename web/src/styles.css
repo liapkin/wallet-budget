@@ -46,7 +46,8 @@
   font: var(--fs)/1.5 var(--font);
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --badge: #262a26;
     --bg: #121412; --surface: #1a1d1a; --surface-2: #222622;
     --text: #e9e6dd; --muted: #9b978b; --border: #2e332e;
@@ -61,6 +62,23 @@
     --c1: #4a95cf; --c2: #d9773f; --c3: #2aa07e; --c4: #a77cc0; --c5: #b88a2a; --c6: #d4667b; --c7: #7487d6; --c8: #7a983a;
     --c-other: #77736a;
   }
+}
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --badge: #262a26;
+  --bg: #121412; --surface: #1a1d1a; --surface-2: #222622;
+  --text: #e9e6dd; --muted: #9b978b; --border: #2e332e;
+  --accent: #8cc4ad; --accent-text: #121412; --accent-soft: color-mix(in oklab, #8cc4ad 12%, transparent);
+  --good: #6cc08a; --good-bg: color-mix(in oklab, #6cc08a 12%, transparent);
+  --warn: #d9a548; --warn-bg: color-mix(in oklab, #d9a548 12%, transparent);
+  --bad: #e07a64; --bad-bg: color-mix(in oklab, #e07a64 12%, transparent);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 16px rgb(0 0 0 / 0.3);
+  --shadow-pop: 0 8px 30px rgb(0 0 0 / 0.55);
+  --backdrop: rgb(0 0 0 / 0.6);
+  --c1: #4a95cf; --c2: #d9773f; --c3: #2aa07e; --c4: #a77cc0; --c5: #b88a2a; --c6: #d4667b; --c7: #7487d6; --c8: #7a983a;
+  --c-other: #77736a;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); font: var(--fs)/1.5 var(--font); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }

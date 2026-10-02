@@ -1,5 +1,6 @@
 import { Component, effect, ElementRef, input, OnDestroy, viewChild } from '@angular/core';
 import { hidden } from './privacy.ts';
+import { isDark } from './theme.ts';
 import { BarChart, LineChart, PieChart } from 'echarts/charts';
 import { DatasetComponent, GridComponent, LegendComponent, MarkLineComponent, TooltipComponent } from 'echarts/components';
 import * as echarts from 'echarts/core';
@@ -39,18 +40,17 @@ export class ChartView implements OnDestroy {
   height = input(260);
   private host = viewChild.required<ElementRef<HTMLDivElement>>('host');
   private chart?: echarts.ECharts;
-  private mq = window.matchMedia('(prefers-color-scheme: dark)');
+  private dark = isDark();
   private ro = new ResizeObserver(() => this.chart?.resize());
-  private retheme = () => {
-    this.dispose();
-    this.render();
-  };
 
   constructor() {
-    this.mq.addEventListener('change', this.retheme);
     effect(() => {
       this.option();
       hidden();
+      if (isDark() !== this.dark) {
+        this.dark = isDark();
+        this.dispose();
+      }
       this.render();
     });
   }
@@ -96,7 +96,6 @@ export class ChartView implements OnDestroy {
   }
 
   ngOnDestroy() {
-    this.mq.removeEventListener('change', this.retheme);
     this.dispose();
   }
 }

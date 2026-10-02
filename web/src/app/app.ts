@@ -3,6 +3,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { dayLabel } from './format';
 import { Icon, IconName } from './ui/icons';
 import { hidden, togglePrivacy } from './ui/privacy';
+import { cycleTheme, theme, themeLabel } from './ui/theme';
 import { Refresh } from './ui/refresh';
 import { Toasts } from './ui/toast';
 
@@ -30,6 +31,10 @@ export class App {
   protected drawer = signal(false);
   protected hidden = hidden;
   protected togglePrivacy = togglePrivacy;
+  protected theme = theme;
+  protected cycleTheme = cycleTheme;
+  protected themeIcon = { system: 'monitor', light: 'sun', dark: 'moon' } as const;
+  protected themeLabel = themeLabel;
   protected dayLabel = dayLabel;
 
   constructor() {
@@ -41,13 +46,14 @@ export class App {
 
   @HostListener('window:keydown', ['$event'])
   handleKeydown(event: KeyboardEvent) {
-    if (event.shiftKey && event.code === 'KeyH') {
+    if (event.shiftKey && (event.code === 'KeyH' || event.code === 'KeyT')) {
       const target = event.target as any;
       if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target?.contentEditable === 'true') {
         return;
       }
       event.preventDefault();
-      this.togglePrivacy();
+      if (event.code === 'KeyH') this.togglePrivacy();
+      else cycleTheme();
     }
   }
 }
