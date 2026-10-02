@@ -9,3 +9,4 @@ config/seed-config.json
 docs/SPEC.local.md
 CLAUDE.local.md
 *.local.test.ts
+*.local.json
