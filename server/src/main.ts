@@ -109,7 +109,7 @@ async function createRecord(req: Request, res: Response) {
     if (!result?.success || !result.record) {
       return void res.status(502).json({ error: `Wallet rejected the record: ${String(result?.error ?? 'no result').slice(0, 120)}` });
     }
-    // ext_id is the Wallet id, so the next sync's INSERT OR IGNORE skips it.
+    // ext_id is the Wallet id, so the next sync upserts it unchanged.
     insertApiRecord(result.record);
     runPipeline();
     return void res.status(201).json(present(db.prepare(`${SELECT} WHERE ext_id=?`).get(result.record.id)));

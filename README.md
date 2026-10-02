@@ -27,7 +27,7 @@ Keep personal acceptance checks in `*.local.test.ts` and personal notes in `CLAU
 ## Commands
 
 - `pnpm dev` runs the server and the web app together.
-- `pnpm sync` pulls Wallet records, then dedupes and classifies.
+- `pnpm sync` pulls Wallet records, then dedupes and classifies. It mirrors edits and deletions (deletes reconciled over the last 90 days); `pnpm sync -- --full` reconciles all history.
 - Add record has an "Also add to Wallet" switch that creates the record in Wallet after a preview.
 - `pnpm run import <file.xls>` runs the same pipeline from a Wallet export.
 - `pnpm test`, `pnpm lint`

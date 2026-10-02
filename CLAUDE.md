@@ -44,7 +44,7 @@ Use pnpm only. Never npm or npx; use `pnpm dlx` for one-off tools.
 - **Money is integer cents.** No floats in storage or arithmetic. Format at the edge.
 - **Time zone is Europe/Athens.** Month boundaries are local, not UTC.
 - **Config over code.** Budget lines, caps, merchant keywords and the category map are data, editable in the UI, seeded from `config/seed-config.json`, else the example. Do not hardcode them.
-- **Raw records are immutable.** Duplicate flags and groups are derived columns; re-running classification must be safe and repeatable.
+- **Wallet records are a mirror:** sync inserts, updates and removes them to match Wallet; the app itself never edits them. Duplicate flags and groups are derived columns; re-running classification is safe and repeatable.
 - **No new dependency without a reason** stated in the commit message.
 
 ## Working style
