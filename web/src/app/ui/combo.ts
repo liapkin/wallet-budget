@@ -24,7 +24,7 @@ let uid = 0;
           [value]="query()" (input)="query.set($any($event.target).value); active.set(0)" />
         <ul class="list" role="listbox" [id]="id + '-list'" [attr.aria-label]="ariaLabel()">
           @for (o of rows(); track o.value; let i = $index) {
-            <li role="option" [id]="id + '-' + i" [class.act]="i === active()" [attr.aria-selected]="o.value === value() && !o.create" (mousemove)="active.set(i)" (click)="pick(o)">
+            <li role="option" [id]="id + '-' + i" [class.act]="i === active()" [attr.aria-selected]="o.value === value() && !o.create" (mousemove)="active.set(i)" (click)="$event.preventDefault(); pick(o)">
               @if (o.dot) { <span class="dot" [class.hollow]="o.hollow" [style.--dot]="o.dot"></span> }
               <span class="lbl">{{ o.create ? 'Create "' + o.label + '"' : o.label }}</span>
               @if (o.hint) { <span class="hint">{{ o.hint }}</span> }
