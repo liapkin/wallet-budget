@@ -39,9 +39,11 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
       <button class="chip unclassified" [class.on]="group() === 'Other'" (click)="toggle('Other')"><span class="dot" [style.--dot]="color('Other')"></span>Unclassified</button>
     </div>
 
-    <p class="summary muted">
-      {{ visible().length }} records · <strong>{{ fmt(totals().spend) }}</strong> spend · <span class="pos">{{ fmt(totals().income) }}</span> income
-    </p>
+    <div class="summary">
+      <div class="stat"><span class="label">Records</span><span class="value">{{ visible().length }}</span></div>
+      <div class="stat"><span class="label">Spend</span><span class="value">{{ fmt(totals().spend) }}</span></div>
+      <div class="stat"><span class="label">Income</span><span class="value pos">{{ fmt(totals().income) }}</span></div>
+    </div>
 
     @if (rows.isLoading() && !rows.hasValue()) {
       <div class="skeleton" style="height: 12rem"></div>
@@ -61,7 +63,10 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
                   <div class="strong">{{ r.note || '—' }}
                     @if (r.isDup) { <span class="badge" [title]="'duplicate of #' + r.dupOf">duplicate</span> }
                   </div>
-                  <div class="muted sm">{{ r.account }}@if (r.category) { · {{ r.category }} }</div>
+                  <div class="meta">
+                    <span class="muted sm">{{ r.account }}</span>
+                    @if (r.category) { <span class="muted sm">{{ r.category }}</span> }
+                  </div>
                 </td>
                 <td class="gcell">
                   <label class="gsel"><span class="dot" [style.--dot]="color(r.grp)"></span>
@@ -140,9 +145,13 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
     .search { flex: 1; min-width: 12rem; max-width: 22rem; }
     .chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: var(--sp-3); }
     .chip.unclassified:not(.on) { border-style: dashed; }
-    .summary { margin: 0 0 var(--sp-3); }
-    .summary strong { color: var(--text); }
+    .summary { display: flex; gap: var(--sp-4); margin: 0 0 var(--sp-3); }
+    .summary .stat { display: flex; flex-direction: column; gap: var(--sp-1); }
+    .summary .label { color: var(--muted); font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+    .summary .value { font-weight: 700; font-size: var(--fs-lg); color: var(--text); }
+    .summary .value.pos { color: var(--good); }
     .sm { font-size: var(--fs-xs); }
+    .meta { display: flex; gap: var(--sp-2); align-items: center; margin-top: var(--sp-1); }
     .gcell { position: relative; white-space: nowrap; }
     .gsel { display: inline-flex; align-items: center; gap: var(--sp-2); padding-left: var(--sp-3); border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
     .gsel select { border: 0; box-shadow: none; background: none; min-height: 1.75rem; padding-left: 0; }

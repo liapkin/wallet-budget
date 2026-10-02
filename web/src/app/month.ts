@@ -26,10 +26,11 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
     .row .name { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
     .row .progress { grid-column: 1 / -1; }
     .latest { list-style: none; margin: 0; padding: 0; }
-    .latest li { display: grid; grid-template-columns: auto 1fr auto; gap: var(--sp-3); align-items: center; padding: var(--sp-2) 0; border-bottom: 1px solid var(--border); }
+    .latest li { display: grid; grid-template-columns: 1fr auto auto; gap: var(--sp-3); align-items: center; padding: var(--sp-2) 0; border-bottom: 1px solid var(--border); }
     .latest li:last-child { border-bottom: 0; }
-    .latest .note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .latest small { display: block; }
+    .latest .note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+    .latest small { display: block; margin-top: var(--sp-1); }
+    .latest .chip { font-size: var(--fs-sm); }
     .sk-kpi { height: 6.5rem; border-radius: var(--r-lg); }
     .sk-card { height: 16rem; border-radius: var(--r-lg); margin-bottom: var(--sp-4); }
     @media (max-width: 640px) { .hero .kpi.big { grid-column: auto; } }
@@ -70,16 +71,23 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
           @if (v.caps) {
             <span class="value">{{ fmt(v.takeout.cents) }}</span>
             <div class="progress"><i [class.over]="v.takeoutOver" [style.width.%]="v.takeoutPct"></i></div>
-            <span class="sub">of {{ fmt(v.caps.Takeout) }} cap · {{ v.takeout.count }} orders</span>
+            <span class="sub">of {{ fmt(v.caps.Takeout) }} cap</span>
+            <span class="sub">{{ v.takeout.count }} orders</span>
           } @else {
             <span class="value">{{ fmt(v.takeout.cents) }}</span>
-            <span class="sub">no cap this month · {{ v.takeout.count }} orders</span>
+            <span class="sub">No cap this month</span>
+            <span class="sub">{{ v.takeout.count }} orders</span>
           }
         </div>
         <div class="kpi">
           <span class="label">Savings</span>
           <span class="value">{{ fmt(v.sav.total) }}</span>
-          <span class="sub">emergency {{ fmt(v.sav.emergencyFund) }} · sinking {{ fmt(v.sav.sinkingFund) }}</span>
+          <dl class="sub" style="display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-2); font-size:var(--fs-sm)">
+            <dt class="muted">Emergency target</dt>
+            <dd class="num" style="text-align:right">{{ fmt(v.sav.emergencyFund) }}</dd>
+            <dt class="muted">Sinking fund</dt>
+            <dd class="num" style="text-align:right">{{ fmt(v.sav.sinkingFund) }}</dd>
+          </dl>
         </div>
         @for (a of v.extra; track a.label) {
           <div class="kpi">
@@ -158,9 +166,12 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
         <ul class="latest">
           @for (r of latest(); track r.id) {
             <li>
-              <span class="dot" [style.--dot]="color(r.grp)" [title]="r.grp"></span>
-              <span class="note">{{ r.note || r.category }}<small class="muted">{{ dayLabel(r.dateUtc) }} · {{ r.grp }}</small></span>
-              <span class="num" [class.pos]="r.amountCents > 0">{{ fmt(r.amountCents) }}</span>
+              <div style="grid-column:1/3">
+                <div class="note">{{ r.note || r.category }}</div>
+                <small class="muted">{{ dayLabel(r.dateUtc) }}</small>
+              </div>
+              <span class="chip" style="grid-column:3; justify-self:end"><span class="dot" [style.--dot]="color(r.grp)"></span>{{ r.grp }}</span>
+              <span class="num" [class.pos]="r.amountCents > 0" style="grid-column:3; text-align:right">{{ fmt(r.amountCents) }}</span>
             </li>
           }
         </ul>

@@ -26,7 +26,15 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0
           <div class="card line">
             <div class="top">
               <strong>{{ a.label }}</strong>
-              @if (a.wallet) { <span class="badge" title="Fed from Wallet, read-only">W · {{ sources(a.key) }}</span> } @else { <span class="badge">typed</span> }
+              <div class="badges">
+                @if (a.wallet) { <span class="badge" title="Fed from Wallet, read-only">Wallet</span> }
+                @else { <span class="badge">Typed</span> }
+                @if (a.wallet) {
+                  @for (src of sources(a.key)?.split(', ') ?? []; track src) {
+                    <span class="badge" style="font-size:var(--fs-xs)">{{ src }}</span>
+                  }
+                }
+              </div>
             </div>
             <div class="amt">
               <span class="big" [class.bad]="over(a)">{{ fmt(a.actual ?? 0) }}</span>
@@ -78,7 +86,8 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0
   styles: `
     .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: var(--sp-4); margin-bottom: var(--sp-5); }
     .line { margin: 0; display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-4); }
-    .top { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); }
+    .top { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+    .badges { display: flex; gap: var(--sp-1); flex-wrap: wrap; align-items: center; }
     .top .badge { margin: 0; cursor: default; }
     .amt { display: flex; align-items: baseline; gap: var(--sp-2); }
     .big { font-size: var(--fs-lg); font-weight: 650; }

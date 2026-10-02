@@ -207,6 +207,7 @@ export class History {
     const other = daily ? [] : cols.filter((g) => !FIXED.includes(g));
     const val = (cells: Record<string, Cell>, gs: string[]) => gs.reduce((s, g) => s + (cells[g]?.cents ?? 0), 0);
     const now = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' }).slice(0, this.yearly() ? 4 : 7);
+    const inProgressSet = new Set(ps.filter((p) => p.period === now).map((p) => p.period));
     const css = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
     const surface = css('--surface');
     const groups = [
@@ -228,7 +229,7 @@ export class History {
           value: v,
           itemStyle: {
             color: s.color,
-            opacity: s.op * (p.period === now ? 0.6 : 1),
+            opacity: s.op * (inProgressSet.has(p.period) ? 0.6 : 1),
             borderColor: surface,
             borderWidth: 1.5,
             borderRadius: top ? [3, 3, 0, 0] : 0,
@@ -236,7 +237,6 @@ export class History {
         };
       }),
     }));
-    const label = (p: string) => (this.yearly() ? p : shortMonth(p)) + (p === now ? ' ·' : '');
     return {
       grid: { left: 8, right: 16, top: 44, bottom: 8, containLabel: true },
       tooltip: {
@@ -245,7 +245,8 @@ export class History {
         formatter: (params: { axisValue: string; seriesName: string; value: number; marker: string }[]) => {
           const rows = params.filter((p) => p.value > 0).sort((a, b) => b.value - a.value);
           const total = rows.reduce((s, p) => s + p.value, 0);
-          const inProgress = params[0]?.axisValue.endsWith('·') ? '<div style="opacity:.7">month in progress</div>' : '';
+          const periodKey = ps.find((p) => (this.yearly() ? p.period : shortMonth(p.period)) === params[0]?.axisValue)?.period;
+          const inProgress = inProgressSet.has(periodKey ?? '') ? '<div style="opacity:.7">Month in progress</div>' : '';
           return (
             `<strong>${params[0]?.axisValue ?? ''}</strong>${inProgress}` +
             rows.map((p) => `<div style="display:flex;justify-content:space-between;gap:16px">${p.marker}<span style="flex:1">${p.seriesName}</span><span>${fmt(p.value)}</span></div>`).join('') +
@@ -253,7 +254,22 @@ export class History {
           );
         },
       },
-      xAxis: { type: 'category', data: ps.map((p) => label(p.period)) },
+      xAxis: {
+        type: 'category',
+        data: ps.map((p) => this.yearly() ? p.period : shortMonth(p.period)),
+        axisLabel: {
+          formatter: (label: string) => {
+            const periodKey = ps.find((p) => (this.yearly() ? p.period : shortMonth(p.period)) === label)?.period;
+            return inProgressSet.has(periodKey ?? '') ? `{inprogress|${label}}` : label;
+          },
+          rich: {
+            inprogress: {
+              fontStyle: 'italic',
+              color: css('--muted'),
+            },
+          },
+        },
+      },
       yAxis: {
         type: 'value',
         axisLabel: { formatter: (c: number) => (c ? '€' + +(c / 100000).toFixed(1) + 'k' : '€0') },
