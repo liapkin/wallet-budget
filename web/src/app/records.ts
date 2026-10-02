@@ -121,7 +121,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
               <app-combo [options]="walletAccountOptions()" [(value)]="walletAcc" ariaLabel="Wallet account" />
             </label>
             <label class="field"><span>Wallet category</span>
-              <app-combo [options]="walletCategoryOptions()" [(value)]="walletCat" ariaLabel="Wallet category" />
+              <app-combo [options]="walletCategoryOptions()" [(value)]="walletCat" grouped recentKey="recentWalletCategories" ariaLabel="Wallet category" />
             </label>
           } @else {
             <label class="field"><span>Account</span>
@@ -232,7 +232,14 @@ export class Records {
       .map((a) => ({ value: a.id, label: a.name, hint: a.balanceCents == null ? '' : fmt(a.balanceCents) }));
   protected walletCategoryOptions = computed<ComboOption[]>(() => [
     { value: '', label: 'No category' },
-    ...(this.categories.value() ?? []).map((c) => ({ value: c.id, label: c.name, hint: c.parent })),
+    ...(this.categories.value() ?? [])
+      .map((c) => {
+        const group = c.parent || 'Other';
+        const top = !c.parent || c.name === c.parent;
+        return { value: c.id, label: top ? `${c.name} (general)` : c.name, group, top };
+      })
+      .sort((a, b) => Number(b.top) - Number(a.top))
+      .map(({ top, ...o }) => o),
   ]);
   protected walletCategoryLabel = () => this.walletCategoryOptions().find((o) => o.value === this.walletCat())?.label ?? 'No category';
   protected ruleGroups = computed<ComboOption[]>(() => (this.meta.value()?.groups ?? []).map((g) => ({ value: g, label: g, ...groupDot(g) })));
