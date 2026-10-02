@@ -14,27 +14,32 @@ type Row = Record<string, string>;
   standalone: true,
   imports: [CommonModule],
   styles: `
-    .day-card { display: flex; flex-direction: column; }
-    .day-card .card-head { margin-bottom: var(--sp-2); }
-    .day-card h3 { font-size: var(--fs); margin: 0 0 var(--sp-2); color: var(--text); font-weight: 600; }
-    .day-slots { display: flex; flex-direction: column; gap: var(--sp-2); margin-bottom: var(--sp-3); }
-    .slot-row { display: grid; grid-template-columns: 120px 1fr; gap: var(--sp-2); align-items: center; }
-    .slot-row label { font-size: var(--fs-sm); color: var(--muted); font-weight: 500; }
-    .day-footer { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); padding-top: var(--sp-2); border-top: 1px solid var(--border); }
-    .stat { display: flex; align-items: center; gap: var(--sp-1); }
-    .stat-label { font-size: var(--fs-xs); color: var(--muted); font-weight: 500; }
-    .stat-value { font-size: var(--fs-sm); font-weight: 600; color: var(--text); }
+    .card.plan { padding: 0; overflow: hidden; }
+    .card.plan .scroll { border: 0; box-shadow: none; border-radius: 0; }
+    .plan table { table-layout: fixed; width: 100%; min-width: 1100px; border-collapse: collapse; }
+    .plan th, .plan td { padding: var(--sp-2); min-width: 150px; vertical-align: middle; }
+    .plan th:first-child, .plan td:first-child { width: 96px; min-width: 96px; position: sticky; left: 0; background: var(--surface); z-index: 1; text-align: left; }
+    .plan thead th { text-align: left; }
+    .plan select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+    .plan tfoot td { border-top: 1px solid var(--border); }
+    .plan .val { font-weight: 700; }
+    .plan .val.over { color: var(--bad); }
+    .plan .val.under { color: var(--warn); }
     .progress-small { height: 6px; margin-top: var(--sp-1); }
-    .days-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-4); }
-    .meal-details { margin-top: var(--sp-5); }
-    .meal-details details { margin-bottom: var(--sp-3); }
-    .meal-details summary { cursor: pointer; font-weight: 600; padding: var(--sp-2); margin: -var(--sp-2); border-radius: var(--r-sm); }
-    .meal-details summary:hover { background: var(--surface-2); }
-    .meal-details .ing-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); margin-top: var(--sp-2); }
-    .meal-details .ing-table th, .meal-details .ing-table td { padding: var(--sp-2); text-align: left; border-bottom: 1px solid var(--border); }
-    .meal-details .ing-table th { font-weight: 600; color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; }
-    .meal-details .ing-table input { width: 100%; }
-    .add-ing { margin-top: var(--sp-2); }
+    .meals-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-3); margin: var(--sp-5) 0 var(--sp-2); }
+    .meals-head h2 { margin: 0; }
+    .meals-head .new { margin-left: auto; display: flex; gap: var(--sp-2); }
+    .meal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--sp-4); }
+    .meal-grid .card { margin: 0; min-width: 0; padding: var(--sp-3) var(--sp-4); }
+    .meal-grid summary { cursor: pointer; padding: var(--sp-1) 0; list-style-position: inside; }
+    .meal-head { display: flex; flex-direction: column; margin-bottom: var(--sp-2); }
+    .meal-head strong { overflow-wrap: anywhere; }
+    .ing-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: var(--fs-sm); margin-top: var(--sp-2); }
+    .ing-table th, .ing-table td { padding: var(--sp-1); text-align: left; border-bottom: 1px solid var(--border); }
+    .ing-table th { font-weight: 600; color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; }
+    .ing-table th.num { text-align: right; }
+    .ing-table input { width: 100%; min-width: 0; }
+    .ing-table th:last-child, .ing-table td:last-child { width: 36px; }
   `,
   template: `
     <div class="page-head">
@@ -74,69 +79,85 @@ type Row = Record<string, string>;
         </div>
       </div>
 
-      <div class="days-grid">
-        @for (day of days(); track day.day) {
-          <div class="card day-card">
-            <h3>{{ day.day }}</h3>
-            <div class="day-slots">
+      <div class="card plan">
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th></th>
+                @for (day of days(); track day.day) {
+                  <th [title]="day.day">{{ day.day.slice(0, 3) }}</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
               @for (slot of slots; track slot) {
-                <div class="slot-row">
-                  <label>{{ slot | titlecase }}</label>
-                  @let cur = dayMealSelection(day.day, slot);
-                  <select (change)="setMeal(day.day, slot, val($event))">
-                    <option value="" [selected]="!cur">—</option>
-                    @for (m of mealNames(); track m) {
-                      <option [value]="m" [selected]="m === cur">{{ m }}</option>
-                    }
-                  </select>
-                </div>
+                <tr>
+                  <th scope="row">{{ slot | titlecase }}</th>
+                  @for (day of days(); track day.day) {
+                    @let cur = dayMealSelection(day.day, slot);
+                    <td>
+                      <select [title]="cur" (change)="setMeal(day.day, slot, val($event))">
+                        <option value="" [selected]="!cur">—</option>
+                        @for (m of mealNames(); track m) {
+                          <option [value]="m" [selected]="m === cur">{{ m }}</option>
+                        }
+                      </select>
+                    </td>
+                  }
+                </tr>
               }
-            </div>
-            <div class="day-footer">
-              <div class="stat">
-                <div>
-                  <div class="stat-label">Protein</div>
-                  <div class="stat-value">{{ day.protein }}g</div>
-                  <div class="progress progress-small">
-                    <i [style.width.%]="Math.min(100, (day.protein / proteinTgt(c.diet)) * 100)"></i>
-                  </div>
-                </div>
-              </div>
-              <div class="stat">
-                <div>
-                  <div class="stat-label">Energy</div>
-                  <div class="stat-value">{{ day.kcal }}</div>
-                  <div class="progress progress-small">
-                    <i [style.width.%]="Math.min(100, (day.kcal / c.diet.energyTargetKcal) * 100)"></i>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        }
+            </tbody>
+            <tfoot>
+              <tr>
+                <th scope="row">Protein (g)</th>
+                @for (day of days(); track day.day) {
+                  <td>
+                    <div class="val" [class.over]="day.protein > proteinTgt(c.diet)" [class.under]="day.protein < proteinTgt(c.diet)">{{ day.protein }}</div>
+                    <div class="progress progress-small"><i [class.over]="day.protein > proteinTgt(c.diet)" [style.width.%]="Math.min(100, (day.protein / proteinTgt(c.diet)) * 100)"></i></div>
+                  </td>
+                }
+              </tr>
+              <tr>
+                <th scope="row">Energy (kcal)</th>
+                @for (day of days(); track day.day) {
+                  <td>
+                    <div class="val" [class.over]="day.kcal > c.diet.energyTargetKcal" [class.under]="day.kcal < c.diet.energyTargetKcal">{{ day.kcal }}</div>
+                    <div class="progress progress-small"><i [class.over]="day.kcal > c.diet.energyTargetKcal" [style.width.%]="Math.min(100, (day.kcal / c.diet.energyTargetKcal) * 100)"></i></div>
+                  </td>
+                }
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       </div>
 
-      <div class="meal-details">
+      <div class="meals-head">
         <h2>Meals</h2>
-        <p class="muted" style="font-size: var(--fs-sm)">Raw/dry weights. Typical label values, not measured.</p>
-
-        <div style="display: flex; gap: var(--sp-2); margin-bottom: var(--sp-3)">
+        <span class="muted" style="font-size: var(--fs-sm)">Raw/dry weights. Typical label values, not measured.</span>
+        <div class="new">
           <input #nm placeholder="New meal name" />
           <button (click)="newMeal(nm.value); nm.value = ''">+ New meal</button>
         </div>
+      </div>
 
+      <div class="meal-grid">
         @for (meal of mealNames(); track meal) {
-          <details>
-            <summary>{{ meal }} <span class="muted" style="font-size: var(--fs-sm)">{{ mealNutrition(meal).protein }}g protein, {{ mealNutrition(meal).kcal }} kcal</span></summary>
-            <div style="padding: var(--sp-3) 0">
+          <div class="card">
+            <div class="meal-head">
+              <strong>{{ meal }}</strong>
+              <span class="muted" style="font-size: var(--fs-sm)">{{ mealNutrition(meal).protein }}g protein, {{ mealNutrition(meal).kcal }} kcal / portion</span>
+            </div>
+            <details>
+              <summary>Ingredients</summary>
               <table class="ing-table">
                 <thead>
                   <tr>
                     <th>Ingredient</th>
                     <th class="num">Grams</th>
-                    <th class="num">Protein/100g</th>
+                    <th class="num">P/100g</th>
                     <th class="num">kcal/100g</th>
-                    <th style="width: 40px"></th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -152,8 +173,8 @@ type Row = Record<string, string>;
                 </tbody>
               </table>
               <button class="link" (click)="addIngredient(meal)" style="margin-top: var(--sp-2)">+ Add ingredient</button>
-            </div>
-          </details>
+            </details>
+          </div>
         }
       </div>
 

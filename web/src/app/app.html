@@ -1,13 +1,17 @@
 <header class="topbar">
   <button class="icon" type="button" aria-label="Menu" [attr.aria-expanded]="drawer()" (click)="drawer.set(!drawer())"><app-icon name="menu" [size]="20" /></button>
   <strong>Budget</strong>
-  <button class="icon ghost" type="button" [attr.aria-pressed]="hidden()" (click)="togglePrivacy()" [title]="hidden() ? 'Show amounts (Shift+H)' : 'Hide amounts (Shift+H)'" [attr.aria-label]="hidden() ? 'Show amounts (Shift+H)' : 'Hide amounts (Shift+H)'"><app-icon [name]="hidden() ? 'eyeOff' : 'eye'" [size]="20" /></button>
+  <span class="grow"></span>
+  <button class="icon ghost eye" type="button" [class.on]="hidden()" [attr.aria-pressed]="hidden()" (click)="togglePrivacy()" [title]="hidden() ? 'Show amounts (Shift+H)' : 'Hide amounts (Shift+H)'" [attr.aria-label]="hidden() ? 'Show amounts (Shift+H)' : 'Hide amounts (Shift+H)'"><app-icon [name]="hidden() ? 'eyeOff' : 'eye'" [size]="20" /></button>
 </header>
 @if (drawer()) {
   <div class="scrim" (click)="drawer.set(false)"></div>
 }
 <aside class="side" [class.open]="drawer()">
-  <div class="brand"><span class="mark"><app-icon name="logo" [size]="18" /></span> Budget</div>
+  <div class="brand"><span class="mark"><app-icon name="logo" [size]="18" /></span> <span class="grow">Budget</span>
+    <button class="icon ghost eye" type="button" [class.on]="hidden()" [attr.aria-pressed]="hidden()" (click)="togglePrivacy()" [title]="hidden() ? 'Show amounts (Shift+H)' : 'Hide amounts (Shift+H)'" [attr.aria-label]="hidden() ? 'Show amounts (Shift+H)' : 'Hide amounts (Shift+H)'"><app-icon [name]="hidden() ? 'eyeOff' : 'eye'" [size]="18" /></button>
+  </div>
+  @if (hidden()) { <span class="chip on hid">Amounts hidden</span> }
   <nav aria-label="Main">
     @for (g of nav; track g.label) {
       <div class="sect">{{ g.label }}</div>
@@ -20,7 +24,6 @@
     <button class="primary" type="button" [disabled]="refresh.syncing()" (click)="sync()">
       @if (refresh.syncing()) { <span class="spin"></span> Fetching… } @else { <app-icon name="refresh" [size]="16" /> Fetch from Wallet }
     </button>
-    <button class="icon ghost" type="button" [attr.aria-pressed]="hidden()" (click)="togglePrivacy()" [title]="hidden() ? 'Show amounts (Shift+H)' : 'Hide amounts (Shift+H)'" [attr.aria-label]="hidden() ? 'Show amounts (Shift+H)' : 'Hide amounts (Shift+H)'"><app-icon [name]="hidden() ? 'eyeOff' : 'eye'" [size]="16" /></button>
     @if (refresh.lastFetch(); as t) {
       <span class="muted last">Last fetch: {{ dayLabel(t.toISOString()) }}</span>
     }
