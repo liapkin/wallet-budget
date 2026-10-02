@@ -1,0 +1,734 @@
+{
+  "_note": "Generic example values. Copy to config/seed-config.json and edit; the app reads config from the database after first run.",
+  "income": {
+    "netSalaryPerMonth": 2000,
+    "salariesPerYear": 14,
+    "bonusMonths": {
+      "april": 0.5,
+      "july": 0.5,
+      "december": 1.0
+    },
+    "bonusesGoToInvesting": true
+  },
+  "coreExpenses": [
+    {
+      "key": "rent",
+      "label": "Rent",
+      "plan": 500,
+      "source": "manual"
+    },
+    {
+      "key": "utilities",
+      "label": "Utilities",
+      "plan": 120,
+      "source": "manual",
+      "note": "Electricity, water, internet"
+    },
+    {
+      "key": "household",
+      "label": "Household supplies",
+      "plan": 30,
+      "source": "manual"
+    },
+    {
+      "key": "groceries",
+      "label": "Groceries",
+      "plan": 300,
+      "source": "wallet:Groceries",
+      "note": "Cash purchases are entered by hand"
+    },
+    {
+      "key": "gym",
+      "label": "Gym",
+      "plan": 40,
+      "source": "manual",
+      "standing": true
+    },
+    {
+      "key": "phone",
+      "label": "Phone",
+      "plan": 20,
+      "source": "manual"
+    },
+    {
+      "key": "transport",
+      "label": "Transport / fuel",
+      "plan": 60,
+      "source": "wallet:Fuel+Transport"
+    },
+    {
+      "key": "training",
+      "label": "Extra training",
+      "plan": 60,
+      "source": "manual",
+      "standing": false,
+      "inPlan": false,
+      "note": "Not a standing cost; entered only in months it happens"
+    }
+  ],
+  "allocation": {
+    "funPerMonth": 150,
+    "sinkingFundTopUpPerMonth": 200,
+    "investing": "remainder: salary - core - fun - sinking",
+    "bankSavings": 5000,
+    "savingsAccounts": [],
+    "cashSavings": 0,
+    "emergencyFundMonthsOfCore": 4,
+    "annualIrregulars": 2000,
+    "funGroups": [
+      "Takeout",
+      "Cafes & eating out",
+      "Kiosk",
+      "Work food",
+      "Entertainment",
+      "Shopping",
+      "Travel",
+      "Sport"
+    ],
+    "coveredByCoreGroups": [
+      "Housing"
+    ],
+    "investmentAccounts": [],
+    "payrollAccount": null
+  },
+  "caps": {
+    "applyFrom": "2027-01-01",
+    "bufferMonth": null,
+    "takeoutPerMonth": 60,
+    "kioskPerMonth": 30,
+    "note": "Example figures. Both come out of Fun."
+  },
+  "investing": {
+    "grossReturn": 0.07,
+    "ter": 0.0022,
+    "inflation": 0.02,
+    "tradingCostPerYear": 5,
+    "netSalaryGrowth": 0.025,
+    "houseFundFirst": false,
+    "houseFundReturn": 0.025,
+    "houseTarget": {
+      "propertyPrice": 200000,
+      "depositShare": 0.2,
+      "purchaseCostsShare": 0.1,
+      "note": "Placeholder price"
+    }
+  },
+  "wallet": {
+    "duplicateRule": {
+      "flag": "MOBILE_PAYMENT record",
+      "when": "a TRANSFER record with the same amount exists dated from 1 day before to 7 days after",
+      "keep": "the TRANSFER record"
+    },
+    "merchantKeywords": [
+      {
+        "keyword": "EFOOD",
+        "group": "Takeout"
+      },
+      {
+        "keyword": "WOLT",
+        "group": "Takeout"
+      },
+      {
+        "keyword": "LIDL",
+        "group": "Groceries"
+      },
+      {
+        "keyword": "SKLAVENITIS",
+        "group": "Groceries"
+      },
+      {
+        "keyword": "MY MARKET",
+        "group": "Groceries"
+      },
+      {
+        "keyword": "MASOUTIS",
+        "group": "Groceries"
+      },
+      {
+        "keyword": "KIOSK",
+        "group": "Kiosk"
+      },
+      {
+        "keyword": "ATM ",
+        "group": "Cash withdrawal"
+      },
+      {
+        "keyword": "Top-Up by",
+        "group": "Transfer"
+      }
+    ],
+    "categoryMap": [
+      {
+        "walletCategory": "Groceries",
+        "group": "Groceries"
+      },
+      {
+        "walletCategory": "Restaurant, fast-food",
+        "group": "Cafes & eating out"
+      },
+      {
+        "walletCategory": "Bar, cafe",
+        "group": "Cafes & eating out"
+      },
+      {
+        "walletCategory": "Food & Drinks",
+        "group": "Cafes & eating out"
+      },
+      {
+        "walletCategory": "Fuel",
+        "group": "Fuel"
+      },
+      {
+        "walletCategory": "Public transport",
+        "group": "Transport"
+      },
+      {
+        "walletCategory": "Parking",
+        "group": "Transport"
+      },
+      {
+        "walletCategory": "Transportation",
+        "group": "Transport"
+      },
+      {
+        "walletCategory": "Rent",
+        "group": "Housing"
+      },
+      {
+        "walletCategory": "Housing",
+        "group": "Housing"
+      },
+      {
+        "walletCategory": "Energy, utilities",
+        "group": "Housing"
+      },
+      {
+        "walletCategory": "Internet",
+        "group": "Housing"
+      },
+      {
+        "walletCategory": "Phone, cell phone",
+        "group": "Housing"
+      },
+      {
+        "walletCategory": "Health care, doctor",
+        "group": "Health"
+      },
+      {
+        "walletCategory": "Drug-store, chemist",
+        "group": "Health"
+      },
+      {
+        "walletCategory": "Wellness, beauty",
+        "group": "Health"
+      },
+      {
+        "walletCategory": "Health and beauty",
+        "group": "Health"
+      },
+      {
+        "walletCategory": "Taxes",
+        "group": "Taxes & insurance"
+      },
+      {
+        "walletCategory": "Insurances",
+        "group": "Taxes & insurance"
+      },
+      {
+        "walletCategory": "Fines",
+        "group": "Taxes & insurance"
+      },
+      {
+        "walletCategory": "Holiday, trips, hotels",
+        "group": "Travel"
+      },
+      {
+        "walletCategory": "Long distance",
+        "group": "Travel"
+      },
+      {
+        "walletCategory": "Shopping",
+        "group": "Shopping"
+      },
+      {
+        "walletCategory": "Clothes & shoes",
+        "group": "Shopping"
+      },
+      {
+        "walletCategory": "Electronics, accessories",
+        "group": "Shopping"
+      },
+      {
+        "walletCategory": "Home, garden",
+        "group": "Shopping"
+      },
+      {
+        "walletCategory": "Gifts, joy",
+        "group": "Shopping"
+      },
+      {
+        "walletCategory": "Charity, gifts",
+        "group": "Shopping"
+      },
+      {
+        "walletCategory": "Jewels, accessories",
+        "group": "Shopping"
+      },
+      {
+        "walletCategory": "Active sport, fitness",
+        "group": "Sport"
+      },
+      {
+        "walletCategory": "Culture, sport events",
+        "group": "Entertainment"
+      },
+      {
+        "walletCategory": "Hobbies",
+        "group": "Entertainment"
+      },
+      {
+        "walletCategory": "Software, apps, games",
+        "group": "Entertainment"
+      },
+      {
+        "walletCategory": "Books, audio, subscriptions",
+        "group": "Entertainment"
+      },
+      {
+        "walletCategory": "Life & Entertainment",
+        "group": "Entertainment"
+      },
+      {
+        "walletCategory": "Alcohol, tobacco",
+        "group": "Entertainment"
+      },
+      {
+        "walletCategory": "Vehicle",
+        "group": "Car"
+      },
+      {
+        "walletCategory": "Vehicle maintenance",
+        "group": "Car"
+      },
+      {
+        "walletCategory": "Taxi",
+        "group": "Transport"
+      },
+      {
+        "walletCategory": "Financial investments",
+        "group": "Investing"
+      },
+      {
+        "walletCategory": "Loan, interests",
+        "group": "Loan"
+      },
+      {
+        "walletCategory": "Lending, renting",
+        "group": "Loan"
+      }
+    ],
+    "excludedGroups": [
+      "Investing",
+      "Transfer",
+      "Cash withdrawal",
+      "Loan"
+    ],
+    "precedence": "keywords of excluded groups first (any type); then type Income -> Income; then other keyword match on the note (case-insensitive substring) wins over category map; no match -> Other",
+    "groups": [
+      "Groceries",
+      "Takeout",
+      "Work food",
+      "Cafes & eating out",
+      "Kiosk",
+      "Fuel",
+      "Transport",
+      "Car",
+      "Housing",
+      "Health",
+      "Taxes & insurance",
+      "Travel",
+      "Shopping",
+      "Sport",
+      "Entertainment",
+      "Investing",
+      "Transfer",
+      "Cash withdrawal",
+      "Loan",
+      "Other",
+      "Income"
+    ]
+  },
+  "diet": {
+    "bodyWeightKg": 80,
+    "proteinPerKg": 2.0,
+    "energyTargetKcal": 2600,
+    "energyTargetIsPlaceholder": true,
+    "week": [
+      {
+        "day": "Monday",
+        "breakfast": "Eggs & bread",
+        "lunch": "Chicken, rice & veg",
+        "snack": "Yogurt, oats & banana",
+        "dinner": "Lentils, eggs & feta",
+        "shake": "Whey shake & creatine"
+      },
+      {
+        "day": "Tuesday",
+        "breakfast": "Eggs & bread",
+        "lunch": "Chicken, rice & veg",
+        "snack": "Yogurt, oats & banana",
+        "dinner": "Lentils, eggs & feta",
+        "shake": "Whey shake & creatine"
+      },
+      {
+        "day": "Wednesday",
+        "breakfast": "Eggs & bread",
+        "lunch": "Chicken, rice & veg",
+        "snack": "Yogurt, oats & banana",
+        "dinner": "Lentils, eggs & feta",
+        "shake": "Whey shake & creatine"
+      },
+      {
+        "day": "Thursday",
+        "breakfast": "Eggs & bread",
+        "lunch": "Chicken, rice & veg",
+        "snack": "Yogurt, oats & banana",
+        "dinner": "Lentils, eggs & feta",
+        "shake": "Whey shake & creatine"
+      },
+      {
+        "day": "Friday",
+        "breakfast": "Eggs & bread",
+        "lunch": "Chicken, rice & veg",
+        "snack": "Yogurt, oats & banana",
+        "dinner": "Lentils, eggs & feta",
+        "shake": "Whey shake & creatine"
+      },
+      {
+        "day": "Saturday",
+        "breakfast": "Eggs & bread",
+        "lunch": "Chicken, rice & veg",
+        "snack": "Yogurt, oats & banana",
+        "dinner": "Lentils, eggs & feta",
+        "shake": "Whey shake & creatine"
+      },
+      {
+        "day": "Sunday",
+        "breakfast": "Eggs & bread",
+        "lunch": "Chicken, rice & veg",
+        "snack": "Yogurt, oats & banana",
+        "dinner": "Lentils, eggs & feta",
+        "shake": "Whey shake & creatine"
+      }
+    ],
+    "ingredientsPerPortion": [
+      {
+        "meal": "Eggs & bread",
+        "ingredient": "3 eggs (≈50 g each, shelled)",
+        "grams": 150,
+        "proteinPer100g": 12.6,
+        "kcalPer100g": 143
+      },
+      {
+        "meal": "Eggs & bread",
+        "ingredient": "Wholewheat bread, 2 slices",
+        "grams": 70,
+        "proteinPer100g": 9,
+        "kcalPer100g": 250
+      },
+      {
+        "meal": "Eggs & bread",
+        "ingredient": "Tomato / cucumber",
+        "grams": 150,
+        "proteinPer100g": 0.9,
+        "kcalPer100g": 18
+      },
+      {
+        "meal": "Eggs & bread",
+        "ingredient": "Olive oil, 1 tsp",
+        "grams": 5,
+        "proteinPer100g": 0,
+        "kcalPer100g": 884
+      },
+      {
+        "meal": "Yogurt, oats & banana",
+        "ingredient": "Strained yogurt 2%",
+        "grams": 150,
+        "proteinPer100g": 9,
+        "kcalPer100g": 70
+      },
+      {
+        "meal": "Yogurt, oats & banana",
+        "ingredient": "Oats",
+        "grams": 50,
+        "proteinPer100g": 13,
+        "kcalPer100g": 375
+      },
+      {
+        "meal": "Yogurt, oats & banana",
+        "ingredient": "Banana",
+        "grams": 120,
+        "proteinPer100g": 1.1,
+        "kcalPer100g": 89
+      },
+      {
+        "meal": "Yogurt, oats & banana",
+        "ingredient": "Honey",
+        "grams": 10,
+        "proteinPer100g": 0.3,
+        "kcalPer100g": 304
+      },
+      {
+        "meal": "Yogurt, oats & banana",
+        "ingredient": "Apple / orange",
+        "grams": 150,
+        "proteinPer100g": 0.4,
+        "kcalPer100g": 50
+      },
+      {
+        "meal": "Whey shake & creatine",
+        "ingredient": "Whey protein",
+        "grams": 35,
+        "proteinPer100g": 78,
+        "kcalPer100g": 390
+      },
+      {
+        "meal": "Whey shake & creatine",
+        "ingredient": "Milk 1.5%",
+        "grams": 250,
+        "proteinPer100g": 3.3,
+        "kcalPer100g": 46
+      },
+      {
+        "meal": "Whey shake & creatine",
+        "ingredient": "Creatine monohydrate",
+        "grams": 5,
+        "proteinPer100g": 0,
+        "kcalPer100g": 0
+      },
+      {
+        "meal": "Chicken, rice & veg",
+        "ingredient": "Chicken meat, no skin (raw)",
+        "grams": 225,
+        "proteinPer100g": 21.5,
+        "kcalPer100g": 120
+      },
+      {
+        "meal": "Chicken, rice & veg",
+        "ingredient": "Rice (dry)",
+        "grams": 80,
+        "proteinPer100g": 7,
+        "kcalPer100g": 355
+      },
+      {
+        "meal": "Chicken, rice & veg",
+        "ingredient": "Broccoli / zucchini / green beans",
+        "grams": 200,
+        "proteinPer100g": 2,
+        "kcalPer100g": 30
+      },
+      {
+        "meal": "Chicken, rice & veg",
+        "ingredient": "Olive oil, 1 tbsp",
+        "grams": 13.5,
+        "proteinPer100g": 0,
+        "kcalPer100g": 884
+      },
+      {
+        "meal": "Lentils, eggs & feta",
+        "ingredient": "Lentils (dry)",
+        "grams": 100,
+        "proteinPer100g": 24,
+        "kcalPer100g": 350
+      },
+      {
+        "meal": "Lentils, eggs & feta",
+        "ingredient": "2 boiled eggs",
+        "grams": 100,
+        "proteinPer100g": 12.6,
+        "kcalPer100g": 143
+      },
+      {
+        "meal": "Lentils, eggs & feta",
+        "ingredient": "Feta",
+        "grams": 30,
+        "proteinPer100g": 15,
+        "kcalPer100g": 265
+      },
+      {
+        "meal": "Lentils, eggs & feta",
+        "ingredient": "Onion / carrot / passata",
+        "grams": 100,
+        "proteinPer100g": 1,
+        "kcalPer100g": 30
+      },
+      {
+        "meal": "Lentils, eggs & feta",
+        "ingredient": "Olive oil, 2 tsp",
+        "grams": 9,
+        "proteinPer100g": 0,
+        "kcalPer100g": 884
+      },
+      {
+        "meal": "Lentils, eggs & feta",
+        "ingredient": "Wholewheat bread, 1 slice",
+        "grams": 35,
+        "proteinPer100g": 9,
+        "kcalPer100g": 250
+      }
+    ],
+    "nutritionNote": "Raw / dry weights. Typical label values, not measured."
+  },
+  "groceryList": {
+    "weekly": [
+      {
+        "item": "Chicken breast",
+        "where": "Supermarket",
+        "qty": 1.6,
+        "unit": "kg",
+        "regularPrice": 7.0,
+        "offerPrice": 5.5,
+        "note": "Estimate"
+      },
+      {
+        "item": "Eggs, pack of 10",
+        "where": "Supermarket",
+        "qty": 2,
+        "unit": "pack",
+        "regularPrice": 3.0,
+        "offerPrice": null,
+        "note": "Estimate"
+      },
+      {
+        "item": "Strained yogurt 2%, 1 kg",
+        "where": "Supermarket",
+        "qty": 1,
+        "unit": "tub",
+        "regularPrice": 4.5,
+        "offerPrice": null,
+        "note": "Estimate"
+      },
+      {
+        "item": "Milk 1.5%, 1 L",
+        "where": "Supermarket",
+        "qty": 2,
+        "unit": "L",
+        "regularPrice": 1.5,
+        "offerPrice": null,
+        "note": "Estimate"
+      },
+      {
+        "item": "Feta",
+        "where": "Supermarket",
+        "qty": 0.2,
+        "unit": "kg",
+        "regularPrice": 13.0,
+        "offerPrice": null,
+        "note": "Estimate"
+      },
+      {
+        "item": "Wholewheat bread, sliced loaf",
+        "where": "Bakery",
+        "qty": 2,
+        "unit": "loaf",
+        "regularPrice": 1.6,
+        "offerPrice": null,
+        "note": "Estimate"
+      },
+      {
+        "item": "Tomatoes",
+        "where": "Market",
+        "qty": 1.5,
+        "unit": "kg",
+        "regularPrice": 1.8,
+        "offerPrice": null,
+        "note": "Estimate"
+      },
+      {
+        "item": "Broccoli / zucchini / green beans",
+        "where": "Market",
+        "qty": 1.4,
+        "unit": "kg",
+        "regularPrice": 2.5,
+        "offerPrice": null,
+        "note": "Estimate"
+      },
+      {
+        "item": "Bananas",
+        "where": "Market",
+        "qty": 1,
+        "unit": "kg",
+        "regularPrice": 1.7,
+        "offerPrice": null,
+        "note": "Estimate"
+      },
+      {
+        "item": "Apples / oranges",
+        "where": "Market",
+        "qty": 1,
+        "unit": "kg",
+        "regularPrice": 1.5,
+        "offerPrice": null,
+        "note": "Estimate"
+      }
+    ],
+    "pantryMonthly": [
+      {
+        "item": "Olive oil",
+        "where": "Supermarket",
+        "qty": 1,
+        "unit": "L",
+        "regularPrice": 8.5,
+        "offerPrice": null,
+        "note": "Estimate"
+      },
+      {
+        "item": "Oats",
+        "where": "Supermarket",
+        "qty": 1.5,
+        "unit": "kg",
+        "regularPrice": 2.4,
+        "offerPrice": null,
+        "note": "Estimate"
+      },
+      {
+        "item": "Lentils",
+        "where": "Supermarket",
+        "qty": 0.8,
+        "unit": "kg",
+        "regularPrice": 3.8,
+        "offerPrice": null,
+        "note": "Estimate"
+      },
+      {
+        "item": "Rice",
+        "where": "Supermarket",
+        "qty": 0.6,
+        "unit": "kg",
+        "regularPrice": 2.2,
+        "offerPrice": null,
+        "note": "Estimate"
+      },
+      {
+        "item": "Honey",
+        "where": "Supermarket",
+        "qty": 0.1,
+        "unit": "kg",
+        "regularPrice": 12.0,
+        "offerPrice": null,
+        "note": "Estimate"
+      },
+      {
+        "item": "Whey protein",
+        "where": "Online",
+        "qty": 1,
+        "unit": "kg",
+        "regularPrice": 30.0,
+        "offerPrice": null,
+        "note": "Estimate"
+      }
+    ],
+    "offersSource": "",
+    "rule": "cost = qty * (offerPrice ?? regularPrice); monthly = weekly * 52/12 + pantry"
+  }
+}

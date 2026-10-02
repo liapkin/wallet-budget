@@ -1,0 +1,19 @@
+{
+  "name": "server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/main.ts",
+    "sync": "node src/sync.ts",
+    "import": "node src/import.ts",
+    "test": "node --test",
+    "lint": "tsc -p ."
+  },
+  "dependencies": {
+    "express": "^4.21.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "shared",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "lint": "tsc -p ."
+  }
+}
