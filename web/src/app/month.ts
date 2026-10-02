@@ -3,19 +3,15 @@ import { allocation, capsFor, monthStatus, savings } from '../../../shared/src/b
 import { fmt } from '../../../shared/src/money.ts';
 import { athensMonth } from '../../../shared/src/month.ts';
 import { Api } from './api';
-
-const val = (e: Event) => (e.target as HTMLSelectElement).value;
+import { MonthPicker } from './ui/month-picker';
 
 @Component({
   selector: 'app-month',
+  imports: [MonthPicker],
   template: `
     <h1>Month</h1>
     <div class="toolbar">
-      <select (change)="month.set(val($event))" aria-label="Month">
-        @for (m of months(); track m) {
-          <option [value]="m" [selected]="m === month()">{{ m }}</option>
-        }
-      </select>
+      <app-month-picker [(month)]="month" />
       <span class="muted">{{ daysLeft() }} days left</span>
       <span class="grow"></span>
       @if (syncMsg()) {
@@ -100,7 +96,6 @@ const val = (e: Event) => (e.target as HTMLSelectElement).value;
 })
 export class Month {
   protected fmt = fmt;
-  protected val = val;
   private api = inject(Api);
   protected month = signal(athensMonth(new Date().toISOString()));
   protected cfg = resource({ loader: () => this.api.config() });
@@ -111,10 +106,6 @@ export class Month {
   protected syncMsg = signal('');
   protected syncErr = signal(false);
 
-  protected months = computed(() => {
-    const now = athensMonth(new Date().toISOString());
-    return [...new Set([now, this.month(), ...Object.keys(this.summary.value()?.spend ?? {})])].sort().reverse();
-  });
 
   private elapsed = computed(() => {
     const [y, m] = this.month().split('-').map(Number);
