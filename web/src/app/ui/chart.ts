@@ -17,8 +17,8 @@ function theme() {
     textStyle: { fontFamily: css('--font'), color: muted },
     categoryAxis: { ...axis, splitLine: { show: false } },
     valueAxis: { ...axis, axisLine: { show: false } },
-    legend: { textStyle: { color: muted }, icon: 'circle', itemWidth: 8, itemHeight: 8 },
-    tooltip: { backgroundColor: css('--surface'), borderColor: grid, textStyle: { color: text }, extraCssText: 'box-shadow:' + css('--shadow-pop') },
+    legend: { top: 0, right: 0, type: 'scroll', textStyle: { color: muted, fontFamily: css('--font'), fontSize: 12 }, icon: 'roundRect', itemWidth: 10, itemHeight: 10, itemGap: 14 },
+    tooltip: { backgroundColor: css('--surface'), borderColor: grid, borderWidth: 1, textStyle: { color: text, fontFamily: css('--font') }, extraCssText: 'box-shadow:' + css('--shadow-pop') },
     line: { lineStyle: { width: 2 }, symbolSize: 6, showSymbol: false },
     bar: { barMaxWidth: 28, itemStyle: { borderRadius: [4, 4, 0, 0] } },
   };

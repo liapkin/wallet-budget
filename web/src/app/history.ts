@@ -9,6 +9,7 @@ import { Refresh } from './ui/refresh';
 const COUNTED = ['Takeout', 'Kiosk'];
 const FIRST_FEED = '2026-07';
 const FIXED = ['Groceries', 'Takeout', 'Cafes & eating out', 'Kiosk', 'Fuel', 'Transport', 'Housing', 'Shopping'];
+const DAILY = ['Groceries', 'Takeout', 'Cafes & eating out', 'Kiosk', 'Work food', 'Fuel', 'Transport'];
 const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: 'All', n: 0 }];
 
 @Component({
@@ -21,6 +22,9 @@ const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: '
     tfoot tr:last-child td { border-bottom: 0; }
     .sticky-first tfoot td:first-child { background: var(--surface-2); }
     .badge { cursor: help; }
+    th { white-space: normal; min-width: 5.5rem; line-height: 1.2; vertical-align: bottom; }
+    th:first-child { min-width: 0; }
+    .zero { color: var(--muted); opacity: 0.6; }
   `,
   template: `
     <div class="page-head">
@@ -48,7 +52,13 @@ const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: '
       <div class="card empty"><strong>No history yet</strong><span>Fetch from Wallet or import a file to see spending over time.</span></div>
     } @else {
       <section class="card">
-        <div class="card-head"><h2>Spend by group</h2></div>
+        <div class="card-head">
+          <h2>Spend by group</h2>
+          <div class="seg" role="group" aria-label="Groups">
+            <button [class.on]="daily()" (click)="daily.set(true)">Food &amp; daily</button>
+            <button [class.on]="!daily()" (click)="daily.set(false)">All spend</button>
+          </div>
+        </div>
         <app-chart [option]="chart()" [height]="320" />
       </section>
 
@@ -78,14 +88,14 @@ const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: '
                 </td>
                 @for (c of cols(); track c) {
                   <td class="num" [style.background]="tint(r.cells[c]?.cents ?? 0, c)">
-                    {{ fmt(r.cells[c]?.cents ?? 0) }}
+                    @if (r.cells[c]?.cents) { {{ fmt(r.cells[c].cents) }} } @else { <span class="zero">–</span> }
                     @if (counted.includes(c) && r.cells[c]) {
                       <small class="muted">{{ r.cells[c].count }} {{ c === 'Takeout' ? 'orders' : 'visits' }}</small>
                     }
                   </td>
                 }
                 <td class="num strong">{{ fmt(r.total) }}</td>
-                <td class="num sep">{{ fmt(r.invested) }}</td>
+                <td class="num sep">@if (r.invested) { {{ fmt(r.invested) }} } @else { <span class="zero">–</span> }</td>
                 @if (yearly()) {
                   <td class="num">{{ fmt(r.avg) }}</td>
                 }
@@ -97,10 +107,10 @@ const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: '
               <tr>
                 <td class="nowrap">{{ f.label }}</td>
                 @for (c of cols(); track c) {
-                  <td class="num">{{ fmt(f.cells[c] ?? 0) }}</td>
+                  <td class="num">@if (f.cells[c]) { {{ fmt(f.cells[c]) }} } @else { <span class="zero">–</span> }</td>
                 }
                 <td class="num">{{ fmt(f.total) }}</td>
-                <td class="num sep">{{ fmt(f.invested) }}</td>
+                <td class="num sep">@if (f.invested) { {{ fmt(f.invested) }} } @else { <span class="zero">–</span> }</td>
                 @if (yearly()) {
                   <td class="num"></td>
                 }
@@ -117,6 +127,7 @@ export class History {
   protected counted = COUNTED;
   protected ranges = RANGES;
   protected yearly = signal(false);
+  protected daily = signal(true);
   protected range = signal(12);
   private api = inject(Api);
   private tick = inject(Refresh).tick;
@@ -191,25 +202,63 @@ export class History {
   protected chart = computed(() => {
     const ps = this.periods();
     const cols = this.cols();
-    const fixed = FIXED.filter((g) => cols.includes(g));
-    const other = cols.filter((g) => !FIXED.includes(g));
+    const daily = this.daily();
+    const fixed = (daily ? DAILY : FIXED).filter((g) => cols.includes(g));
+    const other = daily ? [] : cols.filter((g) => !FIXED.includes(g));
     const val = (cells: Record<string, Cell>, gs: string[]) => gs.reduce((s, g) => s + (cells[g]?.cents ?? 0), 0);
-    const series = [
-      ...fixed.map((g) => ({ name: g, color: chartColor(g), gs: [g] })),
-      ...(other.length ? [{ name: 'Other', color: chartColor('Other'), gs: other }] : []),
-    ].map((s) => ({
+    const now = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' }).slice(0, this.yearly() ? 4 : 7);
+    const css = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+    const surface = css('--surface');
+    const groups = [
+      ...fixed.map((g) => ({ name: g, color: chartColor(g), gs: [g], op: 1 })),
+      ...(other.length ? [{ name: 'Other', color: chartColor('Other'), gs: other, op: 0.55 }] : []),
+    ];
+    const series = groups.map((s, si) => ({
       name: s.name,
       type: 'bar',
       stack: 'spend',
       color: s.color,
-      itemStyle: { borderRadius: 0 },
-      data: ps.map((p) => val(p.cells, s.gs)),
+      barMaxWidth: 44,
+      barCategoryGap: '30%',
+      data: ps.map((p) => {
+        const v = val(p.cells, s.gs);
+        // topmost non-zero segment of the stack gets the rounded corners
+        const top = !groups.slice(si + 1).some((o) => val(p.cells, o.gs) > 0);
+        return {
+          value: v,
+          itemStyle: {
+            color: s.color,
+            opacity: s.op * (p.period === now ? 0.6 : 1),
+            borderColor: surface,
+            borderWidth: 1.5,
+            borderRadius: top ? [3, 3, 0, 0] : 0,
+          },
+        };
+      }),
     }));
+    const label = (p: string) => (this.yearly() ? p : shortMonth(p)) + (p === now ? ' ·' : '');
     return {
-      grid: { left: 8, right: 16, top: 40, bottom: 8, containLabel: true },
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (c: number) => fmt(c) },
-      xAxis: { type: 'category', data: ps.map((p) => (this.yearly() ? p.period : shortMonth(p.period))) },
-      yAxis: { type: 'value', axisLabel: { formatter: (c: number) => '€' + Math.round(c / 100) } },
+      grid: { left: 8, right: 16, top: 44, bottom: 8, containLabel: true },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: (params: { axisValue: string; seriesName: string; value: number; marker: string }[]) => {
+          const rows = params.filter((p) => p.value > 0).sort((a, b) => b.value - a.value);
+          const total = rows.reduce((s, p) => s + p.value, 0);
+          const inProgress = params[0]?.axisValue.endsWith('·') ? '<div style="opacity:.7">month in progress</div>' : '';
+          return (
+            `<strong>${params[0]?.axisValue ?? ''}</strong>${inProgress}` +
+            rows.map((p) => `<div style="display:flex;justify-content:space-between;gap:16px">${p.marker}<span style="flex:1">${p.seriesName}</span><span>${fmt(p.value)}</span></div>`).join('') +
+            `<div style="display:flex;justify-content:space-between;gap:16px;margin-top:4px;padding-top:4px;border-top:1px solid ${css('--border')};font-weight:600"><span>Total</span><span>${fmt(total)}</span></div>`
+          );
+        },
+      },
+      xAxis: { type: 'category', data: ps.map((p) => label(p.period)) },
+      yAxis: {
+        type: 'value',
+        axisLabel: { formatter: (c: number) => (c ? '€' + +(c / 100000).toFixed(1) + 'k' : '€0') },
+        splitLine: { lineStyle: { type: 'dashed', opacity: 0.35 } },
+      },
       series,
     };
   });
