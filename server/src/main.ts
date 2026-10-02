@@ -45,12 +45,16 @@ app.put('/api/config', (req, res) => {
 
 const scope = () => ({ sql: "source IN (?, 'manual')", args: [activeSource()] });
 
-app.get('/api/meta', (req, res) => {
+export const getMeta = () => {
   const s = scope();
   const col = (c: string, order = '') =>
     (db.prepare(`SELECT DISTINCT ${c} AS v FROM records WHERE ${s.sql} ${order}`).all(...s.args) as { v: string }[]).map((r) => r.v);
   const { groups, excludedGroups } = getConfig().wallet;
-  res.json({ demo, groups, excludedGroups, accounts: col('account', 'ORDER BY 1'), months: col('month', 'ORDER BY 1 DESC') });
+  return { demo, groups, excludedGroups, accounts: col('account', 'ORDER BY 1'), months: col('month', 'ORDER BY 1 DESC') };
+};
+
+app.get('/api/meta', (req, res) => {
+  res.json(getMeta());
 });
 
 app.get('/api/summary', (req, res) => {
@@ -86,7 +90,7 @@ app.post('/api/records', async (req, res, next) => {
   }
 });
 
-async function createRecord(req: Request, res: Response) {
+export async function createRecord(req: Request, res: Response) {
   const { date, amount, note, category, type = 'Expenses', account, toWallet, accountId, categoryId } = req.body ?? {};
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(str(date));
   if (!m) bad('date must be YYYY-MM-DDTHH:mm');
@@ -213,6 +217,8 @@ app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
 });
 
 const port = Number(process.env.PORT ?? 3000);
-app.listen(port, '127.0.0.1', () => {
-  console.log(`listening on http://127.0.0.1:${port}`);
-});
+if (import.meta.main) {
+  app.listen(port, '127.0.0.1', () => {
+    console.log(`listening on http://127.0.0.1:${port}`);
+  });
+}

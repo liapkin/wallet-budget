@@ -5,6 +5,7 @@ import { join } from 'node:path';
 const root = join(import.meta.dirname, '..', '..');
 const dbFile = join(root, 'data', 'demo.db');
 for (const f of [dbFile, `${dbFile}-wal`, `${dbFile}-shm`]) if (existsSync(f)) rmSync(f);
+process.env.DEMO = '1';
 process.env.BUDGET_DB = dbFile;
 const { db, setConfig } = await import('./db.ts');
 const { runPipeline } = await import('./pipeline.ts');

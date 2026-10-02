@@ -6,7 +6,17 @@ import { seedToConfig } from '../../shared/src/seed.ts';
 
 const root = join(import.meta.dirname, '..', '..');
 // relative BUDGET_DB resolves against the repo root so it works from any workspace
-const path = process.env.BUDGET_DB === ':memory:' ? ':memory:' : resolve(root, process.env.BUDGET_DB ?? 'data/budget.db');
+export const resolveDatabasePath = (env: NodeJS.ProcessEnv = process.env): string => {
+  const configured = env.BUDGET_DB;
+  const demoPath = resolve(root, 'data/demo.db');
+  const path = configured === ':memory:' ? ':memory:' : resolve(root, configured ?? (env.DEMO === '1' ? demoPath : 'data/budget.db'));
+  if (env.DEMO === '1' && path !== ':memory:' && path !== demoPath) {
+    throw new Error('Demo mode refuses to open databases other than data/demo.db');
+  }
+  return path;
+};
+
+const path = resolveDatabasePath();
 if (path !== ':memory:') mkdirSync(join(path, '..'), { recursive: true });
 
 export const db = new DatabaseSync(path);
@@ -32,6 +42,7 @@ export const setConfig = (cfg: Config): void => {
 
 if (!db.prepare('SELECT 1 FROM config').get()) {
   const personal = join(root, 'config', 'seed-config.json');
-  const seed = existsSync(personal) ? personal : join(root, 'config', 'seed-config.example.json');
+  const example = join(root, 'config', 'seed-config.example.json');
+  const seed = process.env.DEMO === '1' || !existsSync(personal) ? example : personal;
   setConfig(seedToConfig(JSON.parse(readFileSync(seed, 'utf8'))));
 }
