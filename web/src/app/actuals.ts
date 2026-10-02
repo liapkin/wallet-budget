@@ -9,6 +9,7 @@ import { MonthPicker } from './ui/month-picker';
 import { Refresh } from './ui/refresh';
 import { Toast } from './ui/toast';
 
+
 const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
 
 @Component({
@@ -27,8 +28,8 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0
             <div class="top">
               <strong>{{ a.label }}</strong>
               <div class="badges">
-                @if (a.wallet) { <span class="badge" title="Fed from Wallet, read-only">Wallet</span> }
-                @else { <span class="badge">Typed</span> }
+                @if (a.wallet) { <span class="src" title="From Wallet" aria-label="From Wallet"><app-icon name="wallet" [size]="14" /></span> }
+                @else { <span class="src muted" title="Entered by hand" aria-label="Entered by hand"><app-icon name="pencil" [size]="14" /></span> }
                 @if (a.wallet) {
                   @for (src of sources(a.key)?.split(', ') ?? []; track src) {
                     <span class="badge" style="font-size:var(--fs-xs)">{{ src }}</span>
@@ -96,6 +97,8 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0
     .entry .affix { margin-left: auto; }
     .sm { font-size: var(--fs-xs); }
     .ok { color: var(--good); font-size: var(--fs-xs); display: inline-flex; align-items: center; gap: 2px; }
+    .src { display: inline-flex; align-items: center; margin-left: 6px; vertical-align: middle; color: var(--accent); }
+    .src.muted { color: var(--muted); }
     td.walletcell { color: var(--muted); }
     .wsum { display: block; }
     td input.cell { width: 5.5rem; }

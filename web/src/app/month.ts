@@ -6,6 +6,7 @@ import { athensMonth } from '../../../shared/src/month.ts';
 import { Api } from './api';
 import { dayLabel, groupColor } from './format';
 import { ChartView } from './ui/chart';
+import { Icon } from './ui/icons';
 import { MonthPicker } from './ui/month-picker';
 import { Refresh } from './ui/refresh';
 
@@ -14,7 +15,7 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
 
 @Component({
   selector: 'app-month',
-  imports: [MonthPicker, ChartView, RouterLink],
+  imports: [Icon, MonthPicker, ChartView, RouterLink],
   styles: `
     .hero { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-4); }
     .hero .kpi.big { grid-column: span 2; }
@@ -33,6 +34,8 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
     .latest .chip { font-size: var(--fs-sm); }
     .sk-kpi { height: 6.5rem; border-radius: var(--r-lg); }
     .sk-card { height: 16rem; border-radius: var(--r-lg); margin-bottom: var(--sp-4); }
+    .src { display: inline-flex; align-items: center; margin-left: 6px; vertical-align: middle; color: var(--accent); }
+    .src.muted { color: var(--muted); }
     @media (max-width: 640px) { .hero .kpi.big { grid-column: auto; } }
   `,
   template: `
@@ -143,7 +146,7 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
           <div class="rows">
             @for (l of v.st.lines; track l.key) {
               <div class="row">
-                <span class="name">{{ l.label }}<span class="badge" [title]="l.wallet ? 'from Wallet' : 'typed'">{{ l.wallet ? 'W' : 'typed' }}</span></span>
+                <span class="name">{{ l.label }}@if (l.wallet) { <span class="src" title="From Wallet" aria-label="From Wallet"><app-icon name="wallet" [size]="14" /></span> } @else { <span class="src muted" title="Entered by hand" aria-label="Entered by hand"><app-icon name="pencil" [size]="14" /></span> }</span>
                 <span class="num">
                   <span [class.err]="l.actual !== null && l.actual > l.plan">{{ l.actual === null ? '—' : fmt(l.actual) }}</span>
                   <span class="muted"> / {{ fmt(l.plan) }}</span>
