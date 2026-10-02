@@ -40,18 +40,9 @@ Settings holds database currency, theme and hidden amounts. Normal databases def
 
 The generic dataset covers the latest 18 months relative to the run date and includes duplicates and unclassified records. `pnpm demo:seed` resets it, discarding demo edits and manual records.
 
-## Screenshots
+### Feature showcase
 
-Screenshots from the USD demo.
-
-![Month overview](docs/screenshots/1.png)
-![Spending history](docs/screenshots/2.png)
-![Transaction records](docs/screenshots/3.png)
-![Budget income and allocation](docs/screenshots/4.png)
-![Budget core lines and settings](docs/screenshots/5.png)
-![Monthly core actuals](docs/screenshots/6.png)
-![Grocery list](docs/screenshots/8.png)
-![Meal plan](docs/screenshots/9.png)
+![Feature tour](docs/screenshots/demo.gif)
 
 ## Data
 
