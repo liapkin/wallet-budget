@@ -1,10 +1,9 @@
 export type Cell = { cents: number; count: number };
 export type Summary = Record<string, Record<string, Cell>>; // period -> group -> cell
 
-export function summarize(rows: { month: string; grp: string; amountCents: number; isDup: boolean }[]): Summary {
+export function summarize(rows: { month: string; grp: string; amountCents: number }[]): Summary {
   const out: Summary = {};
   for (const r of rows) {
-    if (r.isDup) continue;
     const cell = ((out[r.month] ??= {})[r.grp] ??= { cents: 0, count: 0 });
     cell.cents -= r.amountCents;
     cell.count++;

@@ -1,20 +1,36 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { randomUUID } from 'node:crypto';
-import { db, getConfig, setConfig, currencyLocked } from './db.ts';
-import { activeSource, runPipeline, spendSummary } from './pipeline.ts';
+import { db, getConfig, setConfig, currencyLocked, tx } from './db.ts';
+import { activeSource, runPipeline, spendSummary, toRec } from './pipeline.ts';
 import { insertApiRecord, lastSync, syncOnce } from './sync.ts';
 import { del, post } from './wallet.ts';
 import { startScheduler } from './scheduler.ts';
 import { walletPayload } from './wallet-payload.ts';
 import { dietConfigError } from './diet-config.ts';
-import { athensLocalToUtc, athensMonth } from '../../shared/src/month.ts';
+import { athensDay, athensLocalToUtc, athensMonth } from '../../shared/src/month.ts';
 import { capsFor, monthStatus } from '../../shared/src/budget.ts';
 import { budgetAlerts, monthClose, pairKey, possibleDuplicates, recurring, suggestGroup, yearReview } from '../../shared/src/insights.ts';
-import type { Config, Rec } from '../../shared/src/types.ts';
+import { toCents } from '../../shared/src/money.ts';
+import type { Config } from '../../shared/src/types.ts';
 
 const demo = process.env.DEMO === '1';
 const app = express();
-app.use(express.json({ limit: '5mb' }));
+
+const LOCAL = new Set(['127.0.0.1', 'localhost']);
+// Blocks DNS rebinding (Host) and cross-site browser requests (Origin) against the unauthenticated API.
+export function localOnly(req: Request, res: Response, next: NextFunction) {
+  const origin = req.headers.origin;
+  let originHost: string | undefined;
+  try {
+    originHost = origin === undefined ? undefined : new URL(origin).hostname;
+  } catch {
+    originHost = '';
+  }
+  if (!LOCAL.has(req.hostname) || (originHost !== undefined && !LOCAL.has(originHost))) return void res.status(403).json({ error: 'forbidden' });
+  next();
+}
+app.use(localOnly);
+app.use(express.json({ limit: '256kb' }));
 
 class BadRequest extends Error {}
 const bad = (msg: string): never => {
@@ -111,7 +127,7 @@ export async function createRecord(req: Request, res: Response) {
   const value = typeof amount === 'string' && amount.trim() !== '' ? Number(amount.replace(',', '.')) : amount;
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) bad('amount must be a number > 0');
   const [y, mo, d, h, mi] = m!.slice(1).map(Number);
-  const cents = Math.round(value * 100);
+  const cents = toCents(value);
   if (toWallet === true) {
     if (demo) bad('Disabled in demo mode');
     if (getConfig().currency !== 'EUR') bad('Wallet sync, import and writes support EUR databases only');
@@ -169,7 +185,10 @@ app.delete('/api/records/:id', async (req, res, next) => {
       }
       if (!result?.success) return void res.status(502).json({ error: `Wallet rejected the delete: ${String(result?.error ?? 'no result').slice(0, 120)}` });
     } else if (r.source !== 'manual') return void res.status(403).json({ error: 'only manual records can be deleted' });
-    db.prepare('DELETE FROM records WHERE id=?').run(r.id);
+    tx(() => {
+      db.prepare('DELETE FROM dup_decisions WHERE a=? OR b=?').run(r.id, r.id);
+      db.prepare('DELETE FROM records WHERE id=?').run(r.id);
+    });
     runPipeline();
     res.status(204).end();
   } catch (e) {
@@ -221,9 +240,11 @@ app.put('/api/actuals/:month', (req, res) => {
     if (!keys.includes(k)) bad(`unknown line: ${k}`);
     if (v !== null && !Number.isInteger(v)) bad(`${k} must be integer cents or null`);
   }
-  for (const [k, v] of Object.entries(body))
-    if (v === null) db.prepare('DELETE FROM core_actuals WHERE month=? AND key=?').run(month, k);
-    else db.prepare('INSERT OR REPLACE INTO core_actuals (month, key, cents) VALUES (?, ?, ?)').run(month, k, v as number);
+  const delOne = db.prepare('DELETE FROM core_actuals WHERE month=? AND key=?');
+  const setOne = db.prepare('INSERT OR REPLACE INTO core_actuals (month, key, cents) VALUES (?, ?, ?)');
+  tx(() => {
+    for (const [k, v] of Object.entries(body)) v === null ? delOne.run(month, k) : setOne.run(month, k, v as number);
+  });
   res.status(204).end();
 });
 
@@ -247,7 +268,6 @@ const monthsAgo = (n: number): string => {
 // non-dup expenses (active source + manual) since `since`
 const liveRows = (since: string, extra = '') =>
   (db.prepare(`${SELECT} WHERE is_dup=0 AND type='Expenses' AND source IN (?, 'manual') AND date_utc>=? ${extra}`).all(activeSource(), since) as any[]).map(present);
-const toRec = (r: any): Rec => ({ id: r.id, source: r.source, account: r.account, category: r.category, amountCents: r.amountCents, type: r.type, paymentType: r.paymentType, note: r.note, dateUtc: r.dateUtc, groupOverride: r.groupOverride });
 
 app.get('/api/recurring', (req, res) => {
   const rows = liveRows(monthsAgo(13));
@@ -285,14 +305,9 @@ app.post('/api/records/bulk-group', (req, res) => {
   if (!Array.isArray(ids) || !ids.length || !ids.every(Number.isInteger)) bad('ids must be a non-empty array of record ids');
   if (!getConfig().wallet.groups.includes(group)) bad('unknown group');
   const upd = db.prepare('UPDATE records SET group_override=? WHERE id=?');
-  db.exec('BEGIN');
-  try {
+  tx(() => {
     for (const id of ids) upd.run(group, id);
-    db.exec('COMMIT');
-  } catch (e) {
-    db.exec('ROLLBACK');
-    throw e;
-  }
+  });
   runPipeline();
   res.status(204).end();
 });
@@ -315,7 +330,7 @@ app.get('/api/alerts', (req, res) => {
   let daysLeft = 0;
   if (month === athensMonth(now.toISOString())) {
     const [y, m] = month.split('-').map(Number);
-    daysLeft = new Date(y, m, 0).getDate() - Number(now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' }).slice(8)) + 1;
+    daysLeft = new Date(y, m, 0).getDate() - Number(athensDay().slice(8)) + 1;
   }
   const caps = capsFor(month, cfg);
   res.json(

@@ -1,10 +1,9 @@
 import { savings } from './budget.ts';
+import { athensDay } from './month.ts';
 import type { Summary } from './summary.ts';
 import type { Config, Rec } from './types.ts';
 
 const DAY = 86_400_000;
-const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens' }); // YYYY-MM-DD
-const athensDay = (iso: string): string => day.format(new Date(iso));
 const dayNum = (d: string): number => Date.parse(d) / DAY;
 const median = (xs: number[]): number => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 const addDays = (d: string, n: number): string => new Date((dayNum(d) + n) * DAY).toISOString().slice(0, 10);

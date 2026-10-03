@@ -49,12 +49,10 @@ export function importFile(file: string): void {
 
 export function report(): void {
   const s = spendSummary();
-  const cols = ['Groceries', 'Takeout', 'Takeout#', 'Cafes & eating out', 'Kiosk', 'Kiosk#', 'Work food', 'Fuel', 'Transport'];
-  console.log(['2026', ...cols.map((c) => (c.endsWith('#') ? c === 'Takeout#' ? 'Orders' : 'Visits' : c))].join(' | '));
-  for (const [label, m] of [['Jul', '2026-07'], ['Aug', '2026-08'], ['Sep', '2026-09']]) {
-    const cell = (g: string) => s[m]?.[g] ?? { cents: 0, count: 0 };
-    console.log([label, ...cols.map((c) => (c.endsWith('#') ? cell(c.slice(0, -1)).count : fmt(cell(c).cents)))].join(' | '));
-  }
+  const months = Object.keys(s).sort().slice(-3);
+  const groups = [...new Set(months.flatMap((m) => Object.keys(s[m])))].sort();
+  console.log(['Month', ...groups].join(' | '));
+  for (const m of months) console.log([m, ...groups.map((g) => fmt(s[m][g]?.cents ?? 0))].join(' | '));
   const c = db.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(is_dup),0) AS d FROM records').get() as { n: number; d: number };
   console.log(`records: ${c.n}, duplicates: ${c.d}`);
 }

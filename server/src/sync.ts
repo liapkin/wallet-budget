@@ -1,10 +1,16 @@
-import { db, requireWalletCurrency } from './db.ts';
+import { db, requireWalletCurrency, tx } from './db.ts';
 import { get, pages } from './wallet.ts';
 import { runPipeline } from './pipeline.ts';
 import { toDelete } from './reconcile.ts';
 import { toCents } from '../../shared/src/money.ts';
+import { athensDay } from '../../shared/src/month.ts';
 
-const athensDay = (): string => new Date().toLocaleDateString('sv', { timeZone: 'Europe/Athens' });
+// Fetch everything before any BEGIN: a transaction must never stay open across awaits.
+const collect = async (path: string, key: string, params = {}): Promise<any[]> => {
+  const out: any[] = [];
+  for await (const r of pages<any>(path, key, params)) out.push(r);
+  return out;
+};
 const day = (d: Date): string => d.toISOString().slice(0, 10);
 
 // The API has no payment type: bank-feed records are TRANSFER, phone entries MOBILE_PAYMENT, the rest CASH.
@@ -81,21 +87,15 @@ export async function sync({ full = false } = {}): Promise<{ inserted: number; u
   for (let from = start; from < end; ) {
     const to = new Date(Math.min(Date.UTC(from.getUTCFullYear() + 1, 0, 1), end.getTime()));
     windows++;
-    db.exec('BEGIN');
-    try {
-      for await (const r of pages<any>('/v1/api/records', 'records', {
-        recordDate: [`gte.${day(from)}`, `lt.${day(to)}`],
-        convertTo: 'EUR',
-        sortBy: '+recordDate',
-      })) {
-        tally(insertApiRecord(r));
-      }
+    const recs = await collect('/v1/api/records', 'records', {
+      recordDate: [`gte.${day(from)}`, `lt.${day(to)}`],
+      convertTo: 'EUR',
+      sortBy: '+recordDate',
+    });
+    tx(() => {
+      for (const r of recs) tally(insertApiRecord(r));
       save.run(day(new Date(Math.min(to.getTime(), Date.now()))));
-      db.exec('COMMIT');
-    } catch (e) {
-      db.exec('ROLLBACK');
-      throw e;
-    }
+    });
     from = to;
   }
 
@@ -103,9 +103,10 @@ export async function sync({ full = false } = {}): Promise<{ inserted: number; u
   const since = db.prepare("SELECT value FROM sync_state WHERE key='last_updated_at'").get() as { value: string } | undefined;
   if (since) {
     windows++;
-    for await (const r of pages<any>('/v1/api/records', 'records', { updatedAt: `gte.${since.value}`, recordDate: 'gte.2017-01-01', convertTo: 'EUR' })) {
-      tally(insertApiRecord(r));
-    }
+    const edited = await collect('/v1/api/records', 'records', { updatedAt: `gte.${since.value}`, recordDate: 'gte.2017-01-01', convertTo: 'EUR' });
+    tx(() => {
+      for (const r of edited) tally(insertApiRecord(r));
+    });
   }
   db.prepare("INSERT OR REPLACE INTO sync_state (key, value) VALUES ('last_updated_at', ?)").run(startedAt);
 
@@ -116,12 +117,17 @@ export async function sync({ full = false } = {}): Promise<{ inserted: number; u
   let glitches = 0;
   if (from) {
     windows++;
-    const remote = new Set<string>();
-    for await (const r of pages<any>('/v1/api/records', 'records', { recordDate: `gte.${from}` })) remote.add(r.id);
+    const remote = new Set<string>((await collect('/v1/api/records', 'records', { recordDate: `gte.${from}` })).map((r) => r.id));
     const local = (db.prepare("SELECT ext_id FROM records WHERE source='api' AND date_utc >= ?").all(from) as { ext_id: string }[]).map((r) => r.ext_id);
     if (local.length && !remote.size) glitches++;
     const del = db.prepare("DELETE FROM records WHERE source='api' AND ext_id=?");
-    for (const id of toDelete(local, remote)) deleted += Number(del.run(id).changes);
+    const delDec = db.prepare("DELETE FROM dup_decisions WHERE a IN (SELECT id FROM records WHERE ext_id=?) OR b IN (SELECT id FROM records WHERE ext_id=?)");
+    tx(() => {
+      for (const id of toDelete(local, remote)) {
+        delDec.run(id, id);
+        deleted += Number(del.run(id).changes);
+      }
+    });
   }
   db.prepare("INSERT OR REPLACE INTO sync_state (key, value) VALUES ('last_sync', ?)").run(new Date().toISOString());
   runPipeline();

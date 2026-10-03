@@ -13,7 +13,7 @@ const BASE = 'https://rest.budgetbakers.com/wallet';
 async function call<T>(method: 'GET' | 'POST' | 'DELETE', url: string, path: string, body?: unknown): Promise<T> {
   requireWalletCurrency();
   if (!process.env.WALLET_API_TOKEN) throw new Error('WALLET_API_TOKEN is not set; add it to .env');
-  for (;;) {
+  for (let attempt = 1; ; attempt++) {
     requireWalletCurrency();
     const res = await fetch(url, {
       method,
@@ -21,7 +21,8 @@ async function call<T>(method: 'GET' | 'POST' | 'DELETE', url: string, path: str
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     if (res.status === 429) {
-      const wait = Number(res.headers.get('retry-after')) || 60;
+      if (attempt >= 5) throw new Error(`Wallet ${method} ${path} failed: rate limited`);
+      const wait = Math.min(Number(res.headers.get('retry-after')) || 60, 120);
       console.error(`rate limited, waiting ${wait}s`);
       await new Promise((r) => setTimeout(r, wait * 1000));
       continue;

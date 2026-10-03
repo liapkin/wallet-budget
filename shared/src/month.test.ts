@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { athensMonth, athensLocalToUtc } from './month.ts';
+import { athensMonth, athensLocalToUtc, athensDay } from './month.ts';
 
 test('Athens month boundary', () => {
   assert.equal(athensMonth('2026-07-31T22:30:00Z'), '2026-08');
@@ -16,4 +16,10 @@ test('Athens local to UTC conversion', () => {
   assert.equal(athensLocalToUtc(2026, 1, 15, 3, 0, 0), '2026-01-15T01:00:00.000Z');
   // Round-trip: converted time should map back to Sep month
   assert.equal(athensMonth(athensLocalToUtc(2026, 9, 30, 21, 16, 12)), '2026-09');
+});
+
+test('athensDay', () => {
+  assert.equal(athensDay('2026-07-31T22:30:00Z'), '2026-08-01');
+  assert.equal(athensDay('2026-07-31T20:30:00Z'), '2026-07-31');
+  assert.match(athensDay(), /^\d{4}-\d{2}-\d{2}$/);
 });

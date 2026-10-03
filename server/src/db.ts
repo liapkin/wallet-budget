@@ -70,3 +70,14 @@ if (!db.prepare('SELECT 1 FROM config').get()) {
   if (process.env.DEMO === '1') cfg.currency = 'USD';
   setConfig(cfg);
 }
+
+export function tx(fn: () => void): void {
+  db.exec('BEGIN');
+  try {
+    fn();
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
+}
