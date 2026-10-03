@@ -16,7 +16,7 @@ export const athensDay = (iso?: string): string => dayFmt.format(iso ? new Date(
 // Athens wall clock minus UTC, in ms, at instant t.
 const offsetAt = (t: number): number => {
   const v = Object.fromEntries(full.formatToParts(new Date(t)).map((x) => [x.type, parseInt(x.value)]));
-  return Date.UTC(v.year, v.month - 1, v.day, v.hour, v.minute, v.second) - t;
+  return Date.UTC(v['year'], v['month'] - 1, v['day'], v['hour'], v['minute'], v['second']) - t;
 };
 
 export const athensLocalToUtc = (y: number, mo: number, d: number, h: number, mi: number, s: number): string => {
