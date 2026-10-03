@@ -3,7 +3,7 @@ import { toCents } from './money.ts';
 
 const MONEY = new Set([
   'netSalaryPerMonth', 'plan', 'funPerMonth', 'sinkingFundTopUpPerMonth', 'bankSavings', 'cashSavings',
-  'annualIrregulars', 'takeoutPerMonth', 'kioskPerMonth', 'tradingCostPerYear', 'propertyPrice', 'regularPrice', 'offerPrice',
+  'annualIrregulars', 'takeoutPerMonth', 'kioskPerMonth', 'tradingCostPerYear', 'propertyPrice', 'businessTarget', 'regularPrice', 'offerPrice',
 ]);
 
 const walk = (v: unknown): unknown => {

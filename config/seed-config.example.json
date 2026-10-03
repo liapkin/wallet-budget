@@ -89,7 +89,15 @@
       "Housing"
     ],
     "investmentAccounts": [],
-    "payrollAccount": null
+    "payrollAccount": null,
+    "monthClose": {
+      "payroll": "Main Bank",
+      "investAccount": "Broker",
+      "businessAccount": "Business",
+      "businessTarget": 1000,
+      "savingsAccount": "Savings",
+      "emergencyAccount": "Savings"
+    }
   },
   "caps": {
     "applyFrom": "2027-01-01",

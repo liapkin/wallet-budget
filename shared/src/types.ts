@@ -45,6 +45,15 @@ export type Config = {
     annualIrregulars: number;
     funGroups: string[];
     coveredByCoreGroups: string[];
+    // account names for the month-end transfer suggestions; businessTarget is cents
+    monthClose?: {
+      payroll: string;
+      investAccount: string;
+      businessAccount: string;
+      businessTarget: number;
+      savingsAccount: string;
+      emergencyAccount: string;
+    };
   };
   caps: {
     applyFrom: string;
