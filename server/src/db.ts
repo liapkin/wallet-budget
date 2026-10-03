@@ -33,6 +33,8 @@ CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, name TEXT, balance_cen
 CREATE TABLE IF NOT EXISTS categories (id TEXT PRIMARY KEY, name TEXT, parent TEXT);
 CREATE TABLE IF NOT EXISTS sync_state (key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS balance_snapshots (day TEXT, account TEXT, balance_cents INTEGER, PRIMARY KEY(day, account));
+CREATE TABLE IF NOT EXISTS dup_decisions (a INTEGER, b INTEGER, decision TEXT CHECK(decision IN ('dup','not')), PRIMARY KEY(a, b));
+CREATE TABLE IF NOT EXISTS month_close (month TEXT PRIMARY KEY, json TEXT);
 `);
 if (!(db.prepare('PRAGMA table_info(records)').all() as { name: string }[]).some((c) => c.name === 'created_in_app')) {
   db.exec('ALTER TABLE records ADD COLUMN created_in_app INTEGER DEFAULT 0');

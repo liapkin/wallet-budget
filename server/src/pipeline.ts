@@ -17,6 +17,14 @@ export function runPipeline(): void {
   }));
   // the inactive source must not pair with the active one
   const dups = dedupe(recs.filter((r) => r.source !== inactive));
+  // confirmed duplicate pairs: keep the bank-synced record, else the later one
+  const byId = new Map(recs.map((r) => [r.id, r]));
+  for (const { a, b } of db.prepare("SELECT a, b FROM dup_decisions WHERE decision='dup'").all() as { a: number; b: number }[]) {
+    const [x, y] = [byId.get(a), byId.get(b)];
+    if (!x || !y || x.source === inactive || y.source === inactive || dups.has(a) || dups.has(b)) continue;
+    const keepY = x.paymentType === y.paymentType ? y.dateUtc >= x.dateUtc : y.paymentType === 'TRANSFER';
+    dups.set(keepY ? a : b, keepY ? b : a);
+  }
   const upd = db.prepare('UPDATE records SET is_dup=?, dup_of=?, grp=?, month=? WHERE id=?');
   db.exec('BEGIN');
   try {

@@ -7,8 +7,10 @@ import { del, post } from './wallet.ts';
 import { startScheduler } from './scheduler.ts';
 import { walletPayload } from './wallet-payload.ts';
 import { dietConfigError } from './diet-config.ts';
-import { athensLocalToUtc } from '../../shared/src/month.ts';
-import type { Config } from '../../shared/src/types.ts';
+import { athensLocalToUtc, athensMonth } from '../../shared/src/month.ts';
+import { capsFor, monthStatus } from '../../shared/src/budget.ts';
+import { budgetAlerts, monthClose, pairKey, possibleDuplicates, recurring, suggestGroup, yearReview } from '../../shared/src/insights.ts';
+import type { Config, Rec } from '../../shared/src/types.ts';
 
 const demo = process.env.DEMO === '1';
 const app = express();
@@ -231,6 +233,128 @@ app.get('/api/wallet-categories', (req, res) => {
 
 app.get('/api/accounts', (req, res) => {
   res.json(db.prepare('SELECT id, name, balance_cents AS balanceCents, currency, updated_at AS updatedAt FROM accounts ORDER BY name').all());
+});
+
+// ---- insights
+
+const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
+const monthParam = (v: unknown): string => (typeof v === 'string' && MONTH.test(v) ? v : bad('month must be YYYY-MM'));
+const monthsAgo = (n: number): string => {
+  const d = new Date();
+  d.setUTCMonth(d.getUTCMonth() - n);
+  return d.toISOString();
+};
+// non-dup expenses (active source + manual) since `since`
+const liveRows = (since: string, extra = '') =>
+  (db.prepare(`${SELECT} WHERE is_dup=0 AND type='Expenses' AND source IN (?, 'manual') AND date_utc>=? ${extra}`).all(activeSource(), since) as any[]).map(present);
+const toRec = (r: any): Rec => ({ id: r.id, source: r.source, account: r.account, category: r.category, amountCents: r.amountCents, type: r.type, paymentType: r.paymentType, note: r.note, dateUtc: r.dateUtc, groupOverride: r.groupOverride });
+
+app.get('/api/recurring', (req, res) => {
+  const rows = liveRows(monthsAgo(13));
+  const grp = new Map(rows.map((r) => [r.id, r.grp]));
+  const items = recurring(rows.map(toRec), (r) => grp.get(r.id));
+  res.json({ items, monthlyTotalCents: items.reduce((s, i) => s + i.typicalCents, 0) });
+});
+
+app.get('/api/possible-duplicates', (req, res) => {
+  const rows = liveRows(monthsAgo(13));
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const decided = new Set((db.prepare('SELECT a, b FROM dup_decisions').all() as { a: number; b: number }[]).map((d) => pairKey(d.a, d.b)));
+  res.json(possibleDuplicates(rows.map(toRec), decided).map((p) => ({ a: byId.get(p.a.id), b: byId.get(p.b.id) })));
+});
+
+app.post('/api/possible-duplicates', (req, res) => {
+  const { a, b, decision } = req.body ?? {};
+  if (!Number.isInteger(a) || !Number.isInteger(b) || a === b) bad('a and b must be two different record ids');
+  if (decision !== 'dup' && decision !== 'not') bad("decision must be 'dup' or 'not'");
+  if (!getRecord(a) || !getRecord(b)) return void res.status(404).json({ error: 'not found' });
+  db.prepare('INSERT OR REPLACE INTO dup_decisions (a, b, decision) VALUES (?, ?, ?)').run(Math.min(a, b), Math.max(a, b), decision);
+  runPipeline();
+  res.status(204).end();
+});
+
+app.get('/api/unclassified', (req, res) => {
+  const since = monthsAgo(24);
+  const rows = liveRows(since);
+  const classified = rows.filter((r) => r.grp !== 'Other').map((r) => ({ note: r.note, group: r.grp }));
+  res.json(rows.filter((r) => r.grp === 'Other').map((r) => ({ ...r, suggestion: suggestGroup(toRec(r), classified) })));
+});
+
+app.post('/api/records/bulk-group', (req, res) => {
+  const { ids, group } = req.body ?? {};
+  if (!Array.isArray(ids) || !ids.length || !ids.every(Number.isInteger)) bad('ids must be a non-empty array of record ids');
+  if (!getConfig().wallet.groups.includes(group)) bad('unknown group');
+  const upd = db.prepare('UPDATE records SET group_override=? WHERE id=?');
+  db.exec('BEGIN');
+  try {
+    for (const id of ids) upd.run(group, id);
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
+  runPipeline();
+  res.status(204).end();
+});
+
+app.get('/api/balances/history', (req, res) => {
+  res.json(db.prepare('SELECT day, account, balance_cents AS balanceCents FROM balance_snapshots ORDER BY day, account').all());
+});
+
+const monthGroupSpend = (month: string): Record<string, number> =>
+  Object.fromEntries(Object.entries(spendSummary()[month] ?? {}).map(([g, c]) => [g, c.cents]));
+const monthTyped = (month: string): Record<string, number> =>
+  Object.fromEntries((db.prepare('SELECT key, cents FROM core_actuals WHERE month=?').all(month) as { key: string; cents: number }[]).map((r) => [r.key, r.cents]));
+
+app.get('/api/alerts', (req, res) => {
+  const month = monthParam(req.query.month);
+  const cfg = getConfig();
+  const spend = monthGroupSpend(month);
+  const status = monthStatus(cfg, spend, monthTyped(month));
+  const now = new Date();
+  let daysLeft = 0;
+  if (month === athensMonth(now.toISOString())) {
+    const [y, m] = month.split('-').map(Number);
+    daysLeft = new Date(y, m, 0).getDate() - Number(now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' }).slice(8)) + 1;
+  }
+  const caps = capsFor(month, cfg);
+  res.json(
+    budgetAlerts(
+      [
+        { key: 'fun', label: 'Fun', spentCents: status.fun, capCents: cfg.allocation.funPerMonth },
+        ...(caps ? (['Takeout', 'Kiosk'] as const).map((g) => ({ key: g, label: g, spentCents: spend[g] ?? 0, capCents: caps[g] })) : []),
+      ],
+      daysLeft,
+    ),
+  );
+});
+
+app.get('/api/month-close/:month', (req, res) => {
+  const month = monthParam(req.params.month);
+  const balances = Object.fromEntries((db.prepare('SELECT name, balance_cents AS c FROM accounts').all() as { name: string; c: number }[]).map((a) => [a.name, a.c]));
+  const status = monthStatus(getConfig(), monthGroupSpend(month), monthTyped(month));
+  const row = db.prepare('SELECT json FROM month_close WHERE month=?').get(month) as { json: string } | undefined;
+  res.json({ transfers: monthClose(getConfig(), balances, status), done: row ? JSON.parse(row.json) : [] });
+});
+
+app.put('/api/month-close/:month', (req, res) => {
+  const month = monthParam(req.params.month);
+  const done = req.body?.done;
+  if (!Array.isArray(done) || !done.every((d) => typeof d === 'string')) bad('done must be an array of strings');
+  db.prepare('INSERT OR REPLACE INTO month_close (month, json) VALUES (?, ?)').run(month, JSON.stringify(done));
+  res.status(204).end();
+});
+
+app.get('/api/year/:y', (req, res) => {
+  if (!/^\d{4}$/.test(req.params.y)) bad('year must be YYYY');
+  const year = Number(req.params.y);
+  const w = getConfig().wallet;
+  const review = yearReview(spendSummary(), year, ['Income', ...w.excludedGroups]);
+  if (req.query.format !== 'csv') return void res.json(review);
+  const eur = (c: number) => (c / 100).toFixed(2);
+  const cell = (s: string) => (/[",\n]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s);
+  const lines = ['group,amount,prev,delta', ...review.groups.map((g) => [cell(g.group), eur(g.cents), eur(g.prevCents), eur(g.deltaCents)].join(','))];
+  res.type('text/csv').attachment(`year-${year}.csv`).send(lines.join('\n') + '\n');
 });
 
 app.post('/api/sync', (req, res, next) => {
