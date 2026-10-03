@@ -20,7 +20,7 @@
     @for (g of nav; track g.label) {
       <div class="sect">{{ g.label }}</div>
       @for (i of g.items; track i.path) {
-        <a [routerLink]="'/' + i.path" routerLinkActive="active"><app-icon [name]="i.icon" /> {{ i.label }}</a>
+        <a [routerLink]="'/' + i.path" routerLinkActive="active"><app-icon [name]="i.icon" /> {{ i.label }}@if (i.badge && inbox.value()) { <span class="badge">{{ inbox.value() }}</span> }</a>
       }
     }
   </nav>

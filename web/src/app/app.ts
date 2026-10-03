@@ -1,4 +1,6 @@
 import { Component, effect, HostListener, inject, resource, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { dayLabel } from './format';
 import { Api } from './api';
@@ -8,8 +10,8 @@ import { cycleTheme, theme, themeLabel } from './ui/theme';
 import { Refresh } from './ui/refresh';
 import { Toasts } from './ui/toast';
 
-const NAV: { label: string; items: { path: string; label: string; icon: IconName }[] }[] = [
-  { label: 'Overview', items: [{ path: 'month', label: 'Month', icon: 'calendar' }, { path: 'history', label: 'History', icon: 'history' }] },
+const NAV: { label: string; items: { path: string; label: string; icon: IconName; badge?: boolean }[] }[] = [
+  { label: 'Overview', items: [{ path: 'month', label: 'Month', icon: 'calendar' }, { path: 'history', label: 'History', icon: 'history' }, { path: 'inbox', label: 'Inbox', icon: 'inbox', badge: true }] },
   {
     label: 'Money',
     items: [
@@ -17,6 +19,7 @@ const NAV: { label: string; items: { path: string; label: string; icon: IconName
       { path: 'actuals', label: 'Core actuals', icon: 'wallet' }, { path: 'investing', label: 'Investing', icon: 'trend' },
     ],
   },
+  { label: 'Insights', items: [{ path: 'recurring', label: 'Recurring', icon: 'repeat' }, { path: 'networth', label: 'Net worth', icon: 'trend' }, { path: 'year', label: 'Year', icon: 'calendar' }] },
   { label: 'Food', items: [{ path: 'meals', label: 'Meals', icon: 'utensils' }, { path: 'groceries', label: 'Groceries', icon: 'cart' }] },
   { label: 'App', items: [{ path: 'settings', label: 'Settings', icon: 'sliders' }] },
 ];
@@ -31,6 +34,13 @@ export class App {
   protected nav = NAV;
   protected refresh = inject(Refresh);
   private api = inject(Api);
+  private http = inject(HttpClient);
+  /** Badge is decorative: a failed count shows nothing rather than an error. */
+  private count = (url: string) => firstValueFrom(this.http.get<unknown[]>(url)).then((l) => l.length, () => 0);
+  protected inbox = resource({
+    params: () => this.refresh.tick(),
+    loader: async () => (await Promise.all([this.count('/api/possible-duplicates'), this.count('/api/unclassified')])).reduce((n, c) => n + c, 0),
+  });
   protected drawer = signal(false);
   protected ready = signal(false);
   protected hidden = hidden;

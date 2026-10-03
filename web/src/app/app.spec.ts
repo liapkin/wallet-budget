@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { App } from './app';
 import { Api } from './api';
 import { routes } from './app.routes';
@@ -27,6 +27,9 @@ describe('App', () => {
     setTheme('light');
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
+    const http = TestBed.inject(HttpTestingController);
+    http.match('/api/possible-duplicates').forEach((r) => r.flush([]));
+    http.match('/api/unclassified').forEach((r) => r.flush([]));
     await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelectorAll('.accent-soft').length).toBe(2);
