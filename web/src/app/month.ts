@@ -1,14 +1,15 @@
-import { Component, computed, inject, resource, signal } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, resource, signal } from '@angular/core';
 import { RouterLink, Router } from '@angular/router';
 import { allocation, capsFor, monthStatus, savings } from '../../../shared/src/budget.ts';
 import { currencySymbol, fmt } from './format.ts';
 import { athensMonth } from '../../../shared/src/month.ts';
 import { Api } from './api';
-import { dayLabel, groupColor, HOLLOW } from './format';
+import { currentMonth, dayLabel, groupColor, HOLLOW } from './format';
 import { ChartView } from './ui/chart';
 import { Icon } from './ui/icons';
 import { MonthPicker } from './ui/month-picker';
 import { Refresh } from './ui/refresh';
+import { Toast } from './ui/toast';
 
 const TZ = 'Europe/Athens';
 const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b) * 100)) : 0);
@@ -36,6 +37,15 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
     .sk-card { height: 16rem; border-radius: var(--r-lg); margin-bottom: var(--sp-4); }
     .src { display: inline-flex; align-items: center; margin-left: 6px; vertical-align: middle; color: var(--accent); }
     .src.muted { color: var(--muted); }
+    .alerts { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: var(--sp-4); }
+    .alert { display: inline-flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1) var(--sp-3); border-radius: var(--r); font-size: var(--fs-sm); }
+    .alert.near { color: var(--warn); background: var(--warn-bg); }
+    .alert.over { color: var(--bad); background: var(--bad-bg); }
+    .xfer { list-style: none; margin: 0; padding: 0; }
+    .xfer li { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) 0; border-bottom: 1px solid var(--border); }
+    .xfer li:last-child { border-bottom: 0; }
+    .xfer .path { display: flex; align-items: center; gap: var(--sp-2); flex: 1; min-width: 0; }
+    .xfer .done .path, .xfer .done .num { color: var(--muted); text-decoration: line-through; }
     @media (max-width: 640px) { .hero .kpi.big { grid-column: auto; } }
   `,
   template: `
@@ -44,8 +54,19 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
       <div class="actions">
         <button class="primary" (click)="addExpense()"><app-icon name="plus" [size]="16" /> Add expense</button>
         <app-month-picker [(month)]="month" />
+        @if (updated()) { <span class="muted">{{ updated() }}</span> }
       </div>
     </div>
+    @if (alertList().length) {
+      <div class="alerts">
+        @for (a of alertList(); track a.key) {
+          <span class="alert" [class.near]="a.level === 'near'" [class.over]="a.level === 'over'">
+            <app-icon name="alert" [size]="14" />
+            {{ a.label }} {{ fmt(a.spentCents) }} of {{ fmt(a.capCents) }}@if (a.level === 'near' && a.perDayCents > 0) { , {{ fmt(a.perDayCents) }}/day left }
+          </span>
+        }
+      </div>
+    }
     @if (error()) {
       <p class="err">Failed to load data. Check that the server is running, then try Fetch again.</p>
     }
@@ -102,6 +123,24 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
           </div>
         }
       </div>
+
+      @if (showClose() && close.value(); as c) {
+        <section class="card">
+          <div class="card-head"><h2>Month-end</h2>@if (allDone()) { <span class="badge">Month closed</span> }</div>
+          @if (!c.transfers.length) {
+            <div class="empty"><strong>No transfers</strong><span>Nothing to move this month.</span></div>
+          }
+          <ul class="xfer">
+            @for (t of c.transfers; track t.key) {
+              <li [class.done]="doneKeys().includes(t.key)">
+                <label class="switch"><input type="checkbox" [checked]="doneKeys().includes(t.key)" (change)="toggleDone(t.key)" [attr.aria-label]="'Done: ' + t.label" /> done</label>
+                <span class="path"><span class="strong">{{ t.from }}</span><app-icon name="arrowRight" [size]="14" /><span class="strong">{{ t.to }}</span></span>
+                <span class="num strong">{{ fmt(t.cents) }}</span>
+              </li>
+            }
+          </ul>
+        </section>
+      }
 
       <section class="card">
         <div class="card-head">
@@ -203,6 +242,7 @@ export class Month {
   protected refresh = inject(Refresh);
   private tick = this.refresh.tick;
   private router = inject(Router);
+  private toast = inject(Toast);
   protected month = signal(athensMonth(new Date().toISOString()));
   protected label = computed(() =>
     new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(this.month() + '-01T00:00:00Z')),
@@ -215,7 +255,45 @@ export class Month {
     params: () => ({ month: this.month(), t: this.tick() }),
     loader: ({ params }) => this.api.records({ month: params.month }),
   });
+  private meta = resource({ params: () => this.tick(), loader: () => this.api.meta() });
+  private alerts = resource({ params: () => ({ month: this.month(), t: this.tick() }), loader: ({ params }) => this.api.alerts(params.month) });
+  protected close = resource({ params: () => ({ month: this.month(), t: this.tick() }), loader: ({ params }) => this.api.monthClose(params.month) });
+  protected alertList = computed(() => (this.alerts.value() ?? []).filter((a) => a.level !== 'ok'));
+  protected doneKeys = signal<string[]>([]);
+  protected allDone = computed(() => {
+    const t = this.close.value()?.transfers ?? [];
+    return t.length > 0 && t.every((x) => this.doneKeys().includes(x.key));
+  });
+  protected showClose = computed(() => {
+    const cur = currentMonth();
+    return this.month() < cur || (this.month() === cur && this.elapsed().day >= 25);
+  });
+  private now = signal(Date.now());
+  protected updated = computed(() => {
+    const t = this.meta.value()?.lastSync;
+    if (!t) return '';
+    const min = Math.max(0, Math.floor((this.now() - new Date(t).getTime()) / 60000));
+    return min < 1 ? 'Updated just now' : min < 60 ? `Updated ${min} min ago` : min < 1440 ? `Updated ${Math.floor(min / 60)} h ago` : `Updated ${Math.floor(min / 1440)} d ago`;
+  });
   protected error = computed(() => !!(this.cfg.error() || this.summary.error()));
+
+  constructor() {
+    const id = setInterval(() => this.now.set(Date.now()), 60000);
+    inject(DestroyRef).onDestroy(() => clearInterval(id));
+    effect(() => this.doneKeys.set(this.close.value()?.done ?? []));
+  }
+
+  protected async toggleDone(key: string) {
+    const prev = this.doneKeys();
+    const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key];
+    this.doneKeys.set(next);
+    try {
+      await this.api.setMonthClose(this.month(), next);
+    } catch (e: any) {
+      this.doneKeys.set(prev);
+      this.toast.show(e?.error?.error ?? 'Could not save', 'err');
+    }
+  }
 
   private elapsed = computed(() => {
     const [y, m] = this.month().split('-').map(Number);

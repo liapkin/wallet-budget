@@ -84,13 +84,13 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
                 </td>
                 <td class="num strong" [class.pos]="r.type === 'Income'">{{ amount(r) }}</td>
                 <td class="nowrap act">
-                  @if (r.source === 'manual') {
+                  @if (r.source === 'manual' || walletDel(r)) {
                     @if (confirmId() === r.id) {
-                      <span class="muted sm">Delete?</span>
+                      <span class="muted sm">{{ walletDel(r) ? 'Delete here and in Wallet?' : 'Delete?' }}</span>
                       <button class="danger" (click)="remove(r)">Yes</button>
                       <button class="ghost" (click)="confirmId.set(null)">No</button>
                     } @else {
-                      <button class="icon" aria-label="Delete record" (click)="confirmId.set(r.id)"><app-icon name="trash" [size]="16" /></button>
+                      <button class="icon" [attr.aria-label]="walletDel(r) ? 'Delete here and in Wallet' : 'Delete record'" [title]="walletDel(r) ? 'Delete here and in Wallet' : 'Delete record'" (click)="confirmId.set(r.id)"><app-icon name="trash" [size]="16" /></button>
                     }
                   }
                 </td>
@@ -187,7 +187,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
 export class Records {
   private api = inject(Api);
   private toast = inject(Toast);
-  private refresh = inject(Refresh);
+  protected refresh = inject(Refresh);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   protected fmt = fmt;
@@ -278,6 +278,7 @@ export class Records {
     });
   }
 
+  protected walletDel = (r: Row) => !!r.createdInApp && this.refresh.demo() === false;
   protected amount = (r: Row) => (r.type === 'Income' ? '+' + fmt(Math.abs(r.amountCents)) : '−' + fmt(Math.abs(r.amountCents)));
   protected getAmountValue = () => {
     const input = this.dialogEl().nativeElement.querySelector('input[name="amount"]') as HTMLInputElement | null;
@@ -370,7 +371,8 @@ export class Records {
 
   protected async remove(r: Row) {
     this.confirmId.set(null);
-    await this.run(() => this.api.deleteRecord(r.id), 'Record deleted');
+    const wallet = this.walletDel(r);
+    await this.run(() => this.api.deleteRecord(r.id, wallet), wallet ? 'Deleted here and in Wallet' : 'Record deleted');
   }
 
   protected async addKeyword(e: Event) {
