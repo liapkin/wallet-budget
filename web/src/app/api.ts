@@ -25,7 +25,6 @@ export type Meta = {
   groups: string[]; excludedGroups: string[]; accounts: string[]; months: string[]; demo?: boolean; lastSync?: string | null;
   currency?: Currency; currencyLocked?: boolean;
 };
-export type Alert = { key: string; label: string; spentCents: number; capCents: number; level: 'ok' | 'near' | 'over'; perDayCents: number };
 export type MonthClose = { transfers: { key: string; label: string; from: string; to: string; cents: number }[]; done: string[] };
 export type Unclassified = Row & { suggestion: { group: string; confidence: number } | null };
 export type Account = { id: string; name: string; balanceCents: number | null; currency: string; updatedAt: string };
@@ -51,7 +50,6 @@ export class Api {
     firstValueFrom(this.http.post<void>('/api/possible-duplicates', { a, b, decision }));
   unclassified = () => firstValueFrom(this.http.get<Unclassified[]>('/api/unclassified'));
   bulkGroup = (ids: number[], group: string) => firstValueFrom(this.http.post<void>('/api/records/bulk-group', { ids, group }));
-  alerts = (month: string) => firstValueFrom(this.http.get<Alert[]>('/api/alerts', { params: { month } }));
   monthClose = (month: string) => firstValueFrom(this.http.get<MonthClose>(`/api/month-close/${month}`));
   setMonthClose = (month: string, done: string[]) => firstValueFrom(this.http.put<{ done: string[] }>(`/api/month-close/${month}`, { done }));
   setGroup = (id: number, groupOverride: string | null) =>

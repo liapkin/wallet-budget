@@ -29,7 +29,6 @@ export const responses = (): Record<string, unknown> => ({
   '/api/accounts': accounts,
   '/api/wallet-categories': [],
   '/api/records': [row(1), row(2)],
-  '/api/alerts': [],
   '/api/possible-duplicates': [],
   '/api/unclassified': [],
   [`/api/month-close/${month}`]: { transfers: [], done: [] },

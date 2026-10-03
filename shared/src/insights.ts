@@ -94,18 +94,6 @@ export function suggestGroup(rec: Rec, classified: { note: string; group: string
   return best;
 }
 
-// ---- budget alerts
-
-export type AlertLine = { key: string; label: string; spentCents: number; capCents: number };
-
-export function budgetAlerts(lines: AlertLine[], daysLeft: number) {
-  return lines.map((l) => {
-    const left = l.capCents - l.spentCents;
-    const level = l.spentCents >= l.capCents ? 'over' : l.spentCents * 100 >= l.capCents * 80 ? 'near' : 'ok'; // near from 80%
-    return { ...l, level: level as 'ok' | 'near' | 'over', perDayCents: left > 0 && daysLeft > 0 ? Math.floor(left / daysLeft) : 0 };
-  });
-}
-
 // ---- month-end close
 
 export type Transfer = { key: 'invest' | 'business' | 'sinking' | 'emergency'; label: string; from: string; to: string; cents: number };

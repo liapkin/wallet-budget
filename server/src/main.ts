@@ -9,7 +9,7 @@ import { walletPayload } from './wallet-payload.ts';
 import { dietConfigError } from './diet-config.ts';
 import { athensDay, athensLocalToUtc, athensMonth } from '../../shared/src/month.ts';
 import { capsFor, monthStatus } from '../../shared/src/budget.ts';
-import { budgetAlerts, monthClose, pairKey, possibleDuplicates, recurring, suggestGroup, yearReview } from '../../shared/src/insights.ts';
+import { monthClose, pairKey, possibleDuplicates, recurring, suggestGroup, yearReview } from '../../shared/src/insights.ts';
 import { toCents } from '../../shared/src/money.ts';
 import type { Config } from '../../shared/src/types.ts';
 
@@ -320,29 +320,6 @@ const monthGroupSpend = (month: string): Record<string, number> =>
   Object.fromEntries(Object.entries(spendSummary()[month] ?? {}).map(([g, c]) => [g, c.cents]));
 const monthTyped = (month: string): Record<string, number> =>
   Object.fromEntries((db.prepare('SELECT key, cents FROM core_actuals WHERE month=?').all(month) as { key: string; cents: number }[]).map((r) => [r.key, r.cents]));
-
-app.get('/api/alerts', (req, res) => {
-  const month = monthParam(req.query.month);
-  const cfg = getConfig();
-  const spend = monthGroupSpend(month);
-  const status = monthStatus(cfg, spend, monthTyped(month));
-  const now = new Date();
-  let daysLeft = 0;
-  if (month === athensMonth(now.toISOString())) {
-    const [y, m] = month.split('-').map(Number);
-    daysLeft = new Date(y, m, 0).getDate() - Number(athensDay().slice(8)) + 1;
-  }
-  const caps = capsFor(month, cfg);
-  res.json(
-    budgetAlerts(
-      [
-        { key: 'fun', label: 'Fun', spentCents: status.fun, capCents: cfg.allocation.funPerMonth },
-        ...(caps ? (['Takeout', 'Kiosk'] as const).map((g) => ({ key: g, label: g, spentCents: spend[g] ?? 0, capCents: caps[g] })) : []),
-      ],
-      daysLeft,
-    ),
-  );
-});
 
 app.get('/api/month-close/:month', (req, res) => {
   const month = monthParam(req.params.month);

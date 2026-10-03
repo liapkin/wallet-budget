@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { recurring, possibleDuplicates, pairKey, suggestGroup, budgetAlerts, monthClose, yearReview } from './insights.ts';
+import { recurring, possibleDuplicates, pairKey, suggestGroup, monthClose, yearReview } from './insights.ts';
 import { seedToConfig } from './seed.ts';
 import { readFileSync } from 'node:fs';
 import type { Rec } from './types.ts';
@@ -62,16 +62,6 @@ test('suggestGroup: best overlap wins, none when no overlap', () => {
   assert.equal(s.group, 'Groceries');
   assert.equal(s.confidence, 1);
   assert.equal(suggestGroup(rec(1, '2026-05-01T10:00:00Z', -100, { note: 'zzz' }), known), null);
-});
-
-test('budgetAlerts: levels and per-day', () => {
-  const l = (spentCents: number) => budgetAlerts([{ key: 'fun', label: 'Fun', spentCents, capCents: 10000 }], 5)[0];
-  assert.equal(l(7999).level, 'ok');
-  assert.equal(l(8000).level, 'near');
-  assert.equal(l(8000).perDayCents, 400);
-  assert.equal(l(10000).level, 'over');
-  assert.equal(l(10000).perDayCents, 0);
-  assert.equal(budgetAlerts([{ key: 'k', label: 'K', spentCents: 8000, capCents: 10000 }], 0)[0].perDayCents, 0);
 });
 
 test('monthClose: four transfers from config', () => {

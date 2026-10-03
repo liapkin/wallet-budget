@@ -36,10 +36,6 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
     .sk-card { height: 16rem; border-radius: var(--r-lg); margin-bottom: var(--sp-4); }
     .src { display: inline-flex; align-items: center; margin-left: 6px; vertical-align: middle; color: var(--accent); }
     .src.muted { color: var(--muted); }
-    .alerts { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: var(--sp-4); }
-    .alert { display: inline-flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1) var(--sp-3); border-radius: var(--r); font-size: var(--fs-sm); }
-    .alert.near { color: var(--warn); background: var(--warn-bg); }
-    .alert.over { color: var(--bad); background: var(--bad-bg); }
     .xfer { list-style: none; margin: 0; padding: 0; }
     .xfer li { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) 0; border-bottom: 1px solid var(--border); }
     .xfer li:last-child { border-bottom: 0; }
@@ -56,16 +52,6 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
         @if (updated()) { <span class="muted">{{ updated() }}</span> }
       </div>
     </div>
-    @if (alertList().length) {
-      <div class="alerts">
-        @for (a of alertList(); track a.key) {
-          <span class="alert" [class.near]="a.level === 'near'" [class.over]="a.level === 'over'">
-            <app-icon name="alert" [size]="14" />
-            {{ a.label }} {{ fmt(a.spentCents) }} of {{ fmt(a.capCents) }}@if (a.level === 'near' && a.perDayCents > 0) { , {{ fmt(a.perDayCents) }}/day left }
-          </span>
-        }
-      </div>
-    }
     @if (error()) {
       <p class="err">Failed to load data. Check that the server is running, then try Fetch again.</p>
     }
@@ -255,9 +241,7 @@ export class Month {
     loader: ({ params }) => this.api.records({ month: params.month }),
   });
   private meta = resource({ params: () => this.tick(), loader: () => this.api.meta() });
-  private alerts = resource({ params: () => ({ month: this.month(), t: this.tick() }), loader: ({ params }) => this.api.alerts(params.month) });
   protected close = resource({ params: () => ({ month: this.month(), t: this.tick() }), loader: ({ params }) => this.api.monthClose(params.month) });
-  protected alertList = computed(() => (this.alerts.value() ?? []).filter((a) => a.level !== 'ok'));
   protected doneKeys = signal<string[]>([]);
   protected allDone = computed(() => {
     const t = this.close.value()?.transfers ?? [];
