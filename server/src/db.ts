@@ -19,6 +19,7 @@ export const resolveDatabasePath = (env: NodeJS.ProcessEnv = process.env): strin
 const path = resolveDatabasePath();
 if (path !== ':memory:') mkdirSync(join(path, '..'), { recursive: true });
 
+export const dbPath = path;
 export const db = new DatabaseSync(path);
 
 db.exec(`
@@ -31,7 +32,11 @@ CREATE TABLE IF NOT EXISTS core_actuals (month TEXT, key TEXT, cents INTEGER, PR
 CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, name TEXT, balance_cents INTEGER, currency TEXT, updated_at TEXT);
 CREATE TABLE IF NOT EXISTS categories (id TEXT PRIMARY KEY, name TEXT, parent TEXT);
 CREATE TABLE IF NOT EXISTS sync_state (key TEXT PRIMARY KEY, value TEXT);
+CREATE TABLE IF NOT EXISTS balance_snapshots (day TEXT, account TEXT, balance_cents INTEGER, PRIMARY KEY(day, account));
 `);
+if (!(db.prepare('PRAGMA table_info(records)').all() as { name: string }[]).some((c) => c.name === 'created_in_app')) {
+  db.exec('ALTER TABLE records ADD COLUMN created_in_app INTEGER DEFAULT 0');
+}
 
 export const getConfig = (): Config => {
   const cfg = JSON.parse((db.prepare('SELECT json FROM config WHERE id=1').get() as { json: string }).json) as Config;

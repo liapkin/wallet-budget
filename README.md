@@ -30,7 +30,9 @@ Settings holds database currency, theme and hidden amounts. Normal databases def
 
 - `pnpm dev` runs the server and the web app together.
 - `pnpm sync` pulls Wallet records, then dedupes and classifies. It mirrors edits and deletions (deletes reconciled over the last 90 days); `pnpm sync -- --full` reconciles all history.
-- Add record has an "Also add to Wallet" switch that creates the record in Wallet after a preview.
+- The server (not demo) fetches from Wallet at startup when the last sync is over an hour old, then hourly; it shares one in-flight sync with the manual Fetch. Each sync stores today's account balances in `balance_snapshots` (history starts at first sync).
+- Daily backup: at startup and daily the server writes `data/backups/budget-YYYY-MM-DD.db` (`VACUUM INTO`) and keeps the newest 14. Restore: stop the server, copy a backup over `data/budget.db`.
+- Add record has an "Also add to Wallet" switch that creates the record in Wallet after a preview. Records created that way can later be deleted in Wallet from Records (confirm); no other Wallet record is ever deleted.
 - `pnpm run import <file.xls>` runs the same pipeline from a Wallet export.
 - `pnpm test`, `pnpm lint`
 

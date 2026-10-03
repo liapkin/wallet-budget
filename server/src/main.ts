@@ -2,8 +2,9 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { randomUUID } from 'node:crypto';
 import { db, getConfig, setConfig, currencyLocked } from './db.ts';
 import { activeSource, runPipeline, spendSummary } from './pipeline.ts';
-import { insertApiRecord, sync } from './sync.ts';
-import { post } from './wallet.ts';
+import { insertApiRecord, lastSync, syncOnce } from './sync.ts';
+import { del, post } from './wallet.ts';
+import { startScheduler } from './scheduler.ts';
 import { walletPayload } from './wallet-payload.ts';
 import { dietConfigError } from './diet-config.ts';
 import { athensLocalToUtc } from '../../shared/src/month.ts';
@@ -20,8 +21,8 @@ const bad = (msg: string): never => {
 const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
 
 const SELECT = `SELECT id, source, account, category, amount_cents AS amountCents, type, payment_type AS paymentType,
-  note, date_utc AS dateUtc, group_override AS groupOverride, is_dup AS isDup, dup_of AS dupOf, grp, month FROM records`;
-const present = (r: any) => ({ ...r, isDup: !!r.isDup });
+  note, date_utc AS dateUtc, created_in_app AS createdInApp, group_override AS groupOverride, is_dup AS isDup, dup_of AS dupOf, grp, month FROM records`;
+const present = (r: any) => ({ ...r, isDup: !!r.isDup, createdInApp: !!r.createdInApp });
 const getRecord = (id: unknown) => {
   const r = db.prepare(`${SELECT} WHERE id=?`).get(Number(id));
   return r ? present(r) : undefined;
@@ -60,7 +61,7 @@ export const getMeta = () => {
     (db.prepare(`SELECT DISTINCT ${c} AS v FROM records WHERE ${s.sql} ${order}`).all(...s.args) as { v: string }[]).map((r) => r.v);
   const cfg = getConfig();
   const { groups, excludedGroups } = cfg.wallet;
-  return { demo, currency: cfg.currency, currencyLocked: demo || currencyLocked(), groups, excludedGroups, accounts: col('account', 'ORDER BY 1'), months: col('month', 'ORDER BY 1 DESC') };
+  return { demo, currency: cfg.currency, currencyLocked: demo || currencyLocked(), groups, excludedGroups, accounts: col('account', 'ORDER BY 1'), months: col('month', 'ORDER BY 1 DESC'), lastSync: lastSync() };
 };
 
 app.get('/api/meta', (req, res) => {
@@ -128,6 +129,7 @@ export async function createRecord(req: Request, res: Response) {
     }
     // ext_id is the Wallet id, so the next sync upserts it unchanged.
     insertApiRecord(result.record);
+    db.prepare('UPDATE records SET created_in_app=1 WHERE ext_id=?').run(result.record.id);
     runPipeline();
     return void res.status(201).json(present(db.prepare(`${SELECT} WHERE ext_id=?`).get(result.record.id)));
   }
@@ -149,13 +151,28 @@ export async function createRecord(req: Request, res: Response) {
   res.status(201).json(getRecord(info.lastInsertRowid));
 }
 
-app.delete('/api/records/:id', (req, res) => {
-  const r = getRecord(req.params.id);
-  if (!r) return void res.status(404).json({ error: 'not found' });
-  if (r.source !== 'manual') return void res.status(403).json({ error: 'only manual records can be deleted' });
-  db.prepare('DELETE FROM records WHERE id=?').run(r.id);
-  runPipeline();
-  res.status(204).end();
+app.delete('/api/records/:id', async (req, res, next) => {
+  try {
+    const r = getRecord(req.params.id);
+    if (!r) return void res.status(404).json({ error: 'not found' });
+    if (req.query.wallet === '1') {
+      if (demo) bad('Disabled in demo mode');
+      if (r.source !== 'api' || !r.createdInApp) return void res.status(403).json({ error: 'only records created by this app can be deleted in Wallet' });
+      const extId = (db.prepare('SELECT ext_id FROM records WHERE id=?').get(r.id) as { ext_id: string }).ext_id;
+      let result: any;
+      try {
+        result = (await del('/v1/api/records', [extId])).results?.[0];
+      } catch (e) {
+        return void res.status(502).json({ error: `Wallet rejected the delete: ${(e as Error).message}` });
+      }
+      if (!result?.success) return void res.status(502).json({ error: `Wallet rejected the delete: ${String(result?.error ?? 'no result').slice(0, 120)}` });
+    } else if (r.source !== 'manual') return void res.status(403).json({ error: 'only manual records can be deleted' });
+    db.prepare('DELETE FROM records WHERE id=?').run(r.id);
+    runPipeline();
+    res.status(204).end();
+  } catch (e) {
+    next(e);
+  }
 });
 
 app.patch('/api/records/:id', (req, res) => {
@@ -219,7 +236,7 @@ app.get('/api/accounts', (req, res) => {
 app.post('/api/sync', (req, res, next) => {
   if (demo) bad('Disabled in demo mode');
   if (getConfig().currency !== 'EUR') bad('Wallet sync, import and writes support EUR databases only');
-  sync().then((r) => res.json(r), next);
+  syncOnce().then((r) => res.json(r), next);
 });
 
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
@@ -233,4 +250,5 @@ if (import.meta.main) {
   app.listen(port, '127.0.0.1', () => {
     console.log(`listening on http://127.0.0.1:${port}`);
   });
+  startScheduler();
 }

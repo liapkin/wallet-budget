@@ -4,6 +4,7 @@ import { runPipeline } from './pipeline.ts';
 import { toDelete } from './reconcile.ts';
 import { toCents } from '../../shared/src/money.ts';
 
+const athensDay = (): string => new Date().toLocaleDateString('sv', { timeZone: 'Europe/Athens' });
 const day = (d: Date): string => d.toISOString().slice(0, 10);
 
 // The API has no payment type: bank-feed records are TRANSFER, phone entries MOBILE_PAYMENT, the rest CASH.
@@ -54,12 +55,14 @@ export async function sync({ full = false } = {}): Promise<{ inserted: number; u
   const end = new Date(Date.now() + 864e5);
 
   let accounts = 0;
+  const snap = db.prepare('INSERT OR REPLACE INTO balance_snapshots (day, account, balance_cents) VALUES (?, ?, ?)');
   const upAcc = db.prepare('INSERT OR REPLACE INTO accounts (id, name, balance_cents, currency, updated_at) VALUES (?, ?, ?, ?, ?)');
   for await (const a of pages<any>('/v1/api/accounts', 'accounts')) {
     requireWalletCurrency();
     accounts++;
     const bal = a.balance?.currentBalance;
     upAcc.run(a.id, a.name, bal == null ? null : toCents(bal), a.currencyCode, new Date().toISOString());
+    if (bal != null) snap.run(athensDay(), a.name, toCents(bal));
   }
 
   const save = db.prepare("INSERT OR REPLACE INTO sync_state (key, value) VALUES ('last_date', ?)");
@@ -120,9 +123,17 @@ export async function sync({ full = false } = {}): Promise<{ inserted: number; u
     const del = db.prepare("DELETE FROM records WHERE source='api' AND ext_id=?");
     for (const id of toDelete(local, remote)) deleted += Number(del.run(id).changes);
   }
+  db.prepare("INSERT OR REPLACE INTO sync_state (key, value) VALUES ('last_sync', ?)").run(new Date().toISOString());
   runPipeline();
   console.log(`windows ${windows}, inserted ${inserted}, updated ${updated}, deleted ${deleted}, accounts ${accounts}, categories ${categories}${glitches ? `, WARNING ${glitches} empty window(s) skipped` : ''}`);
   return { inserted, updated, deleted };
 }
+
+let running: ReturnType<typeof sync> | undefined;
+// Manual Fetch and the scheduler share one in-flight sync.
+export const syncOnce = (): ReturnType<typeof sync> => (running ??= sync().finally(() => (running = undefined)));
+
+export const lastSync = (): string | null =>
+  (db.prepare("SELECT value FROM sync_state WHERE key='last_sync'").get() as { value: string } | undefined)?.value ?? null;
 
 if (import.meta.main) await sync({ full: process.argv.includes('--full') });
