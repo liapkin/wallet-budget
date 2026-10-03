@@ -1,5 +1,6 @@
 import { booleanAttribute, Component, DestroyRef, computed, effect, ElementRef, HostListener, inject, input, model, output, signal, viewChild } from '@angular/core';
 import { Icon } from './icons';
+import { closeOnOutside } from './popover';
 
 export interface ComboOption { value: string; label: string; dot?: string; hollow?: boolean; hint?: string; group?: string }
 interface Row { o?: ComboOption & { create?: boolean }; head?: string; n?: number; open?: boolean }
@@ -122,7 +123,7 @@ export class Combo {
   });
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => window.removeEventListener('scroll', this.onScroll, true));
+    closeOnOutside(this.el, this.open, () => this.close(), inject(DestroyRef));
     effect(() => {
       const s = this.search()?.nativeElement;
       if (!s) return;
@@ -134,11 +135,6 @@ export class Combo {
       if (this.open()) this.el.nativeElement.querySelector(`[id="${this.id}-${i}"]`)?.scrollIntoView({ block: 'nearest' });
     });
   }
-
-  // scrolling inside the list itself must not close it
-  private onScroll = (e: Event) => {
-    if (!(e.target instanceof Node && this.el.nativeElement.contains(e.target))) this.close();
-  };
 
   protected toggle() {
     if (this.open()) this.close();
@@ -152,11 +148,9 @@ export class Combo {
     this.recent.set(this.loadRecent());
     this.active.set(q ? 0 : Math.max(0, this.rows().findIndex((r) => r.o?.value === this.value())));
     this.open.set(true);
-    window.addEventListener('scroll', this.onScroll, true);
   }
   private close(refocus = false) {
     this.open.set(false);
-    window.removeEventListener('scroll', this.onScroll, true);
     if (refocus) this.trigger().nativeElement.focus();
   }
   private loadRecent(): string[] {
@@ -222,10 +216,6 @@ export class Combo {
     } else if (e.key === 'Tab') this.close();
   }
 
-  @HostListener('document:click', ['$event'])
-  onDoc(e: Event) {
-    if (this.open() && !this.el.nativeElement.contains(e.target as Node)) this.close();
-  }
   @HostListener('window:resize')
   onResize() {
     if (this.open()) this.close();

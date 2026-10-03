@@ -1,5 +1,6 @@
 import { Component, computed, inject, resource, signal } from '@angular/core';
-import { currencySymbol, fmt } from './format.ts';
+import { axisEuro, currencySymbol, fmt } from './format.ts';
+import { athensDay } from '../../../shared/src/month.ts';
 import { byYear, type Cell } from '../../../shared/src/summary.ts';
 import { Api } from './api';
 import { chartColor, shortMonth } from './format';
@@ -207,7 +208,7 @@ export class History {
     const fixed = (daily ? DAILY : FIXED).filter((g) => cols.includes(g));
     const other = daily ? [] : cols.filter((g) => !FIXED.includes(g));
     const val = (cells: Record<string, Cell>, gs: string[]) => gs.reduce((s, g) => s + (cells[g]?.cents ?? 0), 0);
-    const now = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' }).slice(0, this.yearly() ? 4 : 7);
+    const now = athensDay().slice(0, this.yearly() ? 4 : 7);
     const inProgressSet = new Set(ps.filter((p) => p.period === now).map((p) => p.period));
     const css = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
     const surface = css('--surface');
@@ -273,7 +274,7 @@ export class History {
       },
       yAxis: {
         type: 'value',
-        axisLabel: { formatter: (c: number) => (c ? symbol + +(c / 100000).toFixed(1) + 'k' : symbol + '0') },
+        axisLabel: { formatter: axisEuro(symbol) },
         splitLine: { lineStyle: { type: 'dashed', opacity: 0.35 } },
       },
       series,

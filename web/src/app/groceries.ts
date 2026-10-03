@@ -1,17 +1,16 @@
 import { Component, computed, effect, inject, resource, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { groceryMonthly, weeklyIngredientGrams } from '../../../shared/src/diet.ts';
-import { currencySymbol, fmt } from './format.ts';
-import { toCents } from '../../../shared/src/money.ts';
+import { currencySymbol, fmt, parseMoney, val } from './format.ts';
 import type { Config, GroceryItem } from '../../../shared/src/types.ts';
 import { Api } from './api';
 import { Combo } from './ui/combo';
+import { editDraft } from './ui/config-draft';
 import { Icon } from './ui/icons';
 import { MoneyInput } from './ui/money-input';
 import { Refresh } from './ui/refresh';
 import { Toast } from './ui/toast';
 
-const val = (e: Event) => (e.target as HTMLInputElement | HTMLSelectElement).value;
 
 @Component({
   selector: 'app-groceries',
@@ -196,7 +195,6 @@ const val = (e: Event) => (e.target as HTMLInputElement | HTMLSelectElement).val
 export class GroceriesComponent {
   protected fmt = fmt;
   protected currencySymbol = currencySymbol;
-  protected toCents = toCents;
   protected val = val;
   protected Math = Math;
   protected useOffers = signal(false);
@@ -276,14 +274,7 @@ export class GroceriesComponent {
     return rows.reduce((sum, r) => sum + this.itemCostCents(r.it), 0);
   }
 
-  // all edits clone the draft so signals notify
-  private edit(fn: (c: Config) => void) {
-    this.draft.update((d) => {
-      const c = structuredClone(d!);
-      fn(c);
-      return c;
-    });
-  }
+  private edit = (fn: (c: Config) => void) => editDraft(this.draft, fn);
 
   protected upd(list: 'weekly' | 'pantryMonthly', i: number, patch: Partial<GroceryItem>) {
     this.edit((c) => Object.assign(c.groceryList[list][i], patch));
@@ -291,15 +282,15 @@ export class GroceriesComponent {
 
   protected setNum(list: 'weekly' | 'pantryMonthly', i: number, k: 'qty' | 'regularPrice' | 'offerPrice', e: Event) {
     const el = e.target as HTMLInputElement;
-    const n = Number(el.value.replace(',', '.'));
+    const cents = parseMoney(el.value);
     if (k === 'offerPrice' && el.value.trim() === '') return this.upd(list, i, { offerPrice: null });
-    if (el.value.trim() === '' || !isFinite(n) || n < 0) {
+    if (cents === null || cents < 0) {
       const cur = this.draft()!.groceryList[list][i][k];
       el.value = cur == null ? '' : String(k === 'qty' ? cur : cur / 100);
       return;
     }
-    if (k === 'qty') this.upd(list, i, { qty: n });
-    else this.upd(list, i, { [k]: k === 'offerPrice' && n === 0 ? null : toCents(n) });
+    if (k === 'qty') this.upd(list, i, { qty: cents / 100 });
+    else this.upd(list, i, { [k]: k === 'offerPrice' && cents === 0 ? null : cents });
   }
 
   protected remove(list: 'weekly' | 'pantryMonthly', i: number) {

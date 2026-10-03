@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, resource } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { Account } from './api';
-import { currencySymbol, fmt } from './format';
+import { axisEuro, currencySymbol, fmt } from './format';
 import { ChartView } from './ui/chart';
 import { Refresh } from './ui/refresh';
 
@@ -78,7 +78,7 @@ export class NetWorth {
       xAxis: { type: 'category', data: days },
       yAxis: {
         type: 'value',
-        axisLabel: { formatter: (c: number) => (c ? symbol + +(c / 100000).toFixed(1) + 'k' : symbol + '0') },
+        axisLabel: { formatter: axisEuro(symbol) },
         splitLine: { lineStyle: { type: 'dashed', opacity: 0.35 } },
       },
       series: [line('Savings', 'savings'), line('Invested', 'invested'), line('Total', 'total')],

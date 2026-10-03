@@ -1,13 +1,13 @@
 import { Component, computed, effect, inject, resource, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { dayTotals, mealTotals, proteinTarget, weekAverage } from '../../../shared/src/diet.ts';
-import { fmt } from './format.ts';
+import { fmt, val } from './format.ts';
 import type { Config } from '../../../shared/src/types.ts';
 import { Api } from './api';
 import { Combo } from './ui/combo';
+import { editDraft } from './ui/config-draft';
 import { Toast } from './ui/toast';
 
-const val = (e: Event) => (e.target as HTMLInputElement | HTMLSelectElement).value;
 type Row = Record<string, string>;
 
 @Component({
@@ -281,14 +281,7 @@ export class MealsComponent {
     return dft.diet.ingredientsPerPortion.flatMap((ing, i) => (ing.meal === meal ? [{ ing, i }] : []));
   }
 
-  // all edits clone the draft so signals notify
-  private edit(fn: (c: Config) => void) {
-    this.draft.update((d) => {
-      const c = structuredClone(d!);
-      fn(c);
-      return c;
-    });
-  }
+  private edit = (fn: (c: Config) => void) => editDraft(this.draft, fn);
 
   protected mealOptions = computed(() => [{ value: '', label: '—' }, ...this.mealNames().map((m) => ({ value: m, label: m }))]);
 

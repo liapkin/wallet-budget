@@ -1,12 +1,22 @@
 import { computed, signal } from '@angular/core';
 import { athensMonth } from '../../../shared/src/month.ts';
-import { fmt as baseFmt } from '../../../shared/src/money.ts';
+import { fmt as baseFmt, toCents } from '../../../shared/src/money.ts';
 import type { Currency } from '../../../shared/src/types.ts';
 import { hidden } from './ui/privacy.ts';
 
 export const currency = signal<Currency>('EUR');
 export const currencySymbol = computed(() => currency() === 'USD' ? '$' : '€');
 export const fmt = (cents: number) => (hidden() ? `${currencySymbol()} ••••` : baseFmt(cents, currency()));
+/** Compact chart axis label formatter for cents; pass the symbol read inside the computed so it stays reactive. */
+export const axisEuro = (symbol: string) => (c: number) => (c ? symbol + +(c / 100000).toFixed(1) + 'k' : symbol + '0');
+/** Value of an input event's target. */
+export const val = (e: Event) => (e.target as HTMLInputElement | HTMLSelectElement).value;
+/** Parse typed euro text ('12,5' or '12.50') to cents; null when empty or not a number. */
+export const parseMoney = (s: string): number | null => {
+  const t = s.trim().replace(',', '.');
+  const n = Number(t);
+  return t === '' || !Number.isFinite(n) ? null : toCents(n);
+};
 
 const TZ = 'Europe/Athens';
 /** 'YYYY-MM-DDTHH:mm' in Europe/Athens. */

@@ -2,16 +2,15 @@ import { Component, computed, DestroyRef, effect, inject, resource, signal } fro
 import { RouterLink, Router } from '@angular/router';
 import { allocation, capsFor, monthStatus, savings } from '../../../shared/src/budget.ts';
 import { currencySymbol, fmt } from './format.ts';
-import { athensMonth } from '../../../shared/src/month.ts';
+import { athensDay, athensMonth } from '../../../shared/src/month.ts';
 import { Api } from './api';
-import { currentMonth, dayLabel, groupColor, HOLLOW } from './format';
+import { dayLabel, groupColor, HOLLOW } from './format';
 import { ChartView } from './ui/chart';
 import { Icon } from './ui/icons';
 import { MonthPicker } from './ui/month-picker';
 import { Refresh } from './ui/refresh';
 import { Toast } from './ui/toast';
 
-const TZ = 'Europe/Athens';
 const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b) * 100)) : 0);
 
 @Component({
@@ -265,8 +264,8 @@ export class Month {
     return t.length > 0 && t.every((x) => this.doneKeys().includes(x.key));
   });
   protected showClose = computed(() => {
-    const cur = currentMonth();
-    return this.month() < cur || (this.month() === cur && this.elapsed().day >= 25);
+    const { cur, day } = this.elapsed();
+    return this.month() < cur || (this.month() === cur && day >= 25);
   });
   private now = signal(Date.now());
   protected updated = computed(() => {
@@ -298,10 +297,10 @@ export class Month {
   private elapsed = computed(() => {
     const [y, m] = this.month().split('-').map(Number);
     const total = new Date(y, m, 0).getDate();
-    const now = new Date().toLocaleDateString('sv-SE', { timeZone: TZ });
+    const now = athensDay(new Date(this.now()).toISOString());
     const cur = now.slice(0, 7);
     const day = cur === this.month() ? Number(now.slice(8)) : cur > this.month() ? total : 0;
-    return { total, day, isCurrent: cur === this.month() };
+    return { total, day, cur, isCurrent: cur === this.month() };
   });
   protected daysLeft = computed(() => this.elapsed().total - this.elapsed().day);
 
@@ -360,7 +359,7 @@ export class Month {
     const { total, day, isCurrent } = this.elapsed();
     const perDay = new Array<number>(total).fill(0);
     for (const r of this.spendRows()) {
-      const d = Number(new Date(r.dateUtc).toLocaleDateString('sv-SE', { timeZone: TZ }).slice(8));
+      const d = Number(athensDay(r.dateUtc).slice(8));
       if (d >= 1 && d <= total) perDay[d - 1] -= r.amountCents;
     }
     const upTo = day > 0 ? day : total;

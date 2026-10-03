@@ -1,7 +1,6 @@
 import { Component, computed, effect, inject, resource, signal } from '@angular/core';
 import { coreActuals } from '../../../shared/src/budget.ts';
-import { currencySymbol, fmt } from './format.ts';
-import { toCents } from '../../../shared/src/money.ts';
+import { currencySymbol, fmt, parseMoney } from './format.ts';
 import { Api, type Actuals as Typed } from './api';
 import { currentMonth, monthLabel } from './format';
 import { Icon } from './ui/icons';
@@ -148,13 +147,12 @@ export class Actuals {
   protected blur = (e: Event) => (e.target as HTMLInputElement).blur();
 
   protected async save(m: string, key: string, e: Event) {
-    const raw = (e.target as HTMLInputElement).value.trim().replace(',', '.');
-    const n = Number(raw);
-    if (raw !== '' && !Number.isFinite(n)) {
+    const raw = (e.target as HTMLInputElement).value;
+    const cents = parseMoney(raw);
+    if (raw.trim() !== '' && cents === null) {
       (e.target as HTMLInputElement).value = this.eur(this.typed()[m]?.[key]);
-      return void this.toast.show('Not a number: ' + raw, 'err');
+      return void this.toast.show('Not a number: ' + raw.trim(), 'err');
     }
-    const cents = raw === '' ? null : toCents(n);
     try {
       await this.api.setActual(m, key, cents);
     } catch (err: any) {

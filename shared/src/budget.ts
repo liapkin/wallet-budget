@@ -41,7 +41,7 @@ export function coreActuals(cfg: Config, groupSpend: Cents, typed: Cents) {
     .filter((l) => l.standing !== false || typed[l.key] !== undefined)
     .map((l) => {
       const groups = walletGroups(l.source);
-      const t = typed[l.key];
+      const t = typed[l.key] as number | undefined;
       const actual = groups ? groups.reduce((s, g) => s + (groupSpend[g] ?? 0), t ?? 0) : (t ?? null);
       return { key: l.key, label: l.label, plan: l.plan, wallet: !!groups, actual };
     });

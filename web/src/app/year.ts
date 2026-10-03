@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, resource, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { athensDay } from '../../../shared/src/month.ts';
 import { fmt, groupColor, monthLabel } from './format';
 import { Icon } from './ui/icons';
 import { Refresh } from './ui/refresh';
@@ -67,7 +68,7 @@ export class Year {
   protected month = monthLabel;
   protected abs = Math.abs;
   protected sign = (n: number) => (n > 0 ? '+' : n < 0 ? '-' : '');
-  protected year = signal(+new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' }).slice(0, 4));
+  protected year = signal(+athensDay().slice(0, 4));
   private http = inject(HttpClient);
   private tick = inject(Refresh).tick;
   protected data = resource({

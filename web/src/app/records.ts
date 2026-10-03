@@ -1,7 +1,6 @@
-import { Component, computed, effect, ElementRef, inject, resource, signal, viewChild } from '@angular/core';
+import { Component, computed, DestroyRef, effect, ElementRef, inject, resource, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { currencySymbol, fmt } from './format.ts';
-import { toCents } from '../../../shared/src/money.ts';
+import { currencySymbol, fmt, parseMoney, val } from './format.ts';
 import { Api, type Row } from './api';
 import { athensNow, currentMonth, dayLabel, groupColor, groupDot, HOLLOW } from './format';
 import { Combo, type ComboOption } from './ui/combo';
@@ -12,7 +11,6 @@ import { MonthPicker } from './ui/month-picker';
 import { Refresh } from './ui/refresh';
 import { Toast } from './ui/toast';
 
-const val = (e: Event) => (e.target as HTMLInputElement | HTMLSelectElement).value;
 const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 'Request failed');
 
 @Component({
@@ -264,6 +262,7 @@ export class Records {
   });
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => clearTimeout(this.timer));
     effect(() => {
       this.month();
       this.confirmId.set(null);
@@ -283,8 +282,8 @@ export class Records {
   protected getAmountValue = () => {
     const input = this.dialogEl().nativeElement.querySelector('input[name="amount"]') as HTMLInputElement | null;
     if (!input) return 0;
-    const val = Number((input.value ?? '').trim().replace(',', '.'));
-    return Number.isFinite(val) && val > 0 ? val : 0;
+    const cents = parseMoney(input.value ?? '');
+    return cents !== null && cents > 0 ? cents : 0;
   };
   protected groupsFor = (r: Row) => {
     const g = this.meta.value()?.groups ?? [];
@@ -349,11 +348,10 @@ export class Records {
   protected async add(e: Event) {
     e.preventDefault();
     const f = Object.fromEntries(new FormData(e.target as HTMLFormElement)) as Record<string, string>;
-    const n = Number((f['amount'] ?? '').trim().replace(',', '.'));
-    if (!Number.isFinite(n) || n <= 0) return void this.toast.show('Enter a positive amount', 'err');
+    const cents = parseMoney(f['amount'] ?? '');
+    if (cents === null || cents <= 0) return void this.toast.show('Enter a positive amount', 'err');
     const wallet = this.toWallet();
     if (wallet && !this.walletAcc()) return void this.toast.show('Pick a Wallet account', 'err');
-    const cents = toCents(n);
     if (wallet && !this.draft()) return void this.draft.set({ cents, date: this.when().slice(0, 10), time: this.when().slice(11), note: (f['note'] ?? '').trim() });
     this.busy.set(true);
     const done = await this.run(

@@ -1,6 +1,7 @@
 import { afterRenderEffect, booleanAttribute, Component, DestroyRef, computed, ElementRef, HostListener, inject, input, model, signal } from '@angular/core';
 import { athensNow } from '../format';
 import { Icon } from './icons';
+import { closeOnOutside } from './popover';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const shiftDay = (d: string, n: number) => {
@@ -137,7 +138,7 @@ export class DateTime {
   protected dayName = (d: string) => dateLabel(d);
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => window.removeEventListener('scroll', this.onScroll, true));
+    closeOnOutside(this.el, () => !!this.pop(), () => this.close(), inject(DestroyRef));
     // Keyboard navigation moves `focus`; follow it after the grid has re-rendered.
     afterRenderEffect(() => {
       if (this.pop() === 'cal') this.el.nativeElement.querySelector(`[data-d="${this.focus()}"]`)?.focus();
@@ -161,16 +162,10 @@ export class DateTime {
     if (this.pop() === p) return this.close();
     this.focus.set(this.date());
     this.pop.set(p);
-    window.addEventListener('scroll', this.onScroll, true);
   }
   private close() {
     this.pop.set(null);
-    window.removeEventListener('scroll', this.onScroll, true);
   }
-  // scrolling inside the popover itself must not close it
-  private onScroll = (e: Event) => {
-    if (!(e.target instanceof Node && this.el.nativeElement.contains(e.target))) this.close();
-  };
 
   protected onKey(e: KeyboardEvent) {
     const step: Record<string, string> = {
@@ -197,10 +192,6 @@ export class DateTime {
     this.setTime(`${pad(Math.floor(mins / 60))}:${pad(mins % 60)}`);
   }
 
-  @HostListener('document:click', ['$event'])
-  onDoc(e: Event) {
-    if (this.pop() && !this.el.nativeElement.contains(e.target as Node)) this.close();
-  }
   @HostListener('keydown.escape', ['$event'])
   onEsc(e: Event) {
     if (!this.pop()) return;

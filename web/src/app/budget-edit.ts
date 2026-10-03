@@ -1,18 +1,15 @@
 import { Component, computed, inject, resource, signal } from '@angular/core';
 import { allocation, annualInvesting, corePlan } from '../../../shared/src/budget.ts';
-import { currency, currencySymbol, fmt } from './format.ts';
+import { currency, currencySymbol, fmt, parseMoney, val } from './format.ts';
 import { groupDot } from './format';
-import { toCents } from '../../../shared/src/money.ts';
-import type { Config } from '../../../shared/src/types.ts';
 import { Api } from './api';
 import { Combo, type ComboOption } from './ui/combo';
 import { DateTime } from './ui/date-time';
 import { Icon } from './ui/icons';
 import { MoneyInput } from './ui/money-input';
 import { Refresh } from './ui/refresh';
-import { Toast } from './ui/toast';
+import { configDraft, editDraft } from './ui/config-draft';
 
-const val = (e: Event) => (e.target as HTMLInputElement | HTMLSelectElement).value;
 const num = (e: Event) => Number(val(e).replace(',', '.')) || 0;
 
 const SECTIONS = [
@@ -26,7 +23,7 @@ const SECTIONS = [
 @Component({
   selector: 'app-budget-edit',
   imports: [Combo, DateTime, Icon, MoneyInput],
-  host: { '(window:keydown)': 'key($event)', '(window:beforeunload)': 'unload($event)' },
+  host: { '(window:keydown)': 'key($event)' },
   styles: `
     .layout { display: grid; grid-template-columns: 11rem 1fr; gap: var(--sp-5); align-items: start; }
     nav { position: sticky; top: var(--sp-4); display: flex; flex-direction: column; gap: 2px; }
@@ -256,16 +253,20 @@ export class BudgetEdit {
     ['wallet.excludedGroups', 'Excluded groups (non-spending)'],
   ];
   private api = inject(Api);
-  private toast = inject(Toast);
   protected refresh = inject(Refresh);
   protected accounts = resource({ params: () => this.refresh.tick(), loader: () => this.api.accounts() });
-  private saved = signal<Config | null>(null);
-  protected draft = signal<Config | null>(null);
-  protected failed = signal(false);
-  protected saving = signal(false);
+  private cd = configDraft('Budget saved', (c) => {
+    currency.set(c.currency ?? 'EUR');
+    this.refresh.tick.update((n) => n + 1);
+  });
+  protected draft = this.cd.draft;
+  protected failed = this.cd.failed;
+  protected saving = this.cd.saving;
+  protected dirty = this.cd.dirty;
+  protected discard = this.cd.discard;
+  protected save = this.cd.save;
   protected kwQ = signal('');
   protected catQ = signal('');
-  protected dirty = computed(() => JSON.stringify(this.draft()) !== JSON.stringify(this.saved()));
   protected a = computed(() => allocation(this.draft()!));
   protected core = computed(() => corePlan(this.draft()!));
   protected annual = computed(() => annualInvesting(this.draft()!));
@@ -280,18 +281,6 @@ export class BudgetEdit {
       { name: 'Investing', v: inv, amount: a.investing, color: a.investing < 0 ? 'var(--bad)' : 'var(--c3)' },
     ];
   });
-
-  constructor() {
-    this.api.config().then(
-      (c) => this.load(c),
-      () => this.failed.set(true),
-    );
-  }
-
-  private load(c: Config) {
-    this.saved.set(c);
-    this.draft.set(structuredClone(c));
-  }
 
   protected eur = (c: number) => String(c / 100);
   protected go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -308,11 +297,7 @@ export class BudgetEdit {
   protected groupOptions = computed<ComboOption[]>(() => (this.draft()?.wallet.groups ?? []).map((g) => ({ value: g, label: g, ...groupDot(g) })));
 
   // ponytail: edits are applied by dotted path on a cloned draft; no per-field handlers
-  private edit(fn: (c: any) => void) {
-    const c = structuredClone(this.draft()!);
-    fn(c);
-    this.draft.set(c);
-  }
+  private edit = (fn: (c: any) => void) => editDraft(this.draft, fn);
   protected set(path: string, v: unknown) {
     const keys = path.split('.');
     const last = keys.pop()!;
@@ -324,12 +309,12 @@ export class BudgetEdit {
 
   protected money(path: string, e: Event) {
     const el = e.target as HTMLInputElement;
-    const n = Number(el.value.trim().replace(',', '.'));
-    if (el.value.trim() === '' || !Number.isFinite(n)) {
+    const cents = parseMoney(el.value);
+    if (cents === null) {
       el.value = this.eur(path.split('.').reduce((o: any, k) => o[k], this.draft()!) as number);
       return;
     }
-    this.set(path, toCents(n));
+    this.set(path, cents);
   }
   protected plain = (path: string, e: Event, text = false) => this.set(path, text ? val(e) : num(e));
   protected check = (path: string, e: Event) => this.set(path, (e.target as HTMLInputElement).checked);
@@ -352,25 +337,6 @@ export class BudgetEdit {
       c.coreExpenses.push({ key: 'line' + n, label: 'New line', plan: 0, source: 'manual' });
     });
 
-  protected discard() {
-    this.draft.set(structuredClone(this.saved()!));
-  }
-
-  protected async save() {
-    if (!this.dirty() || this.saving()) return;
-    this.saving.set(true);
-    try {
-      this.load(await this.api.saveConfig(this.draft()!));
-      currency.set(this.saved()!.currency ?? 'EUR');
-      this.refresh.tick.update((n) => n + 1);
-      this.toast.show('Budget saved');
-    } catch (e: any) {
-      this.toast.show(e?.error?.error ?? 'Save failed', 'err');
-    } finally {
-      this.saving.set(false);
-    }
-  }
-
   protected key(e: KeyboardEvent) {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault();
@@ -378,9 +344,5 @@ export class BudgetEdit {
       (document.activeElement as HTMLElement | null)?.blur();
       void this.save();
     }
-  }
-
-  protected unload(e: BeforeUnloadEvent) {
-    if (this.dirty()) e.preventDefault();
   }
 }

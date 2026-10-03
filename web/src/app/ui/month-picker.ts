@@ -1,6 +1,7 @@
-import { Component, computed, ElementRef, HostListener, inject, input, model, signal } from '@angular/core';
+import { Component, computed, DestroyRef, ElementRef, HostListener, inject, input, model, signal } from '@angular/core';
 import { addMonths, currentMonth, monthLabel } from '../format';
 import { Icon } from './icons';
+import { closeOnOutside } from './popover';
 
 const NAMES = Array.from({ length: 12 }, (_, i) => new Date(Date.UTC(2000, i, 1)).toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' }));
 
@@ -46,6 +47,10 @@ export class MonthPicker {
   protected year = signal(0);
   private el = inject(ElementRef);
 
+  constructor() {
+    closeOnOutside(this.el, this.open, () => this.open.set(false), inject(DestroyRef));
+  }
+
   protected maxYear = computed(() => Math.max(+currentMonth().slice(0, 4), ...(this.months() ?? []).map((m) => +m.slice(0, 4))));
   protected prev = computed(() => addMonths(this.month(), -1));
   protected next = computed(() => addMonths(this.month(), 1));
@@ -67,10 +72,6 @@ export class MonthPicker {
   protected pick(m: string) {
     this.month.set(m);
     this.open.set(false);
-  }
-  @HostListener('document:click', ['$event'])
-  onDoc(e: Event) {
-    if (this.open() && !this.el.nativeElement.contains(e.target)) this.open.set(false);
   }
   @HostListener('keydown.escape')
   onEsc() {

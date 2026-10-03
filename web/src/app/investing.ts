@@ -1,12 +1,11 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed } from '@angular/core';
 import { annualInvesting } from '../../../shared/src/budget.ts';
-import { currencySymbol, fmt } from './format.ts';
+import { currencySymbol, fmt, parseMoney } from './format.ts';
 import { project } from '../../../shared/src/projection.ts';
 import type { Config } from '../../../shared/src/types.ts';
-import { Api } from './api';
 import { ChartView } from './ui/chart';
 import { MoneyInput } from './ui/money-input';
-import { Toast } from './ui/toast';
+import { configDraft, editDraft } from './ui/config-draft';
 
 type Inv = Config['investing'];
 type Field = { label: string; unit: '%' | 'money'; get: (i: Inv) => number; set: (i: Inv, v: number) => void };
@@ -36,7 +35,7 @@ const HOUSE: Field[] = [
 @Component({
   selector: 'app-investing',
   imports: [ChartView, MoneyInput],
-  host: { '(window:keydown)': 'key($event)', '(window:beforeunload)': 'unload($event)' },
+  host: { '(window:keydown)': 'key($event)' },
   styles: `
     .callout { padding: var(--sp-3) var(--sp-4); border: 1px solid var(--accent); border-left-width: 4px; border-radius: var(--r); background: var(--accent-soft); margin-bottom: var(--sp-4); }
     .layout { display: grid; grid-template-columns: 19rem 1fr; gap: var(--sp-4); align-items: start; }
@@ -132,25 +131,13 @@ export class InvestingComponent {
   protected currencySymbol = currencySymbol;
   protected market = MARKET;
   protected house = HOUSE;
-  private api = inject(Api);
-  private toast = inject(Toast);
-  private saved = signal<Config | null>(null);
-  protected draft = signal<Config | null>(null);
-  protected failed = signal(false);
-  protected saving = signal(false);
-  protected dirty = computed(() => JSON.stringify(this.draft()) !== JSON.stringify(this.saved()));
-
-  constructor() {
-    this.api.config().then(
-      (c) => this.load(c),
-      () => this.failed.set(true),
-    );
-  }
-
-  private load(c: Config) {
-    this.saved.set(c);
-    this.draft.set(structuredClone(c));
-  }
+  private cd = configDraft('Investing assumptions saved');
+  protected draft = this.cd.draft;
+  protected failed = this.cd.failed;
+  protected saving = this.cd.saving;
+  protected dirty = this.cd.dirty;
+  protected discard = this.cd.discard;
+  protected save = this.cd.save;
 
   protected annual = computed(() => annualInvesting(this.draft()!));
   protected houseCash = computed(() => {
@@ -189,45 +176,18 @@ export class InvestingComponent {
     };
   });
 
-  protected edit(f: Field, v: number) {
-    if (Number.isNaN(v)) return;
-    this.draft.update((c) => {
-      const n = structuredClone(c!);
-      f.set(n.investing, v);
-      return n;
-    });
-  }
-
   protected editVal(f: Field, e: Event) {
-    const val = (e.target as HTMLInputElement).value.trim().replace(',', '.');
-    const v = Number(val) || 0;
-    if (Number.isNaN(v)) return;
-    this.draft.update((c) => {
-      const n = structuredClone(c!);
-      f.set(n.investing, v);
-      return n;
-    });
+    const el = e.target as HTMLInputElement;
+    const cents = parseMoney(el.value);
+    if (cents === null) {
+      el.value = String(f.get(this.draft()!.investing));
+      return;
+    }
+    editDraft(this.draft, (c) => f.set(c.investing, cents / 100));
   }
 
   protected toggleHouse(on: boolean) {
     this.draft.update((c) => ({ ...c!, investing: { ...c!.investing, houseFundFirst: on } }));
-  }
-
-  protected discard() {
-    this.draft.set(structuredClone(this.saved()!));
-  }
-
-  protected async save() {
-    if (!this.dirty() || this.saving()) return;
-    this.saving.set(true);
-    try {
-      this.load(await this.api.saveConfig(this.draft()!));
-      this.toast.show('Investing assumptions saved');
-    } catch (e: any) {
-      this.toast.show(e?.error?.error ?? 'Save failed', 'err');
-    } finally {
-      this.saving.set(false);
-    }
   }
 
   protected key(e: KeyboardEvent) {
@@ -235,9 +195,5 @@ export class InvestingComponent {
       e.preventDefault();
       void this.save();
     }
-  }
-
-  protected unload(e: BeforeUnloadEvent) {
-    if (this.dirty()) e.preventDefault();
   }
 }
