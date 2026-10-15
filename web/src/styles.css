@@ -97,7 +97,7 @@ main h1:not(.page-head h1) { margin-bottom: var(--sp-4); }
 /* Layout helpers */
 .toolbar { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; margin-bottom: var(--sp-3); }
 .grow { flex: 1; }
-.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: var(--sp-4); align-items: start; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: var(--sp-4); align-items: start; }
 .form { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-bottom: var(--sp-3); }
 .form label { display: flex; flex-direction: column; gap: var(--sp-1); font-size: var(--fs-sm); color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
 .form label input { width: 9rem; }

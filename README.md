@@ -30,7 +30,7 @@ Settings holds database currency, theme and hidden amounts. Normal databases def
 
 - `pnpm dev` runs the server and the web app together.
 - `pnpm sync` pulls Wallet records, then dedupes and classifies. It mirrors edits and deletions (deletes reconciled over the last 90 days); `pnpm sync -- --full` reconciles all history.
-- The server (not demo) fetches from Wallet at startup when the last sync is over an hour old, then hourly; it shares one in-flight sync with the manual Fetch. Each sync stores today's account balances in `balance_snapshots` (history starts at first sync).
+- The server (not demo) fetches from Wallet at startup when the last sync is over an hour old, then hourly; it shares one sync job with manual Fetch. `POST /api/sync` starts or joins a job and returns `202`; `GET /api/sync` reports progress. Each successful sync stores today's account balances in `balance_snapshots` (history starts at first sync).
 - Daily backup: at startup and daily the server writes `data/backups/budget-YYYY-MM-DD.db` (`VACUUM INTO`) and keeps the newest 14. Restore: stop the server, copy a backup over `data/budget.db`.
 - Add record has an "Also add to Wallet" switch that creates the record in Wallet after a preview. Records created that way can later be deleted in Wallet from Records (confirm); no other Wallet record is ever deleted.
 - `pnpm run import <file.xls>` runs the same pipeline from a Wallet export.
@@ -48,7 +48,13 @@ The generic dataset covers the latest 18 months relative to the run date and inc
 
 ## Data
 
-The server listens on localhost only. The database, exports, `.env` and personal config stay on your machine and are git-ignored.
+Local server listens on localhost only. The database, exports, `.env` and personal config are git-ignored. Hosted credentials use Cloudflare secrets and never enter frontend bundles.
+
+## Private hosting and Android
+
+Optional Cloudflare deployment serves this app from a free HTTPS address, with owner-only Cloudflare Access and a SQLite-backed Durable Object. Install through Android Chrome's menu; viewing and edits require internet. Local mode and demo remain available, without automatic database synchronization.
+
+Run `pnpm cloud:check` for cloud validation. Production frontend builds run in Cloudflare's build pipeline. Deployment, migration, free-tier limits and recovery: [docs/HOSTING.md](docs/HOSTING.md).
 
 ## Credits
 

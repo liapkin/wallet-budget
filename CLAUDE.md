@@ -10,8 +10,8 @@ Personal data (config/seed-config.json, docs/SPEC.local.md, CLAUDE.local.md, *.l
 
 - Node.js LTS, TypeScript, Express. REST API under `/api`.
 - Angular, current stable release (not AngularJS 1.x). Standalone components, signals, strict mode.
-- SQLite in `data/budget.db`. One user, one machine; no server database.
-- pnpm workspaces: `server/`, `web/`, `shared/` (types and pure domain functions used by both).
+- SQLite in `data/budget.db` locally; one SQLite-backed Durable Object for private Cloudflare hosting. One user, one live database.
+- pnpm workspaces: `server/`, `web/`, `shared/` (types and pure domain functions used by both), `cloud/` (protected hosted runtime).
 - Tests: the runner each side ships with by default. Domain logic lives in `shared/` and is tested there.
 
 ## Layout
@@ -37,8 +37,9 @@ Use pnpm only. Never npm or npx; use `pnpm dlx` for one-off tools.
 
 ## Rules
 
-- **Secrets and data stay local.** The Wallet token is read from `.env` (`WALLET_API_TOKEN`). Never print it, never commit it. `data/`, `.env` and any `*.xls*` are git-ignored from the first commit.
-- **Bind to localhost only.** No auth layer is planned, so the server must not listen on other interfaces.
+- **Secrets and personal files never enter source control or frontend bundles.** Local Wallet credentials come from `.env` (`WALLET_API_TOKEN`); hosted credentials use Cloudflare secrets. Personal data may be migrated only into the owner's protected hosted database. Never print tokens or transaction payloads.
+- **Local server binds to localhost only.** Hosted access must fail closed, require Cloudflare Access restricted to the owner, validate signed identity, and reject cross-origin writes. No public budget API.
+- **Free cloud tier only.** Never enable paid billing or chargeable services without explicit authorization. Do not run the frontend dev server or frontend builds in the workspace; production builds run in Cloudflare's build pipeline.
 - **Wallet writes: create a record (toggle "Also add to Wallet" + preview) and delete a record this app created (confirm). Nothing else.**
 - **Payee data is sensitive.** The Wallet `payee` field holds names and IBANs. Store it if needed for matching, never log it, never show it in the UI.
 - **Money is integer cents.** No floats in storage or arithmetic. Format at the edge.

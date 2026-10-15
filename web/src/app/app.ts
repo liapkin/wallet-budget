@@ -9,6 +9,7 @@ import { hidden, togglePrivacy } from './ui/privacy';
 import { cycleTheme, theme, themeLabel } from './ui/theme';
 import { Refresh } from './ui/refresh';
 import { Toasts } from './ui/toast';
+import { Access } from './access';
 
 const NAV: { label: string; items: { path: string; label: string; icon: IconName; badge?: boolean }[] }[] = [
   { label: 'Overview', items: [{ path: 'month', label: 'Month', icon: 'calendar' }, { path: 'history', label: 'History', icon: 'history' }, { path: 'inbox', label: 'Inbox', icon: 'inbox', badge: true }] },
@@ -34,6 +35,7 @@ const NAV: { label: string; items: { path: string; label: string; icon: IconName
 export class App {
   protected nav = NAV;
   protected refresh = inject(Refresh);
+  protected access = inject(Access);
   private api = inject(Api);
   private http = inject(HttpClient);
   /** Badge is decorative: a failed count shows nothing rather than an error. */
@@ -64,6 +66,7 @@ export class App {
         this.refresh.currencyLocked.set(true);
       } else if (this.meta.hasValue()) {
         this.refresh.applyMeta(this.meta.value()!);
+        void this.refresh.resumeWalletSync();
         this.ready.set(true);
       }
     });

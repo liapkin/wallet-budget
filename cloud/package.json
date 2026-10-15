@@ -1,0 +1,20 @@
+{
+  "name": "cloud",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "tsc -p .",
+    "test": "node --test --test-timeout=300000 test/*.test.ts",
+    "check": "pnpm run lint && pnpm test",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev --remote --env preview"
+  },
+  "dependencies": {
+    "iconv-lite": "^0.7.3"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261015.1",
+    "miniflare": "5.20261012.0-beta",
+    "wrangler": "4.151.0"
+  }
+}

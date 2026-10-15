@@ -34,9 +34,13 @@ export function runPipeline(): void {
     const keepY = x.paymentType === y.paymentType ? y.dateUtc >= x.dateUtc : y.paymentType === 'TRANSFER';
     dups.set(keepY ? a : b, keepY ? b : a);
   }
-  const upd = db.prepare('UPDATE records SET is_dup=?, dup_of=?, grp=?, month=? WHERE id=?');
+  const upd = db.prepare(`UPDATE records SET is_dup=?, dup_of=?, grp=?, month=? WHERE id=?
+    AND (is_dup IS NOT ? OR dup_of IS NOT ? OR grp IS NOT ? OR month IS NOT ?)`);
   tx(() => {
-    for (const r of recs) upd.run(dups.has(r.id) ? 1 : 0, dups.get(r.id) ?? null, classify(r, cfg), athensMonth(r.dateUtc), r.id);
+    for (const r of recs) {
+      const derived = [dups.has(r.id) ? 1 : 0, dups.get(r.id) ?? null, classify(r, cfg), athensMonth(r.dateUtc)] as const;
+      upd.run(...derived, r.id, ...derived);
+    }
   });
 }
 

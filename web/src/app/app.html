@@ -1,3 +1,9 @@
+@if (access.problem(); as problem) {
+  <section class="access-alert" role="alert">
+    <span>{{ problem === 'session' ? 'Session expired. Reload to sign in again.' : 'Cannot connect to Budget tracker. Check your connection, then reload.' }}</span>
+    <button class="primary" type="button" (click)="access.reload()">{{ problem === 'session' ? 'Reload and sign in' : 'Reload' }}</button>
+  </section>
+}
 <header class="topbar">
   <button class="icon" type="button" aria-label="Menu" [attr.aria-expanded]="drawer()" (click)="drawer.set(!drawer())"><app-icon name="menu" [size]="20" /></button>
   <strong>Budget</strong>

@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import type { Config, Currency } from '../../../shared/src/types.ts';
 import type { CryptoSummary } from '../../../shared/src/crypto.ts';
 import type { Summary } from '../../../shared/src/summary.ts';
+import type { SyncJob } from '../../../shared/src/sync-job.ts';
 
 export type Row = {
   id: number;
@@ -71,5 +72,6 @@ export class Api {
   refreshHoldings = (kind: 'crypto' | 'etf') => firstValueFrom(this.http.post<CryptoData>(`/api/holdings/${kind}/refresh`, {}));
   importCrypto = (body: { overview: string; transactions: string; tag: string }) =>
     firstValueFrom(this.http.post<CryptoData>('/api/crypto/import', body));
-  sync = () => firstValueFrom(this.http.post<{ inserted: number }>('/api/sync', {}));
+  sync = () => firstValueFrom(this.http.post<SyncJob>('/api/sync', {}));
+  syncStatus = () => firstValueFrom(this.http.get<SyncJob>('/api/sync'));
 }

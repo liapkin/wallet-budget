@@ -2,7 +2,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { randomUUID } from 'node:crypto';
 import { db, getConfig, setConfig, currencyLocked, tx } from './db.ts';
 import { activeSource, runPipeline, spendSummary, toRec } from './pipeline.ts';
-import { insertApiRecord, lastSync, syncOnce } from './sync.ts';
+import { insertApiRecord, lastSync, localSyncController } from './sync.ts';
 import { del, post } from './wallet.ts';
 import { startScheduler } from './scheduler.ts';
 import { importCrypto, refreshHoldings } from './holdings.ts';
@@ -14,13 +14,15 @@ import { monthClose, pairKey, possibleDuplicates, recurring, suggestGroup, yearR
 import { toCents } from '../../shared/src/money.ts';
 import { holdingsHistory, holdingsSummary, type CryptoQuotes } from '../../shared/src/crypto.ts';
 import type { Config } from '../../shared/src/types.ts';
+import { currentRuntime, runtimeEnv } from './runtime.ts';
 
-const demo = process.env.DEMO === '1';
+const isDemo = (): boolean => runtimeEnv().DEMO === '1';
 export const app = express();
 
 const LOCAL = new Set(['127.0.0.1', 'localhost']);
 // Blocks DNS rebinding (Host) and cross-site browser requests (Origin) against the unauthenticated API.
 export function localOnly(req: Request, res: Response, next: NextFunction) {
+  if (currentRuntime()?.env.HOSTED === '1') return void next();
   const origin = req.headers.origin;
   let originHost: string | undefined;
   try {
@@ -81,7 +83,7 @@ export const getMeta = () => {
     (db.prepare(`SELECT DISTINCT ${c} AS v FROM records WHERE ${s.sql} ${order}`).all(...s.args) as { v: string }[]).map((r) => r.v);
   const cfg = getConfig();
   const { groups, excludedGroups } = cfg.wallet;
-  return { demo, currency: cfg.currency, currencyLocked: demo || currencyLocked(), groups, excludedGroups, accounts: col('account', 'ORDER BY 1'), months: col('month', 'ORDER BY 1 DESC'), lastSync: lastSync() };
+  return { demo: isDemo(), currency: cfg.currency, currencyLocked: isDemo() || currencyLocked(), groups, excludedGroups, accounts: col('account', 'ORDER BY 1'), months: col('month', 'ORDER BY 1 DESC'), lastSync: lastSync() };
 };
 
 app.get('/api/meta', (req, res) => {
@@ -123,7 +125,7 @@ app.get('/api/holdings/:kind', (req, res) => {
 const refreshing = new Map<string, Promise<void>>();
 app.post('/api/holdings/:kind/refresh', async (req, res, next) => {
   try {
-    if (demo) bad('Disabled in demo mode');
+    if (isDemo()) bad('Disabled in demo mode');
     const { kind } = req.params;
     if (kind !== 'crypto' && kind !== 'etf') bad('kind must be crypto or etf');
     let job = refreshing.get(kind);
@@ -141,7 +143,7 @@ app.post('/api/holdings/:kind/refresh', async (req, res, next) => {
 
 app.post('/api/crypto/import', async (req, res, next) => {
   try {
-    if (demo) bad('Disabled in demo mode');
+    if (isDemo()) bad('Disabled in demo mode');
     const { overview, transactions } = req.body ?? {};
     if (typeof overview !== 'string' || !overview.trim() || typeof transactions !== 'string' || !transactions.trim()) bad('overview and transactions must be non-empty strings');
     const tag = str(req.body.tag) || 'Main';
@@ -190,7 +192,7 @@ export async function createRecord(req: Request, res: Response) {
   const [y, mo, d, h, mi] = m!.slice(1).map(Number);
   const cents = toCents(value);
   if (toWallet === true) {
-    if (demo) bad('Disabled in demo mode');
+    if (isDemo()) bad('Disabled in demo mode');
     if (getConfig().currency !== 'EUR') bad('Wallet sync, import and writes support EUR databases only');
     if (str(accountId).startsWith('local:')) bad('local accounts cannot receive Wallet records');
     const acc = db.prepare('SELECT currency FROM accounts WHERE id=?').get(str(accountId)) as { currency: string } | undefined;
@@ -236,7 +238,7 @@ app.delete('/api/records/:id', async (req, res, next) => {
     const r = getRecord(req.params.id);
     if (!r) return void res.status(404).json({ error: 'not found' });
     if (req.query.wallet === '1') {
-      if (demo) bad('Disabled in demo mode');
+      if (isDemo()) bad('Disabled in demo mode');
       if (r.source !== 'api' || !r.createdInApp) return void res.status(403).json({ error: 'only records created by this app can be deleted in Wallet' });
       const extId = (db.prepare('SELECT ext_id FROM records WHERE id=?').get(r.id) as { ext_id: string }).ext_id;
       let result: any;
@@ -355,7 +357,7 @@ app.get('/api/cash-topups', (req, res) => {
 // Creates the Cash side of the transfer in Wallet, paired to the existing ATM record.
 app.post('/api/cash-topups/:id', async (req, res, next) => {
   try {
-    if (demo) bad('Disabled in demo mode');
+    if (isDemo()) bad('Disabled in demo mode');
     const w = db.prepare(`SELECT ext_id AS extId, amount_cents AS cents, date_utc AS dateUtc FROM records WHERE id=? AND ${UNPAIRED_ATM}`).get(Number(req.params.id)) as
       | { extId: string; cents: number; dateUtc: string }
       | undefined;
@@ -458,11 +460,19 @@ app.get('/api/year/:y', (req, res) => {
   res.type('text/csv').attachment(`year-${year}.csv`).send(lines.join('\n') + '\n');
 });
 
-app.post('/api/sync', (req, res, next) => {
-  if (demo) bad('Disabled in demo mode');
-  if (getConfig().currency !== 'EUR') bad('Wallet sync, import and writes support EUR databases only');
-  syncOnce().then((r) => res.json(r), next);
+const syncController = () => currentRuntime()?.sync ?? localSyncController;
+
+app.post('/api/sync', async (req, res, next) => {
+  try {
+    if (isDemo()) bad('Disabled in demo mode');
+    if (getConfig().currency !== 'EUR') bad('Wallet sync, import and writes support EUR databases only');
+    res.status(202).json(await syncController().start());
+  } catch (error) {
+    next(error);
+  }
 });
+
+app.get('/api/sync', (req, res) => res.json(syncController().status()));
 
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
   if (err instanceof BadRequest || (err as any).type === 'entity.parse.failed') return void res.status(400).json({ error: err.message });
@@ -470,7 +480,7 @@ app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: 'internal error' });
 });
 
-const port = Number(process.env.PORT ?? 3000);
+const port = Number(runtimeEnv().PORT ?? 3000);
 if (import.meta.main) {
   app.listen(port, '127.0.0.1', () => {
     console.log(`listening on http://127.0.0.1:${port}`);

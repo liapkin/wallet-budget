@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { db, dbPath } from './db.ts';
+import { databasePath, db } from './db.ts';
+import { runtimeEnv } from './runtime.ts';
 
 const KEEP = 14;
 const FILE = /^budget-\d{4}-\d{2}-\d{2}\.db$/;
@@ -13,7 +14,8 @@ export const expired = (files: string[], keep = KEEP): string[] => {
 
 /** Writes data/backups/budget-YYYY-MM-DD.db once per day. Returns true if a file was created. */
 export function backupToday(): boolean {
-  if (process.env.DEMO === '1' || dbPath === ':memory:') return false;
+  const dbPath = databasePath();
+  if (runtimeEnv().DEMO === '1' || dbPath === ':memory:') return false;
   const dir = join(dirname(dbPath), 'backups');
   const file = join(dir, `budget-${new Date().toLocaleDateString('sv', { timeZone: 'Europe/Athens' })}.db`);
   if (existsSync(file)) return false;

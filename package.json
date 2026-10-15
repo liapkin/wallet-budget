@@ -10,6 +10,12 @@
     "demo:seed": "pnpm --filter server run demo",
     "demo": "node scripts/demo.mjs",
     "test:demo": "node --test scripts/demo.test.mjs",
+    "cloud:check": "pnpm --filter cloud check",
+    "cloud:deploy": "pnpm --filter cloud deploy",
+    "cloud:migrate": "node scripts/cloud-migrate.mjs",
+    "cloud:snapshot": "node scripts/cloud-snapshot.mjs",
+    "cloud:recover": "node scripts/cloud-recover.mjs",
+    "cloud:preview": "pnpm --filter cloud preview",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint"
   },

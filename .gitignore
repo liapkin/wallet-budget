@@ -10,3 +10,9 @@ docs/SPEC.local.md
 CLAUDE.local.md
 *.local.test.ts
 *.local.json
+.dev.vars
+.dev.vars.*
+.env.*
+!.env.example
+.wrangler/
+cloud/.output/

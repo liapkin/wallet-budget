@@ -1,12 +1,12 @@
 import { db, getConfig, setConfig, tx } from './db.ts';
-import './wallet.ts'; // loads .env
 import { athensDay } from '../../shared/src/month.ts';
 import { buyDates, importCmc } from '../../shared/src/crypto-import.ts';
 import type { Config } from '../../shared/src/types.ts';
+import { secret } from './wallet.ts';
 
 type Holdings = Config['investing']['crypto'];
 
-type Quotes = Record<string, { price: number; pct24h: number }>;
+export type Quotes = Record<string, { price: number; pct24h: number }>;
 
 export const cryptoCents = (holdings: Holdings, quotes: Quotes): number =>
   holdings.reduce((sum, h) => {
@@ -38,30 +38,34 @@ export const pct24h = (price: number, prevClose: number): number => (price / pre
 export async function rateToEur(from: string, date = 'latest'): Promise<number> {
   const res = await fetch(`https://api.frankfurter.app/${date}?from=${from}&to=EUR`);
   if (!res.ok) throw new Error(`Frankfurter ${res.status} ${res.statusText} for ${date}`);
-  return (await res.json()).rates.EUR;
+  return ((await res.json()) as { rates: { EUR: number } }).rates.EUR;
+}
+
+export async function fetchEtfMarket(symbol: string): Promise<{ price: number; prevClose: number; currency: string }> {
+  const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=5d&interval=1d`, {
+    headers: { 'User-Agent': 'Mozilla/5.0' },
+  });
+  if (!res.ok) throw new Error(`Yahoo ${res.status} ${res.statusText} for ${symbol}`);
+  let { price, prevClose, currency } = parseYahoo(await res.json());
+  if (currency === 'GBp') [price, prevClose, currency] = [price / 100, prevClose / 100, 'GBP'];
+  return { price, prevClose, currency };
+}
+
+export async function fetchEtfQuote(symbol: string): Promise<{ price: number; pct24h: number }> {
+  const { price, prevClose, currency } = await fetchEtfMarket(symbol);
+  const rate = currency === 'EUR' ? 1 : await rateToEur(currency);
+  return { price: price * rate, pct24h: pct24h(price, prevClose) };
 }
 
 async function etfQuotes(symbols: string[]): Promise<Quotes> {
   const out: Quotes = {};
-  const rates = new Map<string, number>();
   for (const symbol of symbols) {
-    const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=5d&interval=1d`, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-    });
-    if (!res.ok) throw new Error(`Yahoo ${res.status} ${res.statusText} for ${symbol}`);
-    let { price, prevClose, currency } = parseYahoo(await res.json());
-    if (currency === 'GBp') [price, prevClose, currency] = [price / 100, prevClose / 100, 'GBP'];
-    let rate = 1;
-    if (currency !== 'EUR') {
-      if (!rates.has(currency)) rates.set(currency, await rateToEur(currency));
-      rate = rates.get(currency)!;
-    }
-    out[symbol.toUpperCase()] = { price: price * rate, pct24h: pct24h(price, prevClose) };
+    out[symbol.toUpperCase()] = await fetchEtfQuote(symbol);
   }
   return out;
 }
 
-async function cmcQuotes(key: string, symbols: string[]): Promise<Quotes> {
+export async function fetchCryptoQuotes(key: string, symbols: string[]): Promise<Quotes> {
   const res = await fetch(`https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest?symbol=${encodeURIComponent(symbols.join(','))}&convert=EUR`, {
     headers: { 'X-CMC_PRO_API_KEY': key },
   });
@@ -70,7 +74,7 @@ async function cmcQuotes(key: string, symbols: string[]): Promise<Quotes> {
 }
 
 export async function refreshHoldings(kind: Kind): Promise<void> {
-  const key = process.env.COINMARKETCAP_API_KEY;
+  const key = secret('COINMARKETCAP_API_KEY');
   const cfg = getConfig().investing;
   const holdings = kind === 'crypto' ? cfg.crypto : cfg.etfs;
   const local = LOCAL[kind];
@@ -80,7 +84,18 @@ export async function refreshHoldings(kind: Kind): Promise<void> {
     return;
   }
   const symbols = [...new Set(holdings.map((h) => h.symbol.toUpperCase()))];
-  const quotes = kind === 'crypto' ? await cmcQuotes(key!, symbols) : await etfQuotes(symbols);
+  const quotes = kind === 'crypto' ? await fetchCryptoQuotes(key!, symbols) : await etfQuotes(symbols);
+  saveHoldingQuotes(kind, quotes);
+}
+
+export function saveHoldingQuotes(kind: Kind, quotes: Quotes): void {
+  const cfg = getConfig().investing;
+  const holdings = kind === 'crypto' ? cfg.crypto : cfg.etfs;
+  const local = LOCAL[kind];
+  if (!holdings.length) {
+    db.prepare('DELETE FROM accounts WHERE id=?').run(local.id);
+    return;
+  }
   const cents = cryptoCents(holdings, quotes);
   const ts = new Date().toISOString();
   const snap = db.prepare('INSERT OR REPLACE INTO crypto_snapshots (ts, symbol, amount, price_cents, pct24h, kind) VALUES (?, ?, ?, ?, ?, ?)');

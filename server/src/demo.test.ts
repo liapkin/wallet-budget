@@ -70,7 +70,7 @@ test('demo generator makes 18 months with duplicates and unclassified records', 
   mkdirSync(join(fixture, 'server', 'src'), { recursive: true });
   mkdirSync(join(fixture, 'shared', 'src'), { recursive: true });
   mkdirSync(join(fixture, 'config'), { recursive: true });
-  for (const file of ['demo.ts', 'db.ts', 'pipeline.ts'])
+  for (const file of ['demo.ts', 'db.ts', 'pipeline.ts', 'runtime.ts'])
     cpSync(join(root, 'server', 'src', file), join(fixture, 'server', 'src', file));
   for (const file of ['seed.ts', 'money.ts', 'types.ts', 'month.ts', 'dedupe.ts', 'classify.ts', 'summary.ts'])
     cpSync(join(root, 'shared', 'src', file), join(fixture, 'shared', 'src', file));

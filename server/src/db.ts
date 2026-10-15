@@ -1,13 +1,15 @@
-import { DatabaseSync } from 'node:sqlite';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import type { Config } from '../../shared/src/types.ts';
 import { seedToConfig } from '../../shared/src/seed.ts';
+import { currentRuntime, type Database, type Statement } from './runtime.ts';
 
-const root = join(import.meta.dirname, '..', '..');
+const localRoot = (): string => join(import.meta.dirname, '..', '..');
 // relative BUDGET_DB resolves against the repo root so it works from any workspace
 export const resolveDatabasePath = (env: NodeJS.ProcessEnv = process.env): string => {
   const configured = env.BUDGET_DB;
+  const root = localRoot();
   const demoPath = resolve(root, 'data/demo.db');
   const path = configured === ':memory:' ? ':memory:' : resolve(root, configured ?? (env.DEMO === '1' ? demoPath : 'data/budget.db'));
   if (env.DEMO === '1' && path !== ':memory:' && path !== demoPath) {
@@ -16,13 +18,7 @@ export const resolveDatabasePath = (env: NodeJS.ProcessEnv = process.env): strin
   return path;
 };
 
-const path = resolveDatabasePath();
-if (path !== ':memory:') mkdirSync(join(path, '..'), { recursive: true });
-
-export const dbPath = path;
-export const db = new DatabaseSync(path);
-
-db.exec(`
+const SCHEMA = `
 CREATE TABLE IF NOT EXISTS records (
   id INTEGER PRIMARY KEY, source TEXT, ext_id TEXT UNIQUE, account TEXT, category TEXT,
   amount_cents INTEGER, type TEXT, payment_type TEXT, note TEXT, payee TEXT, date_utc TEXT,
@@ -36,17 +32,89 @@ CREATE TABLE IF NOT EXISTS balance_snapshots (day TEXT, account TEXT, balance_ce
 CREATE TABLE IF NOT EXISTS crypto_snapshots (ts TEXT, symbol TEXT, amount REAL, price_cents INTEGER, pct24h REAL, PRIMARY KEY(ts, symbol));
 CREATE TABLE IF NOT EXISTS dup_decisions (a INTEGER, b INTEGER, decision TEXT CHECK(decision IN ('dup','not')), PRIMARY KEY(a, b));
 CREATE TABLE IF NOT EXISTS month_close (month TEXT PRIMARY KEY, json TEXT);
-`);
-if (!(db.prepare('PRAGMA table_info(records)').all() as { name: string }[]).some((c) => c.name === 'created_in_app')) {
-  db.exec('ALTER TABLE records ADD COLUMN created_in_app INTEGER DEFAULT 0');
+`;
+
+const normalizeConfig = (cfg: Config): Config => ({
+  ...cfg,
+  currency: cfg.currency ?? 'EUR',
+  investing: {
+    ...cfg.investing,
+    crypto: (cfg.investing.crypto ?? []).map((h) => ({ ...h, paid: h.paid ?? 0 })),
+    etfs: (cfg.investing.etfs ?? []).map((h) => ({ ...h, paid: h.paid ?? 0 })),
+  },
+  allocation: { ...cfg.allocation, hiddenAccounts: cfg.allocation.hiddenAccounts ?? [] },
+  wallet: { ...cfg.wallet, incomeGroups: cfg.wallet.incomeGroups ?? ['Income'] },
+});
+
+/** Creates/migrates schema without reading local files. Cloud callers pass their seed explicitly. */
+export function initializeSchema(database: Database, initialConfig?: Config): void {
+  database.exec(SCHEMA);
+  if (!(database.prepare('PRAGMA table_info(records)').all() as { name: string }[]).some((c) => c.name === 'created_in_app')) {
+    database.exec('ALTER TABLE records ADD COLUMN created_in_app INTEGER DEFAULT 0');
+  }
+  if (!(database.prepare('PRAGMA table_info(crypto_snapshots)').all() as { name: string }[]).some((c) => c.name === 'kind')) {
+    database.exec("ALTER TABLE crypto_snapshots ADD COLUMN kind TEXT DEFAULT 'crypto'");
+  }
+  if (initialConfig && !database.prepare('SELECT 1 FROM config').get()) {
+    database.prepare('INSERT INTO config (id, json) VALUES (1, ?)').run(JSON.stringify(normalizeConfig(initialConfig)));
+  }
 }
-if (!(db.prepare('PRAGMA table_info(crypto_snapshots)').all() as { name: string }[]).some((c) => c.name === 'kind')) {
-  db.exec("ALTER TABLE crypto_snapshots ADD COLUMN kind TEXT DEFAULT 'crypto'");
-}
+
+let local: Database | undefined;
+let localPath: string | undefined;
+
+const openLocal = (): Database => {
+  if (local) return local;
+  const path = resolveDatabasePath();
+  if (path !== ':memory:') mkdirSync(join(path, '..'), { recursive: true });
+  const sqlite = new DatabaseSync(path);
+  const database: Database = {
+    prepare: (sql) => sqlite.prepare(sql) as Statement,
+    exec: (sql) => sqlite.exec(sql),
+    transaction: (fn) => {
+      sqlite.exec('BEGIN');
+      try {
+        const result = fn();
+        sqlite.exec('COMMIT');
+        return result;
+      } catch (error) {
+        sqlite.exec('ROLLBACK');
+        throw error;
+      }
+    },
+    close: () => sqlite.close(),
+  };
+  initializeSchema(database);
+  if (!database.prepare('SELECT 1 FROM config').get()) {
+    const root = localRoot();
+    const personal = join(root, 'config', 'seed-config.json');
+    const example = join(root, 'config', 'seed-config.example.json');
+    const seed = process.env.DEMO === '1' || !existsSync(personal) ? example : personal;
+    const cfg = seedToConfig(JSON.parse(readFileSync(seed, 'utf8')));
+    if (process.env.DEMO === '1') cfg.currency = 'USD';
+    database.prepare('INSERT INTO config (id, json) VALUES (1, ?)').run(JSON.stringify(normalizeConfig(cfg)));
+  }
+  localPath = path;
+  local = database;
+  return database;
+};
+
+const activeDatabase = (): Database => currentRuntime()?.db ?? openLocal();
+
+/** Existing imports stay valid; each operation resolves DB from current async runtime. */
+export const db: Database & { close(): void } = new Proxy({} as Database & { close(): void }, {
+  get(_target, property) {
+    if (property === 'close' && !activeDatabase().close) return () => undefined;
+    const value = (activeDatabase() as any)[property];
+    return typeof value === 'function' ? value.bind(activeDatabase()) : value;
+  },
+});
+
+export const databasePath = (): string => localPath ?? resolveDatabasePath();
 
 export const getConfig = (): Config => {
   const cfg = JSON.parse((db.prepare('SELECT json FROM config WHERE id=1').get() as { json: string }).json) as Config;
-  return { ...cfg, currency: cfg.currency ?? 'EUR', investing: { ...cfg.investing, crypto: (cfg.investing.crypto ?? []).map((h) => ({ ...h, paid: h.paid ?? 0 })), etfs: (cfg.investing.etfs ?? []).map((h) => ({ ...h, paid: h.paid ?? 0 })) }, allocation: { ...cfg.allocation, hiddenAccounts: cfg.allocation.hiddenAccounts ?? [] }, wallet: { ...cfg.wallet, incomeGroups: cfg.wallet.incomeGroups ?? ['Income'] } };
+  return normalizeConfig(cfg);
 };
 
 export const currencyLocked = (): boolean => !!db.prepare(
@@ -54,7 +122,7 @@ export const currencyLocked = (): boolean => !!db.prepare(
 ).get();
 
 export const requireWalletCurrency = (): void => {
-  if (process.env.DEMO === '1') throw new Error('Disabled in demo mode');
+  if ((currentRuntime()?.env ?? process.env).DEMO === '1') throw new Error('Disabled in demo mode');
   if (getConfig().currency !== 'EUR') throw new Error('Wallet sync, import and writes support EUR databases only');
 };
 
@@ -66,22 +134,6 @@ export const setConfig = (cfg: Config): void => {
   db.prepare('INSERT OR REPLACE INTO config (id, json) VALUES (1, ?)').run(JSON.stringify({ ...cfg, currency }));
 };
 
-if (!db.prepare('SELECT 1 FROM config').get()) {
-  const personal = join(root, 'config', 'seed-config.json');
-  const example = join(root, 'config', 'seed-config.example.json');
-  const seed = process.env.DEMO === '1' || !existsSync(personal) ? example : personal;
-  const cfg = seedToConfig(JSON.parse(readFileSync(seed, 'utf8')));
-  if (process.env.DEMO === '1') cfg.currency = 'USD';
-  setConfig(cfg);
-}
-
-export function tx(fn: () => void): void {
-  db.exec('BEGIN');
-  try {
-    fn();
-    db.exec('COMMIT');
-  } catch (e) {
-    db.exec('ROLLBACK');
-    throw e;
-  }
+export function tx<T>(fn: () => T): T {
+  return db.transaction(fn);
 }

@@ -6,6 +6,8 @@ import { App } from './app';
 import { Api } from './api';
 import { routes } from './app.routes';
 import { setTheme, theme } from './ui/theme';
+import { Access } from './access';
+import { vi } from 'vitest';
 
 describe('App', () => {
   it('should create the app', () => {
@@ -37,5 +39,23 @@ describe('App', () => {
 
     window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyT', shiftKey: true }));
     expect(theme()).toBe('dark');
+  });
+
+  it('shows a top-level sign-in action for expired sessions', () => {
+    TestBed.configureTestingModule({
+      imports: [App],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    });
+    const access = TestBed.inject(Access);
+    vi.spyOn(access, 'reload').mockImplementation(() => undefined);
+    access.problem.set('session');
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const alert = fixture.nativeElement.querySelector('[role="alert"]');
+    expect(alert.textContent).toContain('Session expired');
+    const button = alert.querySelector('button') as HTMLButtonElement;
+    expect(button.textContent).toContain('Reload and sign in');
+    button.click();
+    expect(access.reload).toHaveBeenCalledOnce();
   });
 });

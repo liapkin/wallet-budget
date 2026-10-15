@@ -26,3 +26,14 @@ test('confirmed dup pair keeps the TRANSFER record, else the later one; "not" ch
   runPipeline();
   assert.deepEqual(state(), [[1, 0, null], [2, 0, null], [3, 0, null], [4, 0, null]]);
 });
+
+test('pipeline updates only rows whose derived values changed', () => {
+  db.exec('CREATE TEMP TABLE pipeline_updates (id INTEGER)');
+  db.exec('CREATE TEMP TRIGGER count_pipeline_updates AFTER UPDATE OF is_dup, dup_of, grp, month ON records BEGIN INSERT INTO pipeline_updates VALUES (new.id); END');
+  runPipeline();
+  db.exec('DELETE FROM pipeline_updates');
+
+  runPipeline();
+
+  assert.equal((db.prepare('SELECT COUNT(*) AS n FROM pipeline_updates').get() as { n: number }).n, 0);
+});

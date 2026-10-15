@@ -6,7 +6,9 @@ All amounts use one database currency, EUR or USD, stored as integer cents. Miss
 
 One screen that answers: where does this month stand against the plan, per category, without typing.
 
-Non-goals: multi-user, cloud hosting, bank connections of its own, investment execution, mobile app.
+Non-goals: multi-user, bank connections of its own, investment execution, native mobile app, offline financial data or edits.
+
+Optional hosting: the owner's private Cloudflare deployment uses Workers Static Assets, one SQLite-backed Durable Object and owner-only Cloudflare Access on a free `workers.dev` address. The Android app installs from Chrome as an online-only PWA. Local mode and demo remain supported; hosted and local databases do not synchronize. Hosting stays on the free tier and must be verified against its limits before migration and cutover. See `docs/HOSTING.md` for deployment and recovery.
 
 ## 2. Data source: Wallet (BudgetBakers)
 

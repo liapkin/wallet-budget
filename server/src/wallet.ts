@@ -1,28 +1,50 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { parseEnv } from 'node:util';
 import { requireWalletCurrency } from './db.ts';
+import { currentRuntime, runtimeEnv } from './runtime.ts';
 
-const envFile = join(import.meta.dirname, '..', '..', '.env');
-if (process.env.DEMO !== '1' && existsSync(envFile)) process.loadEnvFile(envFile);
+let fileEnv: Record<string, string | undefined> | undefined;
+const localFileEnv = (): Record<string, string | undefined> => {
+  if (fileEnv) return fileEnv;
+  fileEnv = {};
+  const envFile = join(import.meta.dirname, '..', '..', '.env');
+  if (runtimeEnv().DEMO === '1' || !existsSync(envFile)) return fileEnv;
+  fileEnv = parseEnv(readFileSync(envFile, 'utf8'));
+  return fileEnv!;
+};
+export const secret = (name: string): string | undefined =>
+  runtimeEnv()[name] ?? (currentRuntime() ? undefined : localFileEnv()[name]);
 
 type Params = Record<string, string | number | string[]>;
 
 const BASE = 'https://rest.budgetbakers.com/wallet';
 
+export class RetryAfterError extends Error {
+  readonly retryAt: string;
+  constructor(retryAt: string) {
+    super('Wallet GET rate limited');
+    this.retryAt = retryAt;
+  }
+}
+
 // GET for sync; POST only for user-confirmed record creation; DELETE only for records this app created. Errors carry status, path and the API's short error code, never headers or bodies.
 async function call<T>(method: 'GET' | 'POST' | 'DELETE', url: string, path: string, body?: unknown): Promise<T> {
   requireWalletCurrency();
-  if (!process.env.WALLET_API_TOKEN) throw new Error('WALLET_API_TOKEN is not set; add it to .env');
+  const token = secret('WALLET_API_TOKEN');
+  if (!token) throw new Error('WALLET_API_TOKEN is not set; add it to .env');
   for (let attempt = 1; ; attempt++) {
     requireWalletCurrency();
     const res = await fetch(url, {
       method,
-      headers: { Authorization: `Bearer ${process.env.WALLET_API_TOKEN}`, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
+      headers: { Authorization: `Bearer ${token}`, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     if (res.status === 429) {
-      if (attempt >= 5) throw new Error(`Wallet ${method} ${path} failed: rate limited`);
       const wait = Math.min(Number(res.headers.get('retry-after')) || 60, 120);
+      if (method !== 'GET') throw new Error(`Wallet ${method} ${path} failed: rate limited`);
+      if (currentRuntime()) throw new RetryAfterError(new Date(Date.now() + wait * 1000).toISOString());
+      if (attempt >= 5) throw new Error(`Wallet ${method} ${path} failed: rate limited`);
       console.error(`rate limited, waiting ${wait}s`);
       await new Promise((r) => setTimeout(r, wait * 1000));
       continue;

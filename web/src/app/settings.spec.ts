@@ -15,7 +15,7 @@ import { Toast } from './ui/toast';
 
 describe('Settings', () => {
   let stored: Config;
-  let api: { config: ReturnType<typeof vi.fn>; saveConfig: ReturnType<typeof vi.fn>; meta: ReturnType<typeof vi.fn>; accounts: () => Promise<[]> };
+  let api: { config: ReturnType<typeof vi.fn>; saveConfig: ReturnType<typeof vi.fn>; meta: ReturnType<typeof vi.fn>; syncStatus: ReturnType<typeof vi.fn>; accounts: () => Promise<[]> };
   let refresh: Refresh;
 
   beforeEach(() => {
@@ -27,6 +27,7 @@ describe('Settings', () => {
       config: vi.fn(async () => structuredClone(stored)),
       saveConfig: vi.fn(async (config: Config) => { stored = structuredClone(config); return structuredClone(stored); }),
       meta: vi.fn(async () => ({ groups: [], excludedGroups: [], accounts: [], months: [], currency: stored.currency, currencyLocked: false, demo: false })),
+      syncStatus: vi.fn(async () => ({ status: 'idle', inserted: 0, updated: 0, deleted: 0 })),
       accounts: async () => [],
     };
     TestBed.configureTestingModule({ providers: [
