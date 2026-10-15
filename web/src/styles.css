@@ -140,7 +140,7 @@ input, select, button, textarea {
   font: var(--fs)/1.5 var(--font); color: inherit; background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--r-sm); padding: 0.35rem 0.7rem; box-shadow: var(--shadow-sm);
 }
-input, select, textarea { min-height: 2rem; }
+input, select, textarea { min-height: 2rem; max-width: 100%; }
 input:hover, select:hover, textarea:hover { border-color: color-mix(in srgb, var(--muted) 50%, var(--border)); }
 input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
 input[type='checkbox'] { min-height: 0; accent-color: var(--accent); box-shadow: none; }
@@ -193,7 +193,7 @@ label.switch input:checked::after { transform: translateX(1rem); }
 .savebar { position: sticky; bottom: var(--sp-4); z-index: 20; display: flex; align-items: center; gap: var(--sp-3); justify-content: flex-end; padding: var(--sp-3) var(--sp-4); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-pop); }
 
 /* Toast */
-.toast-stack { position: fixed; right: var(--sp-4); bottom: var(--sp-4); z-index: 100; display: flex; flex-direction: column; gap: var(--sp-2); }
+.toast-stack { position: fixed; right: var(--sp-4); bottom: var(--sp-4); z-index: 100; display: flex; flex-direction: column; gap: var(--sp-2); max-width: calc(100vw - 2rem); }
 .toast { padding: var(--sp-3) var(--sp-4); background: var(--text); color: var(--bg); border-radius: var(--r); box-shadow: var(--shadow-pop); font-size: var(--fs-sm); border-left: 4px solid var(--good); }
 .toast.err { border-left-color: var(--bad); }
 
@@ -205,7 +205,16 @@ label.switch input:checked::after { transform: translateX(1rem); }
 .empty strong { color: var(--text); font-size: var(--fs-lg); }
 
 /* Tables */
-.scroll { overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow); }
+.scroll {
+  overflow: auto; border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow);
+  /* edge hint: local covers hide the shadows once scrolled to that edge */
+  background:
+    linear-gradient(to right, var(--surface) 30%, transparent) left / 24px 100% no-repeat local,
+    linear-gradient(to left, var(--surface) 30%, transparent) right / 24px 100% no-repeat local,
+    linear-gradient(to right, rgb(0 0 0 / 0.18), transparent) left / 10px 100% no-repeat scroll,
+    linear-gradient(to left, rgb(0 0 0 / 0.18), transparent) right / 10px 100% no-repeat scroll,
+    var(--surface);
+}
 .scroll.tall { max-height: 70vh; }
 table { border-collapse: separate; border-spacing: 0; width: 100%; }
 th, td { padding: 0.5rem 0.8rem; text-align: left; border-bottom: 1px dashed var(--border); }
@@ -233,12 +242,42 @@ input.cell { width: 6rem; text-align: right; }
 
 /* Dialog */
 dialog { border: 1px solid var(--border); border-radius: var(--r); background: var(--surface); color: var(--text); padding: var(--sp-5); box-shadow: var(--shadow-pop); max-width: min(32rem, calc(100vw - 2rem)); }
+dialog:is(dialog) { width: min(24rem, calc(100vw - 2rem)); }
 dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
 dialog .actions { display: flex; justify-content: flex-end; gap: var(--sp-2); margin-top: var(--sp-4); }
 
 /* Popover (position the parent relatively) */
-.popover { position: absolute; z-index: 30; top: calc(100% + var(--sp-1)); left: 0; min-width: 14rem; padding: var(--sp-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-pop); }
+.popover { position: absolute; z-index: 30; top: calc(100% + var(--sp-1)); left: 0; min-width: 14rem; max-width: calc(100vw - 2rem); padding: var(--sp-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-pop); }
 
 /* Privacy mode */
 .privacy .affix input, .privacy input.cell { filter: blur(6px); }
 .privacy .affix input:focus, .privacy input.cell:focus { filter: none; }
+
+/* Phone layout (<= 640px).
+   Stacked table: <table class="stack"> keeps normal thead/tbody/tr/td markup. On phones each row
+   becomes a card and each cell a "label: value" line.
+   - td[data-label="Price"]  label shown before the value (cells without data-label show value only)
+   - td.stack-title          primary cell: no label, full width, bold
+   - td.stack-hide           hidden on phones
+   Above 640px it is a normal table. Wide matrices stay in .scroll (edge shadows, optional .sticky-first). */
+@media (max-width: 640px) {
+  main { padding-inline: 12px; padding-bottom: calc(var(--sp-4) + env(safe-area-inset-bottom)); }
+  .card { padding: var(--sp-4); }
+  .card-head { flex-wrap: wrap; gap: var(--sp-2); }
+  .seg, .actions, dialog .actions { flex-wrap: wrap; }
+  input, select, textarea { font-size: 16px; min-height: 44px; }
+  input[type='checkbox'], input[type='radio'] { min-height: 0; }
+  button:not(.icon):not(.link) { min-height: 44px; }
+  label.switch { min-height: 44px; }
+  .field input, .field select, .field textarea, .form label input, .form label select, .form label textarea { width: 100%; }
+  .savebar { flex-wrap: wrap; padding-bottom: calc(var(--sp-3) + env(safe-area-inset-bottom)); }
+
+  table.stack, .stack tbody, .stack tr, .stack td { display: block; width: 100%; }
+  .stack thead { display: none; }
+  .stack tr { border: 1px solid var(--border); border-radius: var(--r); background: var(--surface); padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-3); }
+  .stack td, .stack tbody tr:last-child td { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); padding: var(--sp-1) 0; border-bottom: 0; text-align: right; }
+  .stack tbody tr:hover td { background: none; }
+  .stack td[data-label]::before { content: attr(data-label); color: var(--muted); font-size: var(--fs-sm); text-align: left; white-space: normal; }
+  .stack td.stack-title { display: block; font-weight: 700; text-align: left; }
+  .stack td.stack-hide { display: none; }
+}

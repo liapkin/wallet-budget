@@ -10,17 +10,17 @@ echarts.use([BarChart, LineChart, PieChart, GridComponent, TooltipComponent, Leg
 
 const css = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 
-function theme() {
+function theme(narrow: boolean) {
   const text = css('--text'), muted = css('--muted'), grid = css('--border');
-  const axis = { axisLine: { lineStyle: { color: grid } }, axisTick: { show: false }, axisLabel: { color: muted }, splitLine: { lineStyle: { color: grid, opacity: 0.6 } } };
+  const axis = { axisLine: { lineStyle: { color: grid } }, axisTick: { show: false }, axisLabel: { color: muted, ...(narrow && { hideOverlap: true }) }, splitLine: { lineStyle: { color: grid, opacity: 0.6 } } };
   return {
     color: [1, 2, 3, 4, 5, 6, 7, 8].map((i) => css(`--c${i}`)),
     backgroundColor: 'transparent',
     textStyle: { fontFamily: css('--font'), color: muted },
     categoryAxis: { ...axis, splitLine: { show: false } },
     valueAxis: { ...axis, axisLine: { show: false } },
-    legend: { top: 0, right: 0, type: 'scroll', textStyle: { color: muted, fontFamily: css('--font'), fontSize: 12 }, icon: 'roundRect', itemWidth: 10, itemHeight: 10, itemGap: 14 },
-    tooltip: { backgroundColor: css('--surface'), borderColor: grid, borderWidth: 1, textStyle: { color: text, fontFamily: css('--font') }, extraCssText: 'box-shadow:' + css('--shadow-pop') },
+    legend: { top: 0, right: 0, type: 'scroll', textStyle: { color: muted, fontFamily: css('--font'), fontSize: narrow ? 11 : 12 }, icon: 'roundRect', itemWidth: 10, itemHeight: 10, itemGap: 14 },
+    tooltip: { confine: true, backgroundColor: css('--surface'), borderColor: grid, borderWidth: 1, textStyle: { color: text, fontFamily: css('--font') }, extraCssText: 'box-shadow:' + css('--shadow-pop') },
     line: { lineStyle: { width: 2 }, symbolSize: 6, showSymbol: false },
     pie: { itemStyle: { borderColor: css('--surface'), borderWidth: 2 }, label: { color: text, textBorderWidth: 0 }, labelLine: { lineStyle: { color: muted } } },
     bar: { barMaxWidth: 28, itemStyle: { borderRadius: [4, 4, 0, 0] } },
@@ -59,7 +59,7 @@ export class ChartView implements OnDestroy {
   private render() {
     const el = this.host().nativeElement;
     if (!this.chart) {
-      echarts.registerTheme('app', theme());
+      echarts.registerTheme('app', theme(el.clientWidth < 480));
       this.chart = echarts.init(el, 'app');
       this.ro.observe(el);
     }
@@ -87,7 +87,7 @@ export class ChartView implements OnDestroy {
       }
     }
     const n = Array.isArray(opt.series) ? opt.series.length : opt.series ? 1 : 0;
-    this.chart.setOption({ tooltip: { show: true, trigger: 'item' }, legend: { show: n >= 2 }, ...opt }, true);
+    this.chart.setOption({ tooltip: { show: true, trigger: 'item', confine: true }, legend: { show: n >= 2 }, ...opt }, true);
   }
 
   private dispose() {

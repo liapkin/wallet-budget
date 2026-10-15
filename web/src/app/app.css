@@ -16,7 +16,7 @@ nav a.active { background: var(--accent-soft); color: var(--accent); border-left
 .last { font-size: var(--fs-xs); text-align: center; }
 .spin { width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: r 0.7s linear infinite; }
 @keyframes r { to { transform: rotate(360deg); } }
-main { max-width: 1680px; margin-inline: auto; padding: var(--sp-6) clamp(16px, 3vw, 40px); }
+main { min-width: 0; overflow-x: clip; max-width: 1680px; margin-inline: auto; padding: var(--sp-6) clamp(16px, 3vw, 40px); }
 .topbar, .scrim { display: none; }
 @media (max-width: 800px) {
   .topbar { display: flex; align-items: center; gap: var(--sp-2); position: sticky; top: 0; z-index: 40; padding: var(--sp-2) var(--sp-3); background: var(--surface); border-bottom: 1px solid var(--border); }
