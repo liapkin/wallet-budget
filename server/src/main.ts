@@ -5,7 +5,7 @@ import { activeSource, runPipeline, spendSummary, toRec } from './pipeline.ts';
 import { insertApiRecord, lastSync, syncOnce } from './sync.ts';
 import { del, post } from './wallet.ts';
 import { startScheduler } from './scheduler.ts';
-import { importCrypto } from './holdings.ts';
+import { importCrypto, refreshHoldings } from './holdings.ts';
 import { walletPayload } from './wallet-payload.ts';
 import { dietConfigError } from './diet-config.ts';
 import { athensDay, athensLocalToUtc, athensMonth } from '../../shared/src/month.ts';
@@ -118,6 +118,25 @@ app.get('/api/holdings/:kind', (req, res) => {
   const { kind } = req.params;
   if (kind !== 'crypto' && kind !== 'etf') bad('kind must be crypto or etf');
   res.json(holdingsPayload(kind as 'crypto' | 'etf'));
+});
+
+const refreshing = new Map<string, Promise<void>>();
+app.post('/api/holdings/:kind/refresh', async (req, res, next) => {
+  try {
+    if (demo) bad('Disabled in demo mode');
+    const { kind } = req.params;
+    if (kind !== 'crypto' && kind !== 'etf') bad('kind must be crypto or etf');
+    let job = refreshing.get(kind);
+    if (!job) refreshing.set(kind, (job = refreshHoldings(kind as 'crypto' | 'etf').finally(() => refreshing.delete(kind))));
+    try {
+      await job;
+    } catch (e) {
+      bad((e as Error).message);
+    }
+    res.json(holdingsPayload(kind as 'crypto' | 'etf'));
+  } catch (e) {
+    next(e);
+  }
 });
 
 app.post('/api/crypto/import', async (req, res, next) => {

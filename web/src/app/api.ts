@@ -68,6 +68,7 @@ export class Api {
   setActual = (month: string, key: string, cents: number | null) =>
     firstValueFrom(this.http.put<void>(`/api/actuals/${month}`, { [key]: cents }));
   holdings = (kind: 'crypto' | 'etf') => firstValueFrom(this.http.get<CryptoData>(`/api/holdings/${kind}`));
+  refreshHoldings = (kind: 'crypto' | 'etf') => firstValueFrom(this.http.post<CryptoData>(`/api/holdings/${kind}/refresh`, {}));
   importCrypto = (body: { overview: string; transactions: string; tag: string }) =>
     firstValueFrom(this.http.post<CryptoData>('/api/crypto/import', body));
   sync = () => firstValueFrom(this.http.post<{ inserted: number }>('/api/sync', {}));

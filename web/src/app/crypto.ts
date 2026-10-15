@@ -83,6 +83,7 @@ import { Toast } from './ui/toast';
 
       <p>
         <button class="ghost" (click)="editing.set(!editing())">{{ editing() ? 'Done editing' : 'Edit holdings' }}</button>
+        <button class="ghost" (click)="refreshPrices()" [disabled]="refreshing()">{{ refreshing() ? 'Refreshing…' : 'Refresh prices' }}</button>
         @if (route.import) { <button class="ghost" (click)="importing.set(!importing())">Import from CoinMarketCap</button> }
       </p>
       @if (importing()) {
@@ -142,6 +143,7 @@ export class CryptoComponent {
   protected overview = signal<File | null>(null);
   protected transactions = signal<File | null>(null);
   protected busy = signal(false);
+  protected refreshing = signal(false);
   private toast = inject(Toast);
   private now = signal(Date.now());
 
@@ -218,6 +220,19 @@ export class CryptoComponent {
   protected pick(file: WritableSignal<File | null>, e: Event) {
     file.set((e.target as HTMLInputElement).files?.[0] ?? null);
   }
+  protected async refreshPrices() {
+    this.refreshing.set(true);
+    try {
+      await this.api.refreshHoldings(this.route.kind);
+      this.data.reload();
+      this.toast.show('Prices updated');
+    } catch (e: any) {
+      this.toast.show(e?.error?.error ?? 'Refresh failed', 'err');
+    } finally {
+      this.refreshing.set(false);
+    }
+  }
+
   protected async importCsv() {
     const tag = this.tag().trim() || 'Main';
     if (!confirm(`Replaces holdings tagged ${tag}`)) return;
