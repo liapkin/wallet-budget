@@ -26,6 +26,7 @@ const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: '
     th { white-space: normal; min-width: 5.5rem; line-height: 1.2; vertical-align: bottom; }
     th:first-child { min-width: 0; }
     .zero { color: var(--muted); opacity: 0.6; }
+    @media (max-width: 640px) { th { min-width: 4.5rem; } th, td { padding-inline: var(--sp-2); } }
   `,
   template: `
     <div class="page-head">
@@ -60,7 +61,7 @@ const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: '
             <button [class.on]="!daily()" (click)="daily.set(false)">All spend</button>
           </div>
         </div>
-        <app-chart [option]="chart()" [height]="320" />
+        <app-chart [option]="chart()" [height]="chartH" />
       </section>
 
       <div class="scroll tall">
@@ -125,6 +126,7 @@ const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: '
 })
 export class History {
   protected fmt = fmt;
+  protected chartH = window.matchMedia?.('(max-width: 640px)').matches ? 260 : 320;
   protected counted = COUNTED;
   protected ranges = RANGES;
   protected yearly = signal(false);

@@ -45,6 +45,12 @@ type Row = Record<string, string>;
     .ing-table th.num { text-align: right; }
     .ing-table input { width: 100%; min-width: 0; }
     .ing-table th:last-child, .ing-table td:last-child { width: 36px; }
+    @media (max-width: 640px) {
+      .card.plan { min-width: 0; }
+      .targets label { width: 100%; justify-content: space-between; }
+      .targets input[type=number] { width: 8rem; }
+      .meal-grid .card { padding: var(--sp-3); }
+    }
   `,
   template: `
     <div class="page-head">

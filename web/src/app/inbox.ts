@@ -86,7 +86,7 @@ const daysApart = (a: Row, b: Row) => Math.round(Math.abs(Date.parse(a.dateUtc) 
         <div class="empty"><strong>All clear</strong><span>Every record has a group.</span></div>
       } @else {
         <div class="scroll tall">
-          <table>
+          <table class="stack">
             <thead>
               <tr>
                 <th><input type="checkbox" aria-label="Select all" [checked]="allSelected()" (change)="toggleAll()" /></th>
@@ -96,20 +96,20 @@ const daysApart = (a: Row, b: Row) => Math.round(Math.abs(Date.parse(a.dateUtc) 
             <tbody>
               @for (r of unc.value()!; track r.id) {
                 <tr>
-                  <td><input type="checkbox" aria-label="Select record" [checked]="sel().has(r.id)" (change)="toggle(r.id)" /></td>
-                  <td class="nowrap muted">{{ day(r.dateUtc) }}</td>
-                  <td>
+                  <td data-label="Select"><input type="checkbox" aria-label="Select record" [checked]="sel().has(r.id)" (change)="toggle(r.id)" /></td>
+                  <td class="nowrap muted" data-label="Date">{{ day(r.dateUtc) }}</td>
+                  <td class="stack-title">
                     <div class="strong">{{ r.note || '—' }}</div>
                     <div class="muted sm">{{ r.account }} @if (r.category) { <span>{{ r.category }}</span> }</div>
                   </td>
-                  <td>
+                  <td data-label="Suggested">
                     @if (r.suggestion; as s) {
                       <button class="chip" [title]="'Accept ' + s.group" (click)="apply([r.id], s.group)">
                         <span class="dot" [class.hollow]="hollow(s.group)" [style.--dot]="color(s.group)"></span>{{ s.group }}
                       </button>
                     }
                   </td>
-                  <td class="gcell">
+                  <td class="gcell" data-label="Group">
                     <app-combo [options]="groupOptions()" [value]="''" placeholder="Set group" (changed)="$event && apply([r.id], $event)" ariaLabel="Group" />
                     <button class="link" (click)="kw.set(kw()?.id === r.id ? null : { id: r.id, keyword: r.note, group: r.suggestion?.group ?? '' })">Always</button>
                     @if (kw()?.id === r.id) {
@@ -124,7 +124,7 @@ const daysApart = (a: Row, b: Row) => Math.round(Math.abs(Date.parse(a.dateUtc) 
                       </form>
                     }
                   </td>
-                  <td class="num strong" [class.pos]="r.type === 'Income'">{{ amount(r) }}</td>
+                  <td class="num strong" data-label="Amount" [class.pos]="r.type === 'Income'">{{ amount(r) }}</td>
                 </tr>
               }
             </tbody>
@@ -148,10 +148,18 @@ const daysApart = (a: Row, b: Row) => Math.round(Math.abs(Date.parse(a.dateUtc) 
     .rec dd { margin: 0; overflow-wrap: anywhere; }
     .sm { font-size: var(--fs-xs); }
     .gcell { position: relative; white-space: nowrap; }
-    .popover { white-space: normal; min-width: 18rem; }
+    .popover { white-space: normal; min-width: 18rem; max-width: calc(100vw - 2rem); }
     .pform { display: flex; flex-direction: column; gap: var(--sp-2); font-size: var(--fs-sm); }
     .pform .row { display: flex; justify-content: flex-end; gap: var(--sp-2); }
-    @media (max-width: 640px) { .pair { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) {
+      .pair { grid-template-columns: 1fr; }
+      .stack tr { display: flex; flex-direction: column; }
+      .stack td { order: 4; }
+      .stack td.stack-title { order: 0; }
+      .gcell { flex-wrap: wrap; justify-content: flex-start; }
+      .popover { min-width: 0; width: calc(100vw - 4rem); }
+      .card-head .actions { width: 100%; }
+    }
   `,
 })
 export class Inbox {

@@ -9,6 +9,7 @@ import { Toast } from './ui/toast';
 
 @Component({
   selector: 'app-settings',
+  styles: `@media (max-width: 640px) { select { width: 100%; } }`,
   template: `
     <div class="page-head"><h1>Settings</h1></div>
     <section class="card">

@@ -13,7 +13,7 @@ type Snap = { day: string; account: string; balanceCents: number };
 @Component({
   selector: 'app-networth',
   imports: [ChartView],
-  styles: `.kpis { grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }`,
+  styles: `.kpis { grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); } .card { min-width: 0; }`,
   template: `
     <div class="page-head"><h1>Net worth</h1></div>
     @if (data.error()) {
@@ -29,7 +29,7 @@ type Snap = { day: string; account: string; balanceCents: number };
         <div class="kpi big"><div class="label">Total</div><div class="value">{{ fmt(today().total) }}</div></div>
       </div>
       @if (days().length > 1) {
-        <section class="card"><div class="card-head"><h2>Balance over time</h2></div><app-chart [option]="chart()" [height]="320" /></section>
+        <section class="card"><div class="card-head"><h2>Balance over time</h2></div><app-chart [option]="chart()" [height]="chartH" /></section>
       }
       <p class="muted">
         @if (days().length) { History starts on {{ days()[0] }}; a point is added on every fetch. } @else { No history yet; a point is added on every fetch. }
@@ -39,6 +39,7 @@ type Snap = { day: string; account: string; balanceCents: number };
 })
 export class NetWorth {
   protected fmt = fmt;
+  protected chartH = window.matchMedia?.('(max-width: 640px)').matches ? 260 : 320;
   private http = inject(HttpClient);
   private tick = inject(Refresh).tick;
   protected data = resource({

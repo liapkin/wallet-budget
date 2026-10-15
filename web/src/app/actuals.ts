@@ -102,6 +102,7 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0
     td.walletcell { color: var(--muted); }
     .wsum { display: block; }
     td input.cell { width: 5.5rem; }
+    @media (max-width: 640px) { td input.cell { width: 4.5rem; min-width: 0; } th, td { padding-inline: var(--sp-2); } th { min-width: 4.5rem; } }
     td .app-icon, td app-icon { color: var(--good); vertical-align: middle; }
     tr.cur td, tr.cur td:first-child { background: var(--accent-soft); }
   `,

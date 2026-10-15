@@ -47,15 +47,15 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
       <div class="empty scroll"><strong>No records</strong><span>Nothing matches these filters.</span></div>
     } @else {
       <div class="scroll tall">
-        <table>
+        <table class="stack">
           <thead>
             <tr><th>Date</th><th>Note</th><th>Group</th><th class="num">Amount</th><th></th></tr>
           </thead>
           <tbody>
             @for (r of visible(); track r.id) {
               <tr [class.dim]="r.isDup">
-                <td class="nowrap muted">{{ day(r.dateUtc) }}</td>
-                <td>
+                <td class="nowrap muted" data-label="Date">{{ day(r.dateUtc) }}</td>
+                <td class="stack-title">
                   <div class="strong">{{ r.note || '—' }}
                     @if (r.isDup) { <span class="badge" [title]="'duplicate of #' + r.dupOf">duplicate</span> }
                   </div>
@@ -64,7 +64,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
                     @if (r.category) { <span class="muted sm">{{ r.category }}</span> }
                   </div>
                 </td>
-                <td class="gcell">
+                <td class="gcell" data-label="Group">
                   <app-combo [options]="groupOptions(r)" [value]="r.groupOverride ?? ''" (changed)="setGroup(r, $event || null)" ariaLabel="Group" />
                   @if (r.groupOverride) { <span class="badge">manual</span> }
                   <button class="link" (click)="kw.set(kw()?.id === r.id ? null : { id: r.id, keyword: r.note, group: r.grp })">Always</button>
@@ -80,7 +80,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
                     </form>
                   }
                 </td>
-                <td class="num strong" [class.pos]="r.type === 'Income'">{{ amount(r) }}</td>
+                <td class="num strong" data-label="Amount" [class.pos]="r.type === 'Income'">{{ amount(r) }}</td>
                 <td class="nowrap act">
                   @if (r.source === 'manual' || walletDel(r)) {
                     @if (confirmId() === r.id) {
@@ -164,12 +164,12 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
     .sm { font-size: var(--fs-xs); }
     .meta { display: flex; gap: var(--sp-2); align-items: center; margin-top: var(--sp-1); }
     .gcell { position: relative; white-space: nowrap; }
-    .popover { white-space: normal; min-width: 18rem; }
+    .popover { white-space: normal; min-width: 18rem; max-width: calc(100vw - 2rem); }
     .pform { display: flex; flex-direction: column; gap: var(--sp-2); font-size: var(--fs-sm); }
     .pform .row { display: flex; justify-content: flex-end; gap: var(--sp-2); }
     .act { text-align: right; }
     .act button { margin-left: var(--sp-1); }
-    dialog { width: 24rem; overflow: visible; }
+    dialog { overflow: visible; }
     dialog h2 { margin-bottom: var(--sp-3); }
     .dform { display: flex; flex-direction: column; gap: var(--sp-3); margin-top: var(--sp-4); }
     .dform .affix input { width: 100%; text-align: left; }
@@ -180,6 +180,17 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
     .review dd { margin: 0; overflow-wrap: anywhere; }
     .field input:not([type='checkbox']), .field select { width: 100%; }
     .hint { color: var(--muted); font-size: var(--fs-sm); margin-top: var(--sp-1); }
+    @media (max-width: 640px) {
+      .search { min-width: 0; max-width: none; flex: 1 1 100%; }
+      .stack tr { display: flex; flex-direction: column; }
+      .stack td { order: 4; }
+      .stack td.stack-title { order: 0; }
+      .gcell { flex-wrap: wrap; justify-content: flex-start; }
+      .stack td.act { justify-content: flex-end; flex-wrap: wrap; }
+      .act button.icon { min-width: 44px; min-height: 44px; }
+      .popover { min-width: 0; width: calc(100vw - 4rem); }
+      .summary { gap: var(--sp-3); flex-wrap: wrap; }
+    }
   `,
 })
 export class Records {

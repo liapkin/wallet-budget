@@ -39,6 +39,25 @@ import { Toast } from './ui/toast';
     .collapsible-content { margin-top: var(--sp-2); padding-left: var(--sp-3); font-size: var(--fs-sm); }
     .collapsible-item { padding: var(--sp-1) 0; }
     .kpi-badges { display: flex; gap: var(--sp-2); flex-wrap: wrap; align-items: center; }
+    @media (max-width: 640px) {
+      .items-table { min-width: 0; table-layout: auto; }
+      .items-table colgroup, .items-table thead { display: none; }
+      .items-table, .items-table tbody { display: block; }
+      .items-table tr.group, .items-table tr.row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-1) var(--sp-3); padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border); }
+      .items-table tr.group { display: block; }
+      .items-table td { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); grid-column: 1 / -1; padding: 0; border-bottom: 0; }
+      .items-table td[data-label]::before { content: attr(data-label); color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; flex: none; }
+      .items-table td[data-label='Qty'], .items-table td[data-label='Unit'] { grid-column: auto; flex-direction: column; align-items: stretch; }
+      .items-table td[data-label='Qty'] input, .items-table td[data-label='Unit'] input { width: 100%; }
+      .items-table td.item input { font-weight: 600; }
+      .items-table td[data-label] input { flex: 1; min-width: 0; }
+      .items-table input, .items-table select { border-color: var(--border); }
+      .items-table td.del { justify-content: flex-end; }
+      .items-table .note { text-overflow: clip; }
+      .items-table tr.row:hover td { background: none; }
+      .group-line { flex-wrap: wrap; row-gap: var(--sp-1); }
+      .table-foot { flex-wrap: wrap; }
+    }
   `,
   template: `
     <div class="page-head">
@@ -57,22 +76,22 @@ import { Toast } from './ui/toast';
 
     <ng-template #rowTpl let-list="list" let-it="it" let-i="i">
       <tr class="row">
-        <td><input type="text" [value]="it.item" (change)="upd(list, i, { item: val($event) })" /></td>
-        <td><input class="num" type="text" appMoney [value]="it.qty" (change)="setNum(list, i, 'qty', $event)" /></td>
-        <td><input type="text" [value]="it.unit" (change)="upd(list, i, { unit: val($event) })" /></td>
-        <td><input class="num" type="text" appMoney [value]="it.regularPrice / 100" (change)="setNum(list, i, 'regularPrice', $event)" /></td>
-        <td><input class="num" type="text" appMoney placeholder="–" [value]="it.offerPrice == null ? '' : it.offerPrice / 100" (change)="setNum(list, i, 'offerPrice', $event)" /></td>
-        <td class="cost" [class.offer]="useOffers() && it.offerPrice != null">
+        <td class="item"><input type="text" aria-label="Item" [value]="it.item" (change)="upd(list, i, { item: val($event) })" /></td>
+        <td data-label="Qty"><input class="num" type="text" appMoney [value]="it.qty" (change)="setNum(list, i, 'qty', $event)" /></td>
+        <td data-label="Unit"><input type="text" [value]="it.unit" (change)="upd(list, i, { unit: val($event) })" /></td>
+        <td data-label="Regular"><input class="num" type="text" appMoney [value]="it.regularPrice / 100" (change)="setNum(list, i, 'regularPrice', $event)" /></td>
+        <td data-label="Offer"><input class="num" type="text" appMoney placeholder="–" [value]="it.offerPrice == null ? '' : it.offerPrice / 100" (change)="setNum(list, i, 'offerPrice', $event)" /></td>
+        <td class="cost" data-label="Cost" [class.offer]="useOffers() && it.offerPrice != null">
           {{ fmt(itemCostCents(it)) }}
           @if (useOffers() && it.offerPrice != null) {
             <span class="badge">offer</span>
           }
         </td>
-        <td>
+        <td data-label="Store">
           <app-combo [options]="storeOptions()" [value]="it.where" allowCreate ariaLabel="Store" (changed)="upd(list, i, { where: $event })" />
         </td>
-        <td><input class="note" type="text" [value]="it.note" [title]="it.note" (change)="upd(list, i, { note: val($event) })" /></td>
-        <td><button class="ghost icon danger" (click)="remove(list, i)" title="Delete"><app-icon name="trash" /></button></td>
+        <td data-label="Note"><input class="note" type="text" [value]="it.note" [title]="it.note" (change)="upd(list, i, { note: val($event) })" /></td>
+        <td class="del"><button class="ghost icon danger" (click)="remove(list, i)" title="Delete"><app-icon name="trash" /></button></td>
       </tr>
     </ng-template>
 

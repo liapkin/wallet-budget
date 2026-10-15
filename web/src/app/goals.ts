@@ -17,11 +17,12 @@ const GOALS: { key: Key; label: string }[] = [
   imports: [MoneyInput],
   host: { '(window:keydown)': 'key($event)' },
   styles: `
-    .acct { display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: var(--sp-2); margin-bottom: var(--sp-3); }
+    .acct { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr)); gap: var(--sp-2); margin-bottom: var(--sp-3); }
     .acct label { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border); border-radius: var(--r); cursor: pointer; }
     .acct label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
-    .acct .bal { margin-left: auto; color: var(--muted); font-size: var(--fs-sm); }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-3); }
+    .acct label { min-width: 0; }
+    .acct .bal { margin-left: auto; white-space: nowrap; color: var(--muted); font-size: var(--fs-sm); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-3); }
     .affix { display: flex; }
     .affix input { flex: 1; width: auto; }
     .card-head { display: flex; justify-content: space-between; align-items: baseline; }
