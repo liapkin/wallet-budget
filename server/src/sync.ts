@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { db, getConfig, requireWalletCurrency, tx } from './db.ts';
 import { get, RetryAfterError, secret } from './wallet.ts';
 import { runPipeline } from './pipeline.ts';
@@ -276,7 +277,11 @@ export async function runSyncStep({ maxRequests = 20 }: { maxRequests?: number }
           tx(() => checkpoint(cursor!)); continue;
         }
       }
-      runPipeline();
+      const sig = pipelineSig();
+      if (cursor.inserted || cursor.updated || cursor.deleted || state('pipeline_sig') !== sig) {
+        runPipeline();
+        putState('pipeline_sig', sig);
+      }
       const done: SyncJob = { status: 'succeeded', inserted: cursor.inserted, updated: cursor.updated, deleted: cursor.deleted, ...(cursor.warnings && { warnings: cursor.warnings }) };
       tx(() => { putState('last_sync', new Date().toISOString()); deleteState('sync_cursor'); writeJob(done); });
       return done;
@@ -293,6 +298,14 @@ export async function runSyncStep({ maxRequests = 20 }: { maxRequests?: number }
     return failed;
   }
 }
+
+// Cheap fingerprint of everything classification depends on besides the records the sync itself touched.
+const pipelineSig = (): string => {
+  const r = db.prepare('SELECT COUNT(*) AS n, MAX(id) AS m FROM records').get() as { n: number; m: number | null };
+  const d = (db.prepare('SELECT COUNT(*) AS n FROM dup_decisions').get() as { n: number }).n;
+  const cfg = (db.prepare('SELECT json FROM config WHERE id=1').get() as { json: string }).json;
+  return createHash('sha256').update(`${r.n}|${r.m}|${d}|${cfg}`).digest('hex');
+};
 
 export async function sync({ full = false } = {}): Promise<{ inserted: number; updated: number; deleted: number }> {
   beginSync(full);

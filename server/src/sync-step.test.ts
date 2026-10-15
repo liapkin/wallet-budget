@@ -52,6 +52,33 @@ test('sync checkpoints pages, respects request budget, and deletes only after co
   assert.equal(db.prepare("SELECT 1 FROM records WHERE ext_id='removed'").get(), undefined);
 });
 
+test('unchanged sync skips the pipeline; a config change runs it', async (t) => {
+  const { db, getConfig, setConfig } = await import('./db.ts');
+  t.mock.method(globalThis, 'fetch', async (input: string | URL | Request) => {
+    const { pathname } = new URL(String(input));
+    if (pathname.endsWith('/accounts')) return Response.json({ accounts: [] });
+    if (pathname.endsWith('/categories')) return Response.json({ categories: [] });
+    return Response.json({ records: [] });
+  });
+  const { beginSync, runSyncStep } = await import('./sync.ts');
+  const run = async () => {
+    beginSync();
+    let job;
+    do job = await runSyncStep({ maxRequests: 50 }); while (job.status === 'running');
+    assert.equal(job.status, "succeeded", String(job.error));
+  };
+  const grp = () => (db.prepare("SELECT grp FROM records WHERE ext_id='kept'").get() as { grp: string }).grp;
+  await run(); // first run: no signature yet, pipeline runs
+  const real = grp();
+  db.prepare("UPDATE records SET grp='Tampered' WHERE ext_id='kept'").run();
+  await run();
+  assert.equal(grp(), 'Tampered', 'pipeline skipped when nothing changed');
+  const cfg = getConfig();
+  setConfig({ ...cfg, wallet: { ...cfg.wallet, excludedGroups: [...cfg.wallet.excludedGroups, 'Zzz'] } });
+  await run();
+  assert.equal(grp(), real, 'pipeline ran after config change');
+});
+
 test('pricing failures are warnings: sync still classifies and succeeds', async (t) => {
   const { db, getConfig, setConfig } = await import('./db.ts');
   process.env.COINMARKETCAP_API_KEY = 'fictional-key';

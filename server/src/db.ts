@@ -3,6 +3,7 @@ import { join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import type { Config } from '../../shared/src/types.ts';
 import { seedToConfig } from '../../shared/src/seed.ts';
+import { bumpVersion } from './memo.ts';
 import { currentRuntime, type Database, type Statement } from './runtime.ts';
 
 const localRoot = (): string => join(import.meta.dirname, '..', '..');
@@ -32,6 +33,9 @@ CREATE TABLE IF NOT EXISTS balance_snapshots (day TEXT, account TEXT, balance_ce
 CREATE TABLE IF NOT EXISTS crypto_snapshots (ts TEXT, symbol TEXT, amount REAL, price_cents INTEGER, pct24h REAL, PRIMARY KEY(ts, symbol));
 CREATE TABLE IF NOT EXISTS dup_decisions (a INTEGER, b INTEGER, decision TEXT CHECK(decision IN ('dup','not')), PRIMARY KEY(a, b));
 CREATE TABLE IF NOT EXISTS month_close (month TEXT PRIMARY KEY, json TEXT);
+CREATE INDEX IF NOT EXISTS records_month ON records(month);
+CREATE INDEX IF NOT EXISTS records_source_date ON records(source, date_utc);
+CREATE INDEX IF NOT EXISTS records_grp ON records(grp);
 `;
 
 const normalizeConfig = (cfg: Config): Config => ({
@@ -105,8 +109,18 @@ const activeDatabase = (): Database => currentRuntime()?.db ?? openLocal();
 export const db: Database & { close(): void } = new Proxy({} as Database & { close(): void }, {
   get(_target, property) {
     if (property === 'close' && !activeDatabase().close) return () => undefined;
-    const value = (activeDatabase() as any)[property];
-    return typeof value === 'function' ? value.bind(activeDatabase()) : value;
+    const active = activeDatabase();
+    // every write goes through exec/run/transaction here, so the read memo is invalidated centrally
+    if (property === 'exec') return (sql: string) => { try { return active.exec(sql); } finally { bumpVersion(); } };
+    if (property === 'transaction') return (fn: () => unknown) => { try { return active.transaction(fn); } finally { bumpVersion(); } };
+    if (property === 'prepare') {
+      return (sql: string) => {
+        const st = active.prepare(sql);
+        return { get: (...a: any[]) => st.get(...a), all: (...a: any[]) => st.all(...a), run: (...a: any[]) => { try { return st.run(...a); } finally { bumpVersion(); } } };
+      };
+    }
+    const value = (active as any)[property];
+    return typeof value === 'function' ? value.bind(active) : value;
   },
 });
 

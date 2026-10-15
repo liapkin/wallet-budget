@@ -1,6 +1,7 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { db, getConfig, setConfig, currencyLocked, tx } from './db.ts';
+import { memo } from './memo.ts';
 import { activeSource, runPipeline, spendSummary, toRec } from './pipeline.ts';
 import { insertApiRecord, lastSync, localSyncController } from './sync.ts';
 import { del, post } from './wallet.ts';
@@ -80,7 +81,7 @@ const scope = () => ({ sql: "source IN (?, 'manual')", args: [activeSource()] })
 export const getMeta = () => {
   const s = scope();
   const col = (c: string, order = '') =>
-    (db.prepare(`SELECT DISTINCT ${c} AS v FROM records WHERE ${s.sql} ${order}`).all(...s.args) as { v: string }[]).map((r) => r.v);
+    memo(`meta:${c}`, () => (db.prepare(`SELECT DISTINCT ${c} AS v FROM records WHERE ${s.sql} ${order}`).all(...s.args) as { v: string }[]).map((r) => r.v));
   const cfg = getConfig();
   const { groups, excludedGroups } = cfg.wallet;
   return { demo: isDemo(), currency: cfg.currency, currencyLocked: isDemo() || currencyLocked(), groups, excludedGroups, accounts: col('account', 'ORDER BY 1'), months: col('month', 'ORDER BY 1 DESC'), lastSync: lastSync() };
@@ -92,12 +93,15 @@ app.get('/api/meta', (req, res) => {
 
 app.get('/api/summary', (req, res) => {
   const s = scope();
-  const income: Record<string, number> = {};
   const inc = getConfig().wallet.incomeGroups;
-  const rows = db
-    .prepare(`SELECT month, SUM(amount_cents) AS c FROM records WHERE is_dup=0 AND type='Income' AND grp IN (${inc.map(() => '?').join(',')}) AND ${s.sql} GROUP BY month`)
-    .all(...inc, ...s.args) as { month: string; c: number }[];
-  for (const r of rows) income[r.month] = r.c;
+  const income = memo(`income:${inc.join('|')}`, () => {
+    const out: Record<string, number> = {};
+    const rows = db
+      .prepare(`SELECT month, SUM(amount_cents) AS c FROM records WHERE is_dup=0 AND type='Income' AND grp IN (${inc.map(() => '?').join(',')}) AND ${s.sql} GROUP BY month`)
+      .all(...inc, ...s.args) as { month: string; c: number }[];
+    for (const r of rows) out[r.month] = r.c;
+    return out;
+  });
   res.json({ spend: spendSummary(), income });
 });
 
@@ -170,8 +174,9 @@ app.get('/api/records', (req, res) => {
     where.push(`${col}=?`);
     args.push(v as string);
   }
-  const rows = db.prepare(`${SELECT} WHERE ${where.join(' AND ')} ORDER BY date_utc DESC, id DESC`).all(...args);
-  res.json(rows.map(present));
+  const rows = memo(`records:${JSON.stringify(req.query)}`, () =>
+    db.prepare(`${SELECT} WHERE ${where.join(' AND ')} ORDER BY date_utc DESC, id DESC`).all(...args).map(present));
+  res.json(rows);
 });
 
 app.post('/api/records', async (req, res, next) => {
@@ -286,9 +291,9 @@ app.post('/api/keywords', (req, res) => {
 
 app.get('/api/actuals', (req, res) => {
   const m = req.query.month;
-  const rows = (m === undefined
+  const rows = memo(`actuals:${m === undefined ? '' : str(m)}`, () => (m === undefined
     ? db.prepare('SELECT month, key, cents FROM core_actuals')
-    : db.prepare('SELECT month, key, cents FROM core_actuals WHERE month=?')).all(...(m === undefined ? [] : [str(m)])) as { month: string; key: string; cents: number }[];
+    : db.prepare('SELECT month, key, cents FROM core_actuals WHERE month=?')).all(...(m === undefined ? [] : [str(m)]))) as { month: string; key: string; cents: number }[];
   if (m !== undefined) return void res.json(Object.fromEntries(rows.map((r) => [r.key, r.cents])));
   const out: Record<string, Record<string, number>> = {};
   for (const r of rows) (out[r.month] ??= {})[r.key] = r.cents;
@@ -331,8 +336,9 @@ const monthsAgo = (n: number): string => {
   return d.toISOString();
 };
 // non-dup expenses (active source + manual) since `since`
-const liveRows = (since: string, extra = '') =>
-  (db.prepare(`${SELECT} WHERE is_dup=0 AND type='Expenses' AND source IN (?, 'manual') AND date_utc>=? ${extra}`).all(activeSource(), since) as any[]).map(present);
+const liveRows = (since: string, extra = ''): any[] =>
+  memo(`live:${athensDay()}:${since.slice(0, 10)}:${extra}`, () =>
+    (db.prepare(`${SELECT} WHERE is_dup=0 AND type='Expenses' AND source IN (?, 'manual') AND date_utc>=? ${extra}`).all(activeSource(), since) as any[]).map(present));
 
 app.get('/api/recurring', (req, res) => {
   const rows = liveRows(monthsAgo(13));
@@ -350,7 +356,7 @@ const cashAccount = () => db.prepare("SELECT id, currency FROM accounts WHERE na
 app.get('/api/cash-topups', (req, res) => {
   // ponytail: 60-day window so old history does not flood the inbox.
   const since = new Date(Date.now() - 60 * 86_400_000).toISOString();
-  const items = db.prepare(`${SELECT} WHERE ${UNPAIRED_ATM} AND date_utc>=? ORDER BY date_utc DESC`).all(since).map(present);
+  const items = memo(`topups:${athensDay()}`, () => db.prepare(`${SELECT} WHERE ${UNPAIRED_ATM} AND date_utc>=? ORDER BY date_utc DESC`).all(since).map(present));
   res.json({ cashAccountId: cashAccount()?.id ?? null, items });
 });
 
@@ -388,7 +394,7 @@ app.post('/api/cash-topups/:id', async (req, res, next) => {
 app.get('/api/possible-duplicates', (req, res) => {
   const rows = liveRows(monthsAgo(13));
   const byId = new Map(rows.map((r) => [r.id, r]));
-  const decided = new Set((db.prepare('SELECT a, b FROM dup_decisions').all() as { a: number; b: number }[]).map((d) => pairKey(d.a, d.b)));
+  const decided = memo('dupDecisions', () => new Set((db.prepare('SELECT a, b FROM dup_decisions').all() as { a: number; b: number }[]).map((d) => pairKey(d.a, d.b))));
   res.json(possibleDuplicates(rows.map(toRec), decided).map((p) => ({ a: byId.get(p.a.id), b: byId.get(p.b.id) })));
 });
 
@@ -427,9 +433,9 @@ app.get('/api/balances/history', (req, res) => {
 });
 
 const monthGroupSpend = (month: string): Record<string, number> =>
-  Object.fromEntries(Object.entries(spendSummary()[month] ?? {}).map(([g, c]) => [g, c.cents]));
+  memo(`groupSpend:${month}`, () => Object.fromEntries(Object.entries(spendSummary()[month] ?? {}).map(([g, c]) => [g, c.cents])));
 const monthTyped = (month: string): Record<string, number> =>
-  Object.fromEntries((db.prepare('SELECT key, cents FROM core_actuals WHERE month=?').all(month) as { key: string; cents: number }[]).map((r) => [r.key, r.cents]));
+  memo(`typed:${month}`, () => Object.fromEntries((db.prepare('SELECT key, cents FROM core_actuals WHERE month=?').all(month) as { key: string; cents: number }[]).map((r) => [r.key, r.cents])));
 
 app.get('/api/month-close/:month', (req, res) => {
   const month = monthParam(req.params.month);

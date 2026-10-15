@@ -1,4 +1,5 @@
 import { db, getConfig, tx } from './db.ts';
+import { memo } from './memo.ts';
 import { dedupe } from '../../shared/src/dedupe.ts';
 import { classify } from '../../shared/src/classify.ts';
 import { athensMonth } from '../../shared/src/month.ts';
@@ -10,7 +11,7 @@ export const toRec = (r: Record<string, any>): Rec => ({
   type: r.type, paymentType: r.paymentType, note: r.note, dateUtc: r.dateUtc, groupOverride: r.groupOverride,
 });
 
-export const activeSource = (): 'api' | 'import' => (db.prepare("SELECT 1 FROM records WHERE source='api'").get() ? 'api' : 'import');
+export const activeSource = (): 'api' | 'import' => memo('activeSource', () => (db.prepare("SELECT 1 FROM records WHERE source='api' LIMIT 1").get() ? 'api' : 'import'));
 
 export function runPipeline(): void {
   const cfg = getConfig();
@@ -44,7 +45,9 @@ export function runPipeline(): void {
   });
 }
 
-export function spendSummary(): Summary {
+export const spendSummary = (): Summary => memo('spendSummary', spendSummaryQuery);
+
+function spendSummaryQuery(): Summary {
   const inc = getConfig().wallet.incomeGroups;
   const rows = db
     .prepare(
