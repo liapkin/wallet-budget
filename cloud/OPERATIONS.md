@@ -2,6 +2,8 @@
 
 This deployment uses one SQLite-backed Durable Object named `owner`, Worker static assets, and the free `workers.dev` address. Do not deploy or upload a database until Access is configured and tested.
 
+
+
 ## Build and Access
 
 Cloudflare Workers Builds settings (Worker, repository root, branch `main`, build variable `NODE_VERSION=24`, preview builds off):
@@ -41,3 +43,5 @@ The script writes mode `0600` through a temporary file and never logs record dat
 ## Recovery
 
 SQLite Durable Objects retain point-in-time recovery history for 30 days. Set `RECOVERY_ENABLED=1` to force maintenance and enable only owner-authenticated recovery/export endpoints. Record the current bookmark with `pnpm cloud:recover <url> bookmark`; schedule recovery with `pnpm cloud:recover <url> restore <ISO-timestamp>`. The script requires a second `RESTORE` confirmation. Trigger a new object session, verify counts through the protected export, then set `RECOVERY_ENABLED=0`. PITR is unavailable in local development. Keep an independent private snapshot for failures outside the retention window.
+
+
