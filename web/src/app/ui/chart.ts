@@ -103,7 +103,9 @@ export class ChartView implements OnDestroy {
         const data: { name: string; value: number }[] = s.data ?? [];
         const sum = data.reduce((a, d) => a + (Number(d.value) || 0), 0);
         data.forEach((d) => pcts.set(d.name, sum ? ((Number(d.value) / sum) * 100).toFixed(1) : '0.0'));
-        return { ...s, center: ['50%', '40%'], label: { ...s.label, show: false }, labelLine: { ...s.labelLine, show: false } };
+        // a slice's own label settings beat the series-level ones, so hide them per slice too
+        const hidden = data.map((d: any) => ({ ...d, label: { ...d.label, show: false }, labelLine: { ...d.labelLine, show: false } }));
+        return { ...s, data: hidden, center: ['50%', '40%'], label: { ...s.label, show: false }, labelLine: { ...s.labelLine, show: false } };
       });
       if (pcts.size) {
         opt = { ...opt, series };
