@@ -17,14 +17,19 @@ nav a.active { background: var(--accent-soft); color: var(--accent); border-left
 .spin { width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: r 0.7s linear infinite; }
 @keyframes r { to { transform: rotate(360deg); } }
 main { min-width: 0; overflow-x: clip; max-width: 1680px; margin-inline: auto; padding: var(--sp-6) clamp(16px, 3vw, 40px); }
-.topbar, .scrim { display: none; }
+.topbar { display: none; }
 @media (max-width: 800px) {
   .topbar { display: flex; align-items: center; gap: var(--sp-2); position: sticky; top: 0; z-index: 40; padding: var(--sp-2) var(--sp-3); background: var(--surface); border-bottom: 1px solid var(--border); }
-  .side { transform: translateX(-100%); transition: transform 0.2s; box-shadow: var(--shadow-pop); }
-  .side.open { transform: none; }
-  .scrim { display: block; position: fixed; inset: 0; background: var(--backdrop); z-index: 45; }
   :host { padding-left: 0; }
-  main { padding: var(--sp-4); }
+  main { padding: var(--sp-4) var(--sp-4) calc(var(--sp-4) + var(--tabbar-h) + env(safe-area-inset-bottom)); }
   .access-alert { flex-wrap: wrap; justify-content: space-between; }
   button.icon { width: 2.75rem; height: 2.75rem; }
 }
+
+.nav-dialog { width: min(22rem, 100vw); max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0 auto 0 0; padding: 0; border-radius: 0; border-width: 0 1px 0 0; }
+.sheet { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-4) var(--sp-3) calc(var(--sp-4) + env(safe-area-inset-bottom)); min-height: 100%; }
+.sheet .close { align-self: flex-end; }
+.tabbar { position: fixed; inset: auto 0 0 0; z-index: 40; display: flex; flex-direction: row; gap: 0; padding: 0 0 env(safe-area-inset-bottom); background: var(--surface); border-top: 1px solid var(--border); }
+.tabbar a, .tabbar button { position: relative; flex: 1; min-height: var(--tabbar-h); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: var(--sp-1); border: 0; border-radius: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs-xs); font-weight: 700; }
+.tabbar a.active { background: var(--accent-soft); color: var(--accent); border-left: 0; padding-left: var(--sp-1); }
+.tabbar .badge { position: absolute; top: 4px; left: calc(50% + 6px); }

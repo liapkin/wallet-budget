@@ -5,17 +5,13 @@
   </section>
 }
 <header class="topbar">
-  <button class="icon" type="button" aria-label="Menu" [attr.aria-expanded]="drawer()" (click)="drawer.set(!drawer())"><app-icon name="menu" [size]="20" /></button>
   <strong>Budget</strong>
   @if (refresh.demo() === true) { <span class="chip accent-soft">Demo data</span> }
   <span class="grow"></span>
   <button class="icon ghost eye" type="button" (click)="cycleTheme()" [title]="themeLabel(theme())" [attr.aria-label]="themeLabel(theme())"><app-icon [name]="themeIcon[theme()]" [size]="20" /></button>
   <button class="icon ghost eye" type="button" [class.on]="hidden()" [attr.aria-pressed]="hidden()" (click)="togglePrivacy()" [title]="hidden() ? 'Show amounts (Shift+H)' : 'Hide amounts (Shift+H)'" [attr.aria-label]="hidden() ? 'Show amounts (Shift+H)' : 'Hide amounts (Shift+H)'"><app-icon [name]="hidden() ? 'eyeOff' : 'eye'" [size]="20" /></button>
 </header>
-@if (drawer()) {
-  <div class="scrim" (click)="drawer.set(false)"></div>
-}
-<aside class="side" [class.open]="drawer()">
+<ng-template #navContent>
   <div class="brand"><span class="mark"><app-icon name="logo" [size]="18" /></span> <span class="grow">Budget</span>
     <button class="icon ghost eye" type="button" (click)="cycleTheme()" [title]="themeLabel(theme())" [attr.aria-label]="themeLabel(theme())"><app-icon [name]="themeIcon[theme()]" [size]="18" /></button>
     <button class="icon ghost eye" type="button" [class.on]="hidden()" [attr.aria-pressed]="hidden()" (click)="togglePrivacy()" [title]="hidden() ? 'Show amounts (Shift+H)' : 'Hide amounts (Shift+H)'" [attr.aria-label]="hidden() ? 'Show amounts (Shift+H)' : 'Hide amounts (Shift+H)'"><app-icon [name]="hidden() ? 'eyeOff' : 'eye'" [size]="18" /></button>
@@ -40,7 +36,23 @@
       }
     }
   </div>
-</aside>
+</ng-template>
+@if (narrow()) {
+  <nav class="tabbar" aria-label="Primary">
+    <a routerLink="/month" routerLinkActive="active" ariaCurrentWhenActive="page"><app-icon name="calendar" /> Month</a>
+    <a routerLink="/records" routerLinkActive="active" ariaCurrentWhenActive="page"><app-icon name="list" /> Records</a>
+    <a routerLink="/inbox" routerLinkActive="active" ariaCurrentWhenActive="page"><app-icon name="inbox" /> Inbox@if (inbox.value()) { <span class="badge">{{ inbox.value() }}</span> }</a>
+    <button #moreBtn type="button" [attr.aria-expanded]="menuOpen()" aria-haspopup="dialog" (click)="openMenu()"><app-icon name="menu" /> More</button>
+  </nav>
+  <dialog #navDialog class="nav-dialog" aria-label="Menu" (close)="onMenuClosed()" (click)="$event.target === navDialog && closeMenu()">
+    <div class="sheet">
+      <button class="icon ghost close" type="button" aria-label="Close menu" (click)="closeMenu()"><app-icon name="x" [size]="20" /></button>
+      <ng-container [ngTemplateOutlet]="navContent" />
+    </div>
+  </dialog>
+} @else {
+  <aside class="side"><ng-container [ngTemplateOutlet]="navContent" /></aside>
+}
 <main>
   @if (ready()) {
     <router-outlet />

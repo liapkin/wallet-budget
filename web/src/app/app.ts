@@ -1,4 +1,5 @@
-import { Component, effect, HostListener, inject, resource, signal } from '@angular/core';
+import { Component, effect, ElementRef, HostListener, inject, resource, signal, viewChild } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -10,6 +11,7 @@ import { cycleTheme, theme, themeLabel } from './ui/theme';
 import { Refresh } from './ui/refresh';
 import { Toasts } from './ui/toast';
 import { Access } from './access';
+import { narrow } from './ui/viewport';
 
 const NAV: { label: string; items: { path: string; label: string; icon: IconName; badge?: boolean }[] }[] = [
   { label: 'Overview', items: [{ path: 'month', label: 'Month', icon: 'calendar' }, { path: 'history', label: 'History', icon: 'history' }, { path: 'inbox', label: 'Inbox', icon: 'inbox', badge: true }] },
@@ -27,7 +29,7 @@ const NAV: { label: string; items: { path: string; label: string; icon: IconName
 ];
 
 @Component({
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, Toasts],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgTemplateOutlet, Icon, Toasts],
   selector: 'app-root',
   templateUrl: './app.html',
   styleUrl: './app.css',
@@ -44,7 +46,10 @@ export class App {
     params: () => this.refresh.tick(),
     loader: async () => (await Promise.all([this.count('/api/possible-duplicates'), this.count('/api/unclassified')])).reduce((n, c) => n + c, 0),
   });
-  protected drawer = signal(false);
+  protected narrow = narrow;
+  protected menuOpen = signal(false);
+  private dialog = viewChild<ElementRef<HTMLDialogElement>>('navDialog');
+  private moreBtn = viewChild<ElementRef<HTMLButtonElement>>('moreBtn');
   protected ready = signal(false);
   protected hidden = hidden;
   protected togglePrivacy = togglePrivacy;
@@ -56,7 +61,10 @@ export class App {
   protected meta = resource({ params: () => this.refresh.tick(), loader: () => this.api.meta() });
 
   constructor() {
-    inject(Router).events.subscribe(() => this.drawer.set(false));
+    inject(Router).events.subscribe(() => this.closeMenu());
+    effect(() => {
+      document.documentElement.classList.toggle('has-tabbar', this.narrow());
+    });
     effect(() => {
       document.body.classList.toggle('privacy', this.hidden());
     });
@@ -70,6 +78,24 @@ export class App {
         this.ready.set(true);
       }
     });
+  }
+
+  protected openMenu() {
+    this.dialog()?.nativeElement.showModal();
+    this.menuOpen.set(true);
+  }
+
+  protected closeMenu() {
+    const d = this.dialog()?.nativeElement;
+    if (d?.open) d.close();
+    this.onMenuClosed();
+  }
+
+  /** Native Escape/close also lands here, keeping the signal in sync. */
+  protected onMenuClosed() {
+    if (!this.menuOpen()) return;
+    this.menuOpen.set(false);
+    this.moreBtn()?.nativeElement.focus();
   }
 
   @HostListener('window:keydown', ['$event'])

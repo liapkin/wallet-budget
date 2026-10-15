@@ -294,3 +294,11 @@ dialog .actions { display: flex; justify-content: flex-end; gap: var(--sp-2); ma
   .chip { min-height: 40px; }
   .checks label, label:has(> input[type='checkbox']) { min-height: 44px; display: inline-flex; align-items: center; gap: var(--sp-2); }
 }
+
+/* Bottom tab bar (narrow shell, see app.css): reserve its height above fixed UI, hide it while typing. */
+:root { --tabbar-h: 0rem; }
+:root.has-tabbar { --tabbar-h: 3.5rem; }
+:root.has-tabbar .savebar { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + var(--sp-2)); }
+:root.has-tabbar .toast-stack { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + var(--sp-2)); }
+:root:has(input:focus, select:focus, textarea:focus) .tabbar { display: none !important; }
+body:has(dialog[open]) { overflow: hidden; }
