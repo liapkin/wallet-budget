@@ -38,6 +38,7 @@ export class Refresh {
   }
 
   bump() {
+    this.api.clearCache();
     this.tick.update((n) => n + 1);
     this.lastFetch.set(new Date());
   }
