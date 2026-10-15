@@ -18,7 +18,17 @@ import { Toast } from './ui/toast';
     .coin { display: grid; grid-template-columns: 6rem 1fr 1fr 1fr auto; gap: var(--sp-2); margin-bottom: var(--sp-2); }
     .affix { display: flex; }
     .affix input { flex: 1; width: auto; }
-    @media (max-width: 640px) { .coin { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 640px) {
+      .coin { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .coin input, .coin .affix { width: 100%; min-width: 0; }
+      .coin button { grid-column: 1 / -1; }
+      .stack tr { display: flex; flex-direction: column; }
+      .stack td { order: 4; }
+      .stack td.stack-title { order: 0; }
+      .stack td.tag { order: 1; }
+      .stack td.big { order: 2; font-weight: 600; font-size: var(--fs-lg); }
+      p.btns { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+    }
   `,
   template: `
     <div class="page-head"><h1>{{ route.title }}</h1></div>
@@ -58,22 +68,22 @@ import { Toast } from './ui/toast';
       }
 
       <div class="scroll">
-        <table>
+        <table class="stack">
           <thead>
             <tr><th>Holding</th><th>Tag</th><th class="num">Amount</th><th class="num">Price</th><th class="num">24h</th><th class="num">Value</th><th class="num">Paid</th><th class="num">Profit</th><th class="num">Allocation</th></tr>
           </thead>
           <tbody>
             @for (c of s().coins; track $index) {
               <tr>
-                <td class="strong">{{ c.symbol }}</td>
-                <td>{{ c.tag }}</td>
-                <td class="num">{{ units(c.amount) }}</td>
-                <td class="num">{{ money(c.priceCents) }}</td>
-                <td class="num" [style.color]="tone(c.pct24h)">{{ pct(c.pct24h) }}</td>
-                <td class="num">{{ money(c.valueCents) }}</td>
-                <td class="num">{{ fmt(c.paidCents) }}</td>
-                <td class="num" [style.color]="tone(c.profitCents)">{{ profit(c) }}</td>
-                <td class="num">{{ pct(c.allocationPct, false) }}</td>
+                <td class="strong stack-title">{{ c.symbol }}</td>
+                <td class="tag" data-label="Tag">{{ c.tag }}</td>
+                <td class="num" data-label="Amount">{{ units(c.amount) }}</td>
+                <td class="num" data-label="Price">{{ money(c.priceCents) }}</td>
+                <td class="num" data-label="24h" [style.color]="tone(c.pct24h)">{{ pct(c.pct24h) }}</td>
+                <td class="num big" data-label="Value">{{ money(c.valueCents) }}</td>
+                <td class="num" data-label="Paid">{{ fmt(c.paidCents) }}</td>
+                <td class="num big" data-label="Profit" [style.color]="tone(c.profitCents)">{{ profit(c) }}</td>
+                <td class="num" data-label="Allocation">{{ pct(c.allocationPct, false) }}</td>
               </tr>
             } @empty {
               <tr><td colspan="9" class="muted">No holdings yet.</td></tr>
@@ -82,7 +92,7 @@ import { Toast } from './ui/toast';
         </table>
       </div>
 
-      <p>
+      <p class="btns">
         <button class="ghost" (click)="editing.set(!editing())">{{ editing() ? 'Done editing' : 'Edit holdings' }}</button>
         <button class="ghost" (click)="refreshPrices()" [disabled]="refreshing()">{{ refreshing() ? 'Refreshing…' : 'Refresh prices' }}</button>
         @if (route.import) { <button class="ghost" (click)="importing.set(!importing())">Import from CoinMarketCap</button> }

@@ -22,15 +22,15 @@ type Item = { merchant: string; group: string; typicalCents: number; lastDate: s
         <div class="kpi"><div class="label">Fixed costs per month</div><div class="value">{{ fmt(data.value()!.monthlyTotalCents) }}</div></div>
       </div>
       <div class="scroll tall">
-        <table>
+        <table class="stack">
           <thead><tr><th>Merchant</th><th>Group</th><th class="num">Typical</th><th>Next expected</th><th></th></tr></thead>
           <tbody>
             @for (i of items(); track i.merchant) {
               <tr>
-                <td><span class="dot" [style.--dot]="color(i.group)"></span>{{ i.merchant }}</td>
-                <td class="muted">{{ i.group }}</td>
-                <td class="num">{{ fmt(i.typicalCents) }}</td>
-                <td class="nowrap">{{ date(i.nextDate) }}</td>
+                <td class="stack-title"><span class="dot" [style.--dot]="color(i.group)"></span>{{ i.merchant }}</td>
+                <td class="muted" data-label="Group">{{ i.group }}</td>
+                <td class="num" data-label="Typical">{{ fmt(i.typicalCents) }}</td>
+                <td class="nowrap" data-label="Next expected">{{ date(i.nextDate) }}</td>
                 <td>
                   @if (i.priceChange; as c) {
                     <span class="badge" [class.bad]="c.toCents > c.fromCents" [class.pos]="c.toCents < c.fromCents">

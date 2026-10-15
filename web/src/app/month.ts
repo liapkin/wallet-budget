@@ -41,7 +41,18 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
     .goal .num.met { color: var(--good); }
     .goal .progress > i.met { background: var(--good); }
     .goal.done .xf { color: var(--muted); text-decoration: line-through; }
-    @media (max-width: 640px) { .hero .kpi.big { grid-column: auto; } }
+    @media (max-width: 640px) {
+      .hero { grid-template-columns: minmax(0, 1fr); }
+      .hero .kpi.big { grid-column: auto; }
+      .hero .kpi .value { font-size: 1.5rem; overflow-wrap: anywhere; }
+      .goal { grid-template-columns: minmax(0, 1fr) auto; }
+      .goal .name { overflow-wrap: anywhere; }
+      .goal .num { white-space: nowrap; text-align: right; }
+      .goal .progress { order: 2; }
+      .goal > :is(.xf, span:empty) { order: 3; grid-column: 1 / -1; }
+      .goal > span:empty { display: none; }
+      .card-head h2 { flex: 1 1 100%; }
+    }
   `,
   template: `
     <div class="page-head">

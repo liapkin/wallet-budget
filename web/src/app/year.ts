@@ -45,15 +45,15 @@ type YearData = {
         @if (d.worst; as w) { <div class="kpi"><div class="label">Highest month</div><div class="value">{{ fmt(w.cents) }}</div><div class="sub">{{ month(w.month) }}</div></div> }
       </div>
       <div class="scroll tall">
-        <table>
+        <table class="stack">
           <thead><tr><th>Group</th><th class="num">{{ d.year }}</th><th class="num">{{ d.year - 1 }}</th><th class="num">Change</th></tr></thead>
           <tbody>
             @for (g of groups(); track g.group) {
               <tr>
-                <td><span class="dot" [style.--dot]="color(g.group)"></span>{{ g.group }}</td>
-                <td class="num">{{ fmt(g.cents) }}</td>
-                <td class="num muted">{{ fmt(g.prevCents) }}</td>
-                <td class="num" [class.pos]="g.deltaCents < 0" [class.err]="g.deltaCents > 0">{{ sign(g.deltaCents) }}{{ fmt(abs(g.deltaCents)) }}</td>
+                <td class="stack-title"><span class="dot" [style.--dot]="color(g.group)"></span>{{ g.group }}</td>
+                <td class="num" [attr.data-label]="d.year">{{ fmt(g.cents) }}</td>
+                <td class="num muted" [attr.data-label]="d.year - 1">{{ fmt(g.prevCents) }}</td>
+                <td class="num" data-label="Change" [class.pos]="g.deltaCents < 0" [class.err]="g.deltaCents > 0">{{ sign(g.deltaCents) }}{{ fmt(abs(g.deltaCents)) }}</td>
               </tr>
             }
           </tbody>

@@ -47,9 +47,16 @@ const SECTIONS = [
     .tools input { flex: 1; max-width: 20rem; }
     .chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
     @media (max-width: 800px) {
-      .layout { grid-template-columns: 1fr; }
-      nav { position: static; flex-direction: row; flex-wrap: wrap; }
-      .grid { grid-template-columns: 1fr; }
+      .layout { grid-template-columns: minmax(0, 1fr); }
+      .layout > * { min-width: 0; }
+      nav { position: static; flex-direction: row; gap: var(--sp-2); overflow-x: auto; scroll-snap-type: x proximity; }
+      nav button { flex: none; white-space: nowrap; scroll-snap-align: start; background: var(--surface-2); }
+      .grid { grid-template-columns: minmax(0, 1fr); }
+      .grid .field input, .grid .field .affix { width: 100%; }
+      .card { min-width: 0; }
+      .tools { flex-wrap: wrap; }
+      .tools input { max-width: none; }
+      label.field > span[style] { flex-wrap: wrap; }
     }
   `,
   template: `
@@ -129,7 +136,7 @@ const SECTIONS = [
             <div class="grid">
               <div class="field">Apply from<app-date-time dateOnly [value]="c.caps.applyFrom" (valueChange)="set('caps.applyFrom', $event)" /></div>
               <label class="field">Buffer month (no caps)
-                <span style="display:flex;gap:var(--sp-2)">
+                <span style="display:flex;flex-wrap:wrap;gap:var(--sp-2)">
                   <input type="month" style="flex:1" [value]="c.caps.bufferMonth ?? ''" (change)="set('caps.bufferMonth', val($event) || null)" />
                   @if (c.caps.bufferMonth) { <button class="ghost" (click)="set('caps.bufferMonth', null)">Clear</button> }
                 </span>

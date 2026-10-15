@@ -50,7 +50,9 @@ const HOUSE: Field[] = [
     details { margin-top: var(--sp-3); }
     summary { cursor: pointer; font-weight: 600; margin-bottom: var(--sp-3); }
     tr.hit td { background: var(--accent-soft); font-weight: 600; }
-    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .layout > aside { position: static; } }
+    .layout > * { min-width: 0; }
+    @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } .layout > aside { position: static; } }
+    @media (max-width: 640px) { aside .field, aside .affix, aside .affix input { width: 100%; } .card { min-width: 0; overflow: hidden; } }
   `,
   template: `
     <div class="page-head"><h1>Investing</h1></div>
@@ -91,7 +93,7 @@ const HOUSE: Field[] = [
             <details>
               <summary>Yearly breakdown</summary>
               <div class="scroll tall" style="box-shadow:none">
-                <table>
+                <table class="sticky-first">
                   <thead><tr><th>Year</th><th class="num">Contribution</th><th class="num">ETF</th><th class="num">House fund</th><th class="num">Total</th><th class="num">Real</th></tr></thead>
                   <tbody>
                     @for (r of rows(); track r.year) {
