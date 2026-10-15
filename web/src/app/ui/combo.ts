@@ -71,6 +71,7 @@ let uid = 0;
     li.head app-icon.rot { transform: rotate(90deg); }
     li.ind { padding-left: calc(var(--sp-2) + 1.25rem); }
     li.none { color: var(--muted); cursor: default; }
+    @media (max-width: 640px) { li, li.head button { min-height: 44px; } }
   `,
 })
 export class Combo {

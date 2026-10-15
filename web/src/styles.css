@@ -81,6 +81,8 @@
   --c-other: #77736a;
 }
 * { box-sizing: border-box; }
+html, body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
+button, a, label, input, select, summary { touch-action: manipulation; }
 body { margin: 0; background: var(--bg); color: var(--text); font: var(--fs)/1.5 var(--font); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
 h1 { font-size: var(--fs-xl); font-weight: 700; letter-spacing: 0; margin: 0; }
@@ -215,7 +217,7 @@ label.switch input:checked::after { transform: translateX(1rem); }
     linear-gradient(to left, rgb(0 0 0 / 0.18), transparent) right / 10px 100% no-repeat scroll,
     var(--surface);
 }
-.scroll.tall { max-height: 70vh; }
+.scroll.tall { max-height: 70vh; max-height: 70dvh; }
 table { border-collapse: separate; border-spacing: 0; width: 100%; }
 th, td { padding: 0.5rem 0.8rem; text-align: left; border-bottom: 1px dashed var(--border); }
 tbody tr:last-child td { border-bottom: 1px dashed var(--border); }
@@ -283,4 +285,12 @@ dialog .actions { display: flex; justify-content: flex-end; gap: var(--sp-2); ma
   .stack td[data-label]::before { content: attr(data-label); color: var(--muted); font-size: var(--fs-sm); text-align: left; white-space: normal; }
   .stack td.stack-title { display: block; font-weight: 700; text-align: left; }
   .stack td.stack-hide { display: none; }
+  .stack td { overflow-wrap: anywhere; min-width: 0; }
+  .stack td input, .stack td select, .stack td app-combo { width: 100%; }
+  .scroll.tall:has(table.stack) { max-height: none; overflow: visible; border: 0; box-shadow: none; background: none; }
+  .card-head h2, .chip, .stat .value, .kpi .value { overflow-wrap: anywhere; min-width: 0; }
+  button.icon { width: 44px; height: 44px; }
+  button.link, a.link { min-height: 44px; display: inline-flex; align-items: center; }
+  .chip { min-height: 40px; }
+  .checks label, label:has(> input[type='checkbox']) { min-height: 44px; display: inline-flex; align-items: center; gap: var(--sp-2); }
 }
