@@ -41,10 +41,11 @@ export function runPipeline(): void {
 }
 
 export function spendSummary(): Summary {
+  const inc = getConfig().wallet.incomeGroups;
   const rows = db
     .prepare(
-      "SELECT month, grp, amount_cents AS amountCents FROM records WHERE is_dup=0 AND source IN (?, 'manual') AND type='Expenses'",
+      `SELECT month, grp, amount_cents AS amountCents FROM records WHERE is_dup=0 AND source IN (?, 'manual') AND (type='Expenses' OR grp NOT IN (${inc.map(() => '?').join(',')}))`,
     )
-    .all(activeSource()) as { month: string; grp: string; amountCents: number }[];
+    .all(activeSource(), ...inc) as { month: string; grp: string; amountCents: number }[];
   return summarize(rows);
 }

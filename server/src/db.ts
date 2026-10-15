@@ -42,7 +42,7 @@ if (!(db.prepare('PRAGMA table_info(records)').all() as { name: string }[]).some
 
 export const getConfig = (): Config => {
   const cfg = JSON.parse((db.prepare('SELECT json FROM config WHERE id=1').get() as { json: string }).json) as Config;
-  return { ...cfg, currency: cfg.currency ?? 'EUR' };
+  return { ...cfg, currency: cfg.currency ?? 'EUR', wallet: { ...cfg.wallet, incomeGroups: cfg.wallet.incomeGroups ?? ['Income'] } };
 };
 
 export const currencyLocked = (): boolean => !!db.prepare(

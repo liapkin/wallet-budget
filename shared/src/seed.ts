@@ -17,5 +17,5 @@ const walk = (v: unknown): unknown => {
 
 export const seedToConfig = (json: unknown): Config => {
   const cfg = walk(json) as Config;
-  return { ...cfg, currency: cfg.currency ?? 'EUR' };
+  return { ...cfg, currency: cfg.currency ?? 'EUR', wallet: cfg.wallet && { ...cfg.wallet, incomeGroups: cfg.wallet.incomeGroups ?? ['Income'] } };
 };

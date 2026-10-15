@@ -53,12 +53,14 @@ Precedence, first match wins:
 
 1. A manual group override on the record.
 2. A merchant keyword of an excluded (non-spending) group, any record type.
-3. `type = Income` gives `Income`.
-4. A case-insensitive substring match of any merchant keyword in `note`.
-5. The Wallet category map.
-6. `Other`.
+3. Income record: the first merchant keyword match (an income group, Reimbursements, or a spending group such as a refund); else the Wallet category map, but only when it points to an excluded group; else `Income`.
+4. Expense record: the first merchant keyword match, ignoring keywords of income groups; else the Wallet category map; else `Other`.
 
-Keywords, the category map, the group list and the excluded groups are config. Unclassified merchants must be easy to assign in the UI; assigning one adds a keyword.
+Keywords are case-insensitive substring matches on `note`. `wallet.incomeGroups` lists the groups that count as income; `Income` is always in it and is the fallback for unmatched income.
+
+An Income record in a non-income group counts as negative spend in that group. If Reimbursements is in `allocation.funGroups`, paybacks reduce fun; a Wolt refund reduces Takeout. The income total (`/api/summary`) sums records in `incomeGroups` only, so transfers, top-ups and reimbursements are left out.
+
+Keywords, the category map, the group list, the excluded groups and the income groups are config. Unclassified merchants must be easy to assign in the UI; assigning one adds a keyword.
 
 ### Months
 

@@ -89,9 +89,10 @@ app.get('/api/meta', (req, res) => {
 app.get('/api/summary', (req, res) => {
   const s = scope();
   const income: Record<string, number> = {};
+  const inc = getConfig().wallet.incomeGroups;
   const rows = db
-    .prepare(`SELECT month, SUM(amount_cents) AS c FROM records WHERE is_dup=0 AND type='Income' AND ${s.sql} GROUP BY month`)
-    .all(...s.args) as { month: string; c: number }[];
+    .prepare(`SELECT month, SUM(amount_cents) AS c FROM records WHERE is_dup=0 AND type='Income' AND grp IN (${inc.map(() => '?').join(',')}) AND ${s.sql} GROUP BY month`)
+    .all(...inc, ...s.args) as { month: string; c: number }[];
   for (const r of rows) income[r.month] = r.c;
   res.json({ spend: spendSummary(), income });
 });

@@ -163,6 +163,10 @@
       {
         "keyword": "Top-Up by",
         "group": "Transfer"
+      },
+      {
+        "keyword": "PAYROLL",
+        "group": "Salary"
       }
     ],
     "categoryMap": [
@@ -341,8 +345,13 @@
       "Cash withdrawal",
       "Loan"
     ],
-    "precedence": "keywords of excluded groups first (any type); then type Income -> Income; then other keyword match on the note (case-insensitive substring) wins over category map; no match -> Other",
+    "incomeGroups": [
+      "Salary",
+      "Income"
+    ],
+    "precedence": "manual override; keywords of excluded groups (any type); income record: first keyword match, else category map only if it points to an excluded group, else Income; expense record: keyword match (ignoring income-group keywords), else category map, else Other",
     "groups": [
+      "Salary",
       "Groceries",
       "Takeout",
       "Work food",

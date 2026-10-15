@@ -9,9 +9,11 @@ const cfg = {
       { keyword: 'EFOOD', group: 'Takeout' },
       { keyword: 'ATM ', group: 'Cash withdrawal' },
       { keyword: 'Top-Up by', group: 'Transfer' },
+      { keyword: 'PAYROLL', group: 'Salary' },
     ],
     excludedGroups: ['Cash withdrawal', 'Transfer'],
-    categoryMap: [{ walletCategory: 'Fuel', group: 'Fuel' }],
+    incomeGroups: ['Salary', 'Income'],
+    categoryMap: [{ walletCategory: 'Fuel', group: 'Fuel' }, { walletCategory: 'Transfer', group: 'Transfer' }],
   },
 } as Config;
 const rec = (o: Partial<Rec>): Rec => ({
@@ -20,7 +22,7 @@ const rec = (o: Partial<Rec>): Rec => ({
 
 test('precedence', () => {
   assert.equal(classify(rec({ groupOverride: 'Car', type: 'Income', note: 'efood' }), cfg), 'Car');
-  assert.equal(classify(rec({ type: 'Income', note: 'efood' }), cfg), 'Income');
+  assert.equal(classify(rec({ type: 'Income', note: 'efood' }), cfg), 'Takeout');
   assert.equal(classify(rec({ note: 'Order EFood 123' }), cfg), 'Takeout');
   assert.equal(classify(rec({ note: 'shell' }), cfg), 'Fuel');
   assert.equal(classify(rec({ type: 'Income', note: 'Google Pay Top-Up by *1234' }), cfg), 'Transfer');
@@ -34,4 +36,14 @@ test('unmapped category falls back to its parent category', () => {
   assert.equal(classify(rec({ category: 'Kids', parentCategory: 'Shopping' }), c), 'Shopping');
   assert.equal(classify(rec({ category: 'Fuel', parentCategory: 'Shopping' }), c), 'Fuel');
   assert.equal(classify(rec({ category: 'Missing', parentCategory: 'Others' }), c), 'Other');
+});
+
+test('income classification', () => {
+  const inc = (o: Partial<Rec>) => rec({ type: 'Income', category: 'Other', ...o });
+  assert.equal(classify(inc({ note: 'ACME PAYROLL 10' }), cfg), 'Salary');
+  assert.equal(classify(inc({ category: 'Transfer', note: 'x' }), cfg), 'Transfer');
+  assert.equal(classify(inc({ category: 'Fuel', note: 'x' }), cfg), 'Income');
+  assert.equal(classify(inc({ note: 'efood refund' }), cfg), 'Takeout');
+  assert.equal(classify(inc({ note: 'unknown' }), cfg), 'Income');
+  assert.notEqual(classify(rec({ note: 'ACME PAYROLL', category: 'Fuel' }), cfg), 'Salary');
 });

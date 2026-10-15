@@ -82,6 +82,7 @@ export type Config = {
     merchantKeywords: { keyword: string; group: string }[];
     categoryMap: { walletCategory: string; group: string }[];
     excludedGroups: string[]; // non-spending groups, left out of spend totals
+    incomeGroups: string[]; // groups counted as income; 'Income' is the fallback
     precedence: string;
     groups: string[];
   };
