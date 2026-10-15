@@ -2,12 +2,13 @@ import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, resource } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { Account } from './api';
+import { savingsAccounts } from '../../../shared/src/budget.ts';
+import type { Config } from '../../../shared/src/types.ts';
 import { axisEuro, currencySymbol, fmt } from './format';
 import { ChartView } from './ui/chart';
 import { Refresh } from './ui/refresh';
 
 type Snap = { day: string; account: string; balanceCents: number };
-type Alloc = { savingsAccounts: string[]; investmentAccounts: string[] };
 
 @Component({
   selector: 'app-networth',
@@ -22,7 +23,9 @@ type Alloc = { savingsAccounts: string[]; investmentAccounts: string[] };
     } @else {
       <div class="kpis">
         <div class="kpi"><div class="label">Savings</div><div class="value">{{ fmt(today().savings) }}</div></div>
-        <div class="kpi"><div class="label">Invested</div><div class="value">{{ fmt(today().invested) }}</div></div>
+        @for (n of invNames(); track n) {
+          <div class="kpi"><div class="label">{{ n }}</div><div class="value">{{ fmt(today().inv[n]) }}</div></div>
+        }
         <div class="kpi big"><div class="label">Total</div><div class="value">{{ fmt(today().total) }}</div></div>
       </div>
       @if (days().length > 1) {
@@ -44,21 +47,22 @@ export class NetWorth {
       const [accounts, history, cfg] = await Promise.all([
         firstValueFrom(this.http.get<Account[]>('/api/accounts')),
         firstValueFrom(this.http.get<Snap[]>('/api/balances/history')),
-        firstValueFrom(this.http.get<{ allocation: Alloc }>('/api/config')),
+        firstValueFrom(this.http.get<Config>('/api/config')),
       ]);
-      return { accounts, history, alloc: cfg.allocation };
+      return { accounts, history, cfg };
     },
   });
 
   private split(rows: { name: string; cents: number }[]) {
-    const a = this.data.value()!.alloc;
+    const cfg = this.data.value()!.cfg;
     const sum = (names: string[]) => rows.filter((r) => names.includes(r.name)).reduce((s, r) => s + r.cents, 0);
-    return { savings: sum(a.savingsAccounts), invested: sum(a.investmentAccounts), total: rows.reduce((s, r) => s + r.cents, 0) };
+    return { savings: sum(savingsAccounts(cfg)), inv: Object.fromEntries(cfg.allocation.investmentAccounts.map((n) => [n, sum([n])])), total: rows.reduce((s, r) => s + r.cents, 0) };
   }
 
   protected today = computed(() =>
     this.split(this.data.value()!.accounts.map((a) => ({ name: a.name, cents: a.balanceCents ?? 0 }))),
   );
+  protected invNames = computed(() => this.data.value()!.cfg.allocation.investmentAccounts);
   protected days = computed(() => [...new Set(this.data.value()?.history.map((h) => h.day))].sort());
 
   protected chart = computed(() => {
@@ -66,7 +70,7 @@ export class NetWorth {
     const days = this.days();
     const per = days.map((d) => this.split(h.filter((x) => x.day === d).map((x) => ({ name: x.account, cents: x.balanceCents }))));
     const symbol = currencySymbol();
-    const line = (name: string, k: 'savings' | 'invested' | 'total') => ({ name, type: 'line', data: per.map((p) => p[k]) });
+    const line = (name: string, get: (p: (typeof per)[number]) => number) => ({ name, type: 'line', data: per.map(get) });
     return {
       grid: { left: 8, right: 16, top: 44, bottom: 8, containLabel: true },
       tooltip: {
@@ -81,7 +85,7 @@ export class NetWorth {
         axisLabel: { formatter: axisEuro(symbol) },
         splitLine: { lineStyle: { type: 'dashed', opacity: 0.35 } },
       },
-      series: [line('Savings', 'savings'), line('Invested', 'invested'), line('Total', 'total')],
+      series: [line('Savings', (p) => p.savings), ...this.invNames().map((n) => line(n, (p) => p.inv[n])), line('Total', (p) => p.total)],
     };
   });
 }

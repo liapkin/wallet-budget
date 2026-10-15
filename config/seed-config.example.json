@@ -68,12 +68,9 @@
   ],
   "allocation": {
     "funPerMonth": 150,
-    "sinkingFundTopUpPerMonth": 200,
     "investing": "remainder: salary - core - fun - sinking",
     "bankSavings": 5000,
-    "savingsAccounts": [],
     "cashSavings": 0,
-    "emergencyFundMonthsOfCore": 4,
     "annualIrregulars": 2000,
     "funGroups": [
       "Takeout",
@@ -89,14 +86,12 @@
       "Housing"
     ],
     "investmentAccounts": [],
+    "hiddenAccounts": [],
     "payrollAccount": null,
-    "monthClose": {
-      "payroll": "Main Bank",
-      "investAccount": "Broker",
-      "businessAccount": "Business",
-      "businessTarget": 1000,
-      "savingsAccount": "Savings",
-      "emergencyAccount": "Savings"
+    "goals": {
+      "emergency": { "target": 4000, "accounts": [], "depositTo": "Savings", "perMonth": 0 },
+      "sinking": { "target": 3000, "accounts": [], "depositTo": "Savings", "perMonth": 200 },
+      "business": { "target": 1000, "accounts": [], "depositTo": "Business", "perMonth": 0 }
     }
   },
   "caps": {
@@ -114,6 +109,8 @@
     "netSalaryGrowth": 0.025,
     "houseFundFirst": false,
     "houseFundReturn": 0.025,
+    "crypto": [],
+    "etfs": [],
     "houseTarget": {
       "propertyPrice": 200000,
       "depositShare": 0.2,

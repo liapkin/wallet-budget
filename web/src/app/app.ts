@@ -17,6 +17,7 @@ const NAV: { label: string; items: { path: string; label: string; icon: IconName
     items: [
       { path: 'records', label: 'Records', icon: 'list' }, { path: 'budget', label: 'Budget', icon: 'sliders' },
       { path: 'actuals', label: 'Core actuals', icon: 'wallet' }, { path: 'investing', label: 'Investing', icon: 'trend' },
+      { path: 'goals', label: 'Goals', icon: 'wallet' }, { path: 'crypto', label: 'Crypto', icon: 'chart' }, { path: 'etfs', label: 'ETFs', icon: 'trend' },
     ],
   },
   { label: 'Insights', items: [{ path: 'recurring', label: 'Recurring', icon: 'repeat' }, { path: 'networth', label: 'Net worth', icon: 'trend' }, { path: 'year', label: 'Year', icon: 'calendar' }] },

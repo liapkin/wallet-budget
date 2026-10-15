@@ -1,4 +1,3 @@
-import { savings } from './budget.ts';
 import { athensDay } from './month.ts';
 import type { Summary } from './summary.ts';
 import type { Config, Rec } from './types.ts';
@@ -96,18 +95,30 @@ export function suggestGroup(rec: Rec, classified: { note: string; group: string
 
 // ---- month-end close
 
-export type Transfer = { key: 'invest' | 'business' | 'sinking' | 'emergency'; label: string; from: string; to: string; cents: number };
+export type Transfer = { key: 'emergency' | 'sinking' | 'business' | 'invest'; label: string; from: string; to: string; cents: number; gap?: number };
 
+// Priority order; each step is capped by its gap, its monthly cap and what is left on the payroll account.
 export function monthClose(cfg: Config, balances: Record<string, number>, status: { investingSoFar: number }): Transfer[] {
-  const m = cfg.allocation.monthClose;
-  if (!m) return [];
-  const t = (key: Transfer['key'], label: string, to: string, cents: number): Transfer => ({ key, label, from: m.payroll, to, cents: Math.max(0, cents) });
-  return [
-    t('invest', 'Invest the remainder', m.investAccount, status.investingSoFar),
-    t('business', 'Top up business account', m.businessAccount, m.businessTarget - (balances[m.businessAccount] ?? 0)),
-    t('sinking', 'Sinking fund', m.savingsAccount, cfg.allocation.sinkingFundTopUpPerMonth),
-    t('emergency', 'Emergency fund gap', m.emergencyAccount, savings(cfg, balances).emergencyFund - (balances[m.emergencyAccount] ?? 0)),
-  ];
+  const { payrollAccount: from, investmentAccounts, goals } = cfg.allocation;
+  if (!from) return [];
+  let left = Math.max(0, balances[from] ?? 0);
+  const out: Transfer[] = [];
+  const step = (key: Transfer['key'], label: string, to: string, want: number, gap?: number) => {
+    if (!to || to === from) return;
+    const cents = Math.max(0, Math.min(want, left));
+    left -= cents;
+    out.push({ key, label, from, to, cents, ...(gap === undefined ? {} : { gap }) });
+  };
+  const goal = (key: 'emergency' | 'sinking' | 'business', label: string) => {
+    const g = goals[key];
+    const gap = Math.max(0, g.target - g.accounts.reduce((s, n) => s + (balances[n] ?? 0), 0));
+    step(key, label, g.depositTo, Math.min(gap, g.perMonth || Infinity), gap);
+  };
+  goal('emergency', 'Emergency fund');
+  goal('sinking', 'Sinking fund');
+  goal('business', 'Business account');
+  step('invest', 'Invest the remainder', investmentAccounts[0] ?? '', status.investingSoFar);
+  return out;
 }
 
 // ---- year in review

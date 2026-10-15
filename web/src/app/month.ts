@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, DestroyRef, effect, inject, resource, signal } from '@angular/core';
 import { RouterLink, Router } from '@angular/router';
 import { allocation, capsFor, monthStatus, savings } from '../../../shared/src/budget.ts';
@@ -15,7 +16,7 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
 
 @Component({
   selector: 'app-month',
-  imports: [Icon, MonthPicker, ChartView, RouterLink],
+  imports: [Icon, MonthPicker, ChartView, RouterLink, NgTemplateOutlet],
   styles: `
     .hero { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-4); }
     .hero .kpi.big { grid-column: span 2; }
@@ -36,11 +37,10 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
     .sk-card { height: 16rem; border-radius: var(--r-lg); margin-bottom: var(--sp-4); }
     .src { display: inline-flex; align-items: center; margin-left: 6px; vertical-align: middle; color: var(--accent); }
     .src.muted { color: var(--muted); }
-    .xfer { list-style: none; margin: 0; padding: 0; }
-    .xfer li { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) 0; border-bottom: 1px solid var(--border); }
-    .xfer li:last-child { border-bottom: 0; }
-    .xfer .path { display: flex; align-items: center; gap: var(--sp-2); flex: 1; min-width: 0; }
-    .xfer .done .path, .xfer .done .num { color: var(--muted); text-decoration: line-through; }
+    .goal { grid-template-columns: 1fr auto minmax(9rem, auto); }
+    .goal .num.met { color: var(--good); }
+    .goal .progress > i.met { background: var(--good); }
+    .goal.done .xf { color: var(--muted); text-decoration: line-through; }
     @media (max-width: 640px) { .hero .kpi.big { grid-column: auto; } }
   `,
   template: `
@@ -55,19 +55,21 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
     @if (error()) {
       <p class="err">Failed to load data. Check that the server is running, then try Fetch again.</p>
     }
+    <ng-template #xfer let-key="key">
+      @if (showClose() && transfer(key); as t) {
+        <label class="switch xf"><input type="checkbox" [checked]="doneKeys().includes(key)" (change)="toggleDone(key)" [attr.aria-label]="'Done: ' + t.label" /> move {{ fmt(t.cents) }}@if (t.gap !== undefined) { <span class="muted"> of gap {{ fmt(t.gap) }}</span> }</label>
+      } @else {
+        <span></span>
+      }
+    </ng-template>
     @if (v(); as v) {
       <div class="hero">
-        <div class="kpi big" [class.good]="v.st.investingSoFar >= 0" [class.bad]="v.st.investingSoFar < 0">
-          <span class="label">Investing remainder so far</span>
-          <span class="value">{{ fmt(v.st.investingSoFar) }}</span>
-          <div class="progress" [class.over]="v.st.investingSoFar < 0"><i [class.over]="v.st.investingSoFar < 0" [style.width.%]="v.invPct"></i></div>
-          <span class="sub">plan {{ fmt(v.alloc.investing) }}</span>
-        </div>
-        <div class="kpi">
+        <div class="kpi big">
           <span class="label">Spend this month</span>
           <span class="value">{{ fmt(v.spend) }}</span>
           <div class="progress"><i [class.over]="v.spend > v.budget" [style.width.%]="v.spendPct"></i></div>
           <span class="sub">of {{ fmt(v.budget) }} (core {{ fmt(v.alloc.core) }} + fun {{ fmt(v.alloc.fun) }})</span>
+          <span class="sub">{{ daysLeft() }} days left</span>
         </div>
         <div class="kpi" [class.bad]="v.funLeft < 0" [class.good]="v.funLeft >= 0">
           <span class="label">Fun left</span>
@@ -91,46 +93,17 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
             <span class="sub">{{ v.takeout.count }} orders</span>
           }
         </div>
-        <div class="kpi">
-          <span class="label">Savings</span>
-          <span class="value">{{ fmt(v.sav.total) }}</span>
-          <dl class="sub" style="display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-2); font-size:var(--fs-sm)">
-            <dt class="muted">Emergency target</dt>
-            <dd class="num" style="text-align:right">{{ fmt(v.sav.emergencyFund) }}</dd>
-            <dt class="muted">Sinking fund</dt>
-            <dd class="num" style="text-align:right">{{ fmt(v.sav.sinkingFund) }}</dd>
-          </dl>
+        <div class="kpi" [class.good]="v.st.investingSoFar >= 0" [class.bad]="v.st.investingSoFar < 0">
+          <span class="label">Investing remainder so far</span>
+          <span class="value">{{ fmt(v.st.investingSoFar) }}</span>
+          <div class="progress" [class.over]="v.st.investingSoFar < 0"><i [class.over]="v.st.investingSoFar < 0" [style.width.%]="v.invPct"></i></div>
+          <span class="sub">plan {{ fmt(v.alloc.investing) }}</span>
         </div>
-        @for (a of v.extra; track a.label) {
-          <div class="kpi">
-            <span class="label">{{ a.label }}</span>
-            <span class="value">{{ fmt(a.cents) }}</span>
-          </div>
-        }
       </div>
-
-      @if (showClose() && close.value(); as c) {
-        <section class="card">
-          <div class="card-head"><h2>Month-end</h2>@if (allDone()) { <span class="badge">Month closed</span> }</div>
-          @if (!c.transfers.length) {
-            <div class="empty"><strong>No transfers</strong><span>Nothing to move this month.</span></div>
-          }
-          <ul class="xfer">
-            @for (t of c.transfers; track t.key) {
-              <li [class.done]="doneKeys().includes(t.key)">
-                <label class="switch"><input type="checkbox" [checked]="doneKeys().includes(t.key)" (change)="toggleDone(t.key)" [attr.aria-label]="'Done: ' + t.label" /> done</label>
-                <span class="path"><span class="strong">{{ t.from }}</span><app-icon name="arrowRight" [size]="14" /><span class="strong">{{ t.to }}</span></span>
-                <span class="num strong">{{ fmt(t.cents) }}</span>
-              </li>
-            }
-          </ul>
-        </section>
-      }
 
       <section class="card">
         <div class="card-head">
           <h2>Cumulative spend vs pace</h2>
-          <span class="muted">{{ daysLeft() }} days left</span>
         </div>
         @if (records.error()) {
           <p class="err">Failed to load records.</p>
@@ -143,6 +116,38 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
         } @else {
           <div class="skeleton" style="height: 280px"></div>
         }
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Money &amp; goals</h2>
+          <div class="actions">
+            @if (showClose() && allDone()) { <span class="badge">Month closed</span> }
+            @if (v.payroll !== null) { <span class="muted">Payroll {{ fmt(v.payroll) }}</span> }
+            <span class="muted">Savings {{ fmt(v.sav.total) }}</span>
+          </div>
+        </div>
+        <div class="rows">
+          @for (g of v.goals; track g.key) {
+            <div class="row goal" [class.done]="doneKeys().includes(g.key)">
+              <span class="name">{{ g.label }}</span>
+              @if (g.set) {
+                <span class="num" [class.met]="g.met">{{ fmt(g.have) }} @if (g.met) { met } @else { <span class="muted">/ {{ fmt(g.target) }}</span> }</span>
+              } @else {
+                <span class="muted">no goal set</span>
+              }
+              <ng-container *ngTemplateOutlet="xfer; context: { key: g.key }" />
+              @if (g.set) { <div class="progress"><i [class.met]="g.met" [style.width.%]="g.pct"></i></div> }
+            </div>
+          }
+          @if (v.invested !== null || (showClose() && transfer('invest'))) {
+            <div class="row goal" [class.done]="doneKeys().includes('invest')">
+              <span class="name">Invest</span>
+              <span class="num">@if (v.invested !== null) { {{ fmt(v.invested) }} <span class="muted">invested</span> }</span>
+              <ng-container *ngTemplateOutlet="xfer; context: { key: 'invest' }" />
+            </div>
+          }
+        </div>
       </section>
 
       <div class="cols">
@@ -209,7 +214,7 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
     } @else if (!error()) {
       <div class="hero">
         <div class="skeleton sk-kpi" style="grid-column: span 2"></div>
-        @for (i of [1, 2, 3, 4]; track i) {
+        @for (i of [1, 2, 3]; track i) {
           <div class="skeleton sk-kpi"></div>
         }
       </div>
@@ -266,6 +271,8 @@ export class Month {
     effect(() => this.doneKeys.set(this.close.value()?.done ?? []));
   }
 
+  protected transfer = (key: string) => this.close.value()?.transfers.find((t) => t.key === key);
+
   protected async toggleDone(key: string) {
     const prev = this.doneKeys();
     const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key];
@@ -309,17 +316,21 @@ export class Month {
     const takeout = cells['Takeout'] ?? { cents: 0, count: 0 };
     const byName = Object.fromEntries((this.accounts.value() ?? []).map((a) => [a.name, a.balanceCents ?? 0]));
     const { investmentAccounts, payrollAccount } = cfg.allocation;
-    const extra = [
-      ...(investmentAccounts.length ? [{ label: 'Invested so far', cents: investmentAccounts.reduce((s, n) => s + (byName[n] ?? 0), 0) }] : []),
-      ...(payrollAccount && payrollAccount in byName ? [{ label: 'Payroll account', cents: byName[payrollAccount] }] : []),
-    ];
+    const sav = savings(cfg, byName);
+    const g = cfg.allocation.goals;
+    const goals = [
+      { key: 'emergency', label: 'Emergency fund', ...sav.emergency, accounts: g.emergency.accounts },
+      { key: 'sinking', label: 'Sinking fund', ...sav.sinking, accounts: g.sinking.accounts },
+      { key: 'business', label: 'Business', have: g.business.accounts.reduce((s, n) => s + (byName[n] ?? 0), 0), target: g.business.target, accounts: g.business.accounts },
+    ].map((x) => ({ ...x, set: x.target > 0 && x.accounts.length > 0, met: x.target > 0 && x.have >= x.target, pct: pct(x.have, x.target) }));
     const alloc = allocation(cfg);
     const budget = alloc.core + alloc.fun;
     const funLeft = alloc.fun - st.fun;
     return {
-      st, spend, bars, caps, takeout, extra, alloc, budget, funLeft,
+      st, spend, bars, caps, takeout, alloc, goals, sav, budget, funLeft,
       funPerDay: Math.round(funLeft / Math.max(1, this.daysLeft())),
-      sav: savings(cfg, byName),
+      invested: investmentAccounts.length ? investmentAccounts.reduce((s, n) => s + (byName[n] ?? 0), 0) : null,
+      payroll: payrollAccount && payrollAccount in byName ? byName[payrollAccount] : null,
       spendPct: pct(spend, budget),
       invPct: pct(Math.abs(st.investingSoFar), alloc.investing),
       takeoutOver: !!caps && takeout.cents > caps.Takeout,
@@ -361,7 +372,7 @@ export class Month {
     const accent = css('--accent'), muted = css('--muted');
     const eur = (c: number) => fmt(Math.round(c));
     return {
-      grid: { left: 8, right: 16, top: 24, bottom: 8, containLabel: true },
+      grid: { left: 8, right: 16, top: 40, bottom: 8, containLabel: true },
       tooltip: { trigger: 'axis', valueFormatter: (c: number) => eur(c) },
       xAxis: { type: 'category', data: days, boundaryGap: false },
       yAxis: { type: 'value', axisLabel: { formatter: (c: number) => symbol + Math.round(c / 100) } },
@@ -370,7 +381,7 @@ export class Month {
           name: 'Spent', type: 'line', data: d.cum, color: accent, symbol: 'none',
           areaStyle: { color: accent, opacity: 0.12 },
           markLine: d.today
-            ? { silent: true, symbol: 'none', label: { formatter: 'today', color: muted }, lineStyle: { color: muted, type: 'solid', width: 1 }, data: [{ xAxis: d.today - 1 }] }
+            ? { silent: true, symbol: 'none', label: { formatter: 'today', color: muted, position: 'insideEndTop' }, lineStyle: { color: muted, type: 'solid', width: 1 }, data: [{ xAxis: d.today - 1 }] }
             : undefined,
         },
         { name: 'Budget pace', type: 'line', data: days.map((_, i) => Math.round((budget * (i + 1)) / d.total)), color: muted, symbol: 'none', lineStyle: { type: 'dashed', width: 1.5 } },

@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { Config, Currency } from '../../../shared/src/types.ts';
+import type { CryptoSummary } from '../../../shared/src/crypto.ts';
 import type { Summary } from '../../../shared/src/summary.ts';
 
 export type Row = {
@@ -25,7 +26,7 @@ export type Meta = {
   groups: string[]; excludedGroups: string[]; accounts: string[]; months: string[]; demo?: boolean; lastSync?: string | null;
   currency?: Currency; currencyLocked?: boolean;
 };
-export type MonthClose = { transfers: { key: string; label: string; from: string; to: string; cents: number }[]; done: string[] };
+export type MonthClose = { transfers: { key: string; label: string; from: string; to: string; cents: number; gap?: number }[]; done: string[] };
 export type Unclassified = Row & { suggestion: { group: string; confidence: number } | null };
 export type Account = { id: string; name: string; balanceCents: number | null; currency: string; updatedAt: string };
 export type Actuals = Record<string, Record<string, number>>;
@@ -34,6 +35,8 @@ export type NewRecord = {
   date: string; amount: string; note: string; type: string; account: string;
   toWallet?: boolean; accountId?: string; categoryId?: string;
 };
+
+export type CryptoData = { summary: CryptoSummary; history: { ts: string; cents: number }[]; updatedAt: string | null };
 
 @Injectable({ providedIn: 'root' })
 export class Api {
@@ -64,5 +67,8 @@ export class Api {
   actuals = () => firstValueFrom(this.http.get<Actuals>('/api/actuals'));
   setActual = (month: string, key: string, cents: number | null) =>
     firstValueFrom(this.http.put<void>(`/api/actuals/${month}`, { [key]: cents }));
+  holdings = (kind: 'crypto' | 'etf') => firstValueFrom(this.http.get<CryptoData>(`/api/holdings/${kind}`));
+  importCrypto = (body: { overview: string; transactions: string; tag: string }) =>
+    firstValueFrom(this.http.post<CryptoData>('/api/crypto/import', body));
   sync = () => firstValueFrom(this.http.post<{ inserted: number }>('/api/sync', {}));
 }

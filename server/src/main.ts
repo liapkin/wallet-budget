@@ -5,12 +5,14 @@ import { activeSource, runPipeline, spendSummary, toRec } from './pipeline.ts';
 import { insertApiRecord, lastSync, syncOnce } from './sync.ts';
 import { del, post } from './wallet.ts';
 import { startScheduler } from './scheduler.ts';
+import { importCrypto } from './holdings.ts';
 import { walletPayload } from './wallet-payload.ts';
 import { dietConfigError } from './diet-config.ts';
 import { athensDay, athensLocalToUtc, athensMonth } from '../../shared/src/month.ts';
 import { capsFor, monthStatus } from '../../shared/src/budget.ts';
 import { monthClose, pairKey, possibleDuplicates, recurring, suggestGroup, yearReview } from '../../shared/src/insights.ts';
 import { toCents } from '../../shared/src/money.ts';
+import { holdingsHistory, holdingsSummary, type CryptoQuotes } from '../../shared/src/crypto.ts';
 import type { Config } from '../../shared/src/types.ts';
 
 const demo = process.env.DEMO === '1';
@@ -97,6 +99,45 @@ app.get('/api/summary', (req, res) => {
   res.json({ spend: spendSummary(), income });
 });
 
+const holdingsPayload = (kind: 'crypto' | 'etf') => {
+  const latest: CryptoQuotes = {};
+  const last = db.prepare(`SELECT symbol, price_cents, pct24h FROM crypto_snapshots s
+    WHERE kind = ? AND ts = (SELECT MAX(ts) FROM crypto_snapshots WHERE symbol = s.symbol AND kind = s.kind)`).all(kind) as { symbol: string; price_cents: number; pct24h: number }[];
+  for (const r of last) latest[r.symbol] = { priceCents: r.price_cents, pct24h: r.pct24h };
+  const rows = db.prepare('SELECT ts, symbol, amount, price_cents FROM crypto_snapshots WHERE kind = ? ORDER BY ts').all(kind) as
+    { ts: string; symbol: string; amount: number; price_cents: number }[];
+  const cfg = getConfig().investing;
+  return {
+    summary: holdingsSummary(kind === 'crypto' ? cfg.crypto : cfg.etfs, latest),
+    history: holdingsHistory(rows.map((r) => ({ ts: r.ts, symbol: r.symbol, amount: r.amount, priceCents: r.price_cents }))),
+    updatedAt: rows.length ? rows[rows.length - 1].ts : null,
+  };
+};
+
+app.get('/api/holdings/:kind', (req, res) => {
+  const { kind } = req.params;
+  if (kind !== 'crypto' && kind !== 'etf') bad('kind must be crypto or etf');
+  res.json(holdingsPayload(kind as 'crypto' | 'etf'));
+});
+
+app.post('/api/crypto/import', async (req, res, next) => {
+  try {
+    if (demo) bad('Disabled in demo mode');
+    const { overview, transactions } = req.body ?? {};
+    if (typeof overview !== 'string' || !overview.trim() || typeof transactions !== 'string' || !transactions.trim()) bad('overview and transactions must be non-empty strings');
+    const tag = str(req.body.tag) || 'Main';
+    if (tag.length > 40) bad('tag must be at most 40 characters');
+    try {
+      await importCrypto({ overview, transactions, tag });
+    } catch (e) {
+      bad((e as Error).message);
+    }
+    res.json(holdingsPayload('crypto'));
+  } catch (e) {
+    next(e);
+  }
+});
+
 app.get('/api/records', (req, res) => {
   const s = scope();
   const where = [s.sql];
@@ -132,6 +173,7 @@ export async function createRecord(req: Request, res: Response) {
   if (toWallet === true) {
     if (demo) bad('Disabled in demo mode');
     if (getConfig().currency !== 'EUR') bad('Wallet sync, import and writes support EUR databases only');
+    if (str(accountId).startsWith('local:')) bad('local accounts cannot receive Wallet records');
     const acc = db.prepare('SELECT currency FROM accounts WHERE id=?').get(str(accountId)) as { currency: string } | undefined;
     if (!acc) bad('unknown Wallet account');
     if (acc!.currency !== 'EUR') bad('only EUR accounts are supported');
@@ -254,7 +296,8 @@ app.get('/api/wallet-categories', (req, res) => {
 });
 
 app.get('/api/accounts', (req, res) => {
-  res.json(db.prepare('SELECT id, name, balance_cents AS balanceCents, currency, updated_at AS updatedAt FROM accounts ORDER BY name').all());
+  const hidden = getConfig().allocation.hiddenAccounts;
+  res.json((db.prepare('SELECT id, name, balance_cents AS balanceCents, currency, updated_at AS updatedAt FROM accounts ORDER BY name').all() as { name: string }[]).filter((a) => !hidden.includes(a.name)));
 });
 
 // ---- insights
@@ -358,7 +401,8 @@ app.post('/api/records/bulk-group', (req, res) => {
 });
 
 app.get('/api/balances/history', (req, res) => {
-  res.json(db.prepare('SELECT day, account, balance_cents AS balanceCents FROM balance_snapshots ORDER BY day, account').all());
+  const hidden = getConfig().allocation.hiddenAccounts;
+  res.json((db.prepare('SELECT day, account, balance_cents AS balanceCents FROM balance_snapshots ORDER BY day, account').all() as { account: string }[]).filter((r) => !hidden.includes(r.account)));
 });
 
 const monthGroupSpend = (month: string): Record<string, number> =>
@@ -368,7 +412,8 @@ const monthTyped = (month: string): Record<string, number> =>
 
 app.get('/api/month-close/:month', (req, res) => {
   const month = monthParam(req.params.month);
-  const balances = Object.fromEntries((db.prepare('SELECT name, balance_cents AS c FROM accounts').all() as { name: string; c: number }[]).map((a) => [a.name, a.c]));
+  const hidden = getConfig().allocation.hiddenAccounts;
+  const balances = Object.fromEntries((db.prepare('SELECT name, balance_cents AS c FROM accounts').all() as { name: string; c: number }[]).filter((a) => !hidden.includes(a.name)).map((a) => [a.name, a.c]));
   const status = monthStatus(getConfig(), monthGroupSpend(month), monthTyped(month));
   const row = db.prepare('SELECT json FROM month_close WHERE month=?').get(month) as { json: string } | undefined;
   res.json({ transfers: monthClose(getConfig(), balances, status), done: row ? JSON.parse(row.json) : [] });

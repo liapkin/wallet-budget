@@ -1,6 +1,7 @@
 import { db, requireWalletCurrency, tx } from './db.ts';
 import { get, pages } from './wallet.ts';
 import { runPipeline } from './pipeline.ts';
+import { refreshHoldings, type Kind } from './holdings.ts';
 import { toDelete } from './reconcile.ts';
 import { toCents } from '../../shared/src/money.ts';
 import { athensDay } from '../../shared/src/month.ts';
@@ -132,6 +133,13 @@ export async function sync({ full = false } = {}): Promise<{ inserted: number; u
   db.prepare("INSERT OR REPLACE INTO sync_state (key, value) VALUES ('last_sync', ?)").run(new Date().toISOString());
   runPipeline();
   console.log(`windows ${windows}, inserted ${inserted}, updated ${updated}, deleted ${deleted}, accounts ${accounts}, categories ${categories}${glitches ? `, WARNING ${glitches} empty window(s) skipped` : ''}`);
+  for (const kind of ['crypto', 'etf'] as Kind[]) {
+    try {
+      await refreshHoldings(kind);
+    } catch (e) {
+      console.error(`${kind} prices failed: ${(e as Error).message}`);
+    }
+  }
   return { inserted, updated, deleted };
 }
 

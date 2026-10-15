@@ -1,10 +1,12 @@
 import { vi } from 'vitest';
 import { Actuals } from './actuals';
 import { BudgetEdit } from './budget-edit';
+import { CryptoComponent } from './crypto';
 import { GroceriesComponent } from './groceries';
 import { History } from './history';
 import { Inbox } from './inbox';
 import { InvestingComponent } from './investing';
+import { GoalsComponent } from './goals';
 import { MealsComponent } from './meals';
 import { Month } from './month';
 import { NetWorth } from './networth';
@@ -63,6 +65,19 @@ describe('screen smoke tests', () => {
   it('investing', async () => {
     const el = await mount(InvestingComponent);
     expect(el.querySelector('h1')?.textContent).toContain('Investing');
+  });
+  it('goals', async () => {
+    const el = await mount(GoalsComponent);
+    expect(el.querySelector('h1')?.textContent).toContain('Goals');
+  });
+  it('crypto', async () => {
+    const el = await mount(CryptoComponent, {}, { kind: 'crypto', title: 'Crypto', configKey: 'crypto', import: true });
+    expect(el.querySelector('h1')?.textContent).toContain('Crypto');
+    expect(el.textContent).toContain('No priced holdings yet');
+  });
+  it('etfs', async () => {
+    const el = await mount(CryptoComponent, {}, { kind: 'etf', title: 'ETFs', configKey: 'etfs', import: false });
+    expect(el.querySelector('h1')?.textContent).toContain('ETFs');
   });
   it('settings', async () => {
     const el = await mount(Settings);

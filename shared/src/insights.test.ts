@@ -64,19 +64,47 @@ test('suggestGroup: best overlap wins, none when no overlap', () => {
   assert.equal(suggestGroup(rec(1, '2026-05-01T10:00:00Z', -100, { note: 'zzz' }), known), null);
 });
 
-test('monthClose: four transfers from config', () => {
+const closeCfg = () => {
   const cfg = seedToConfig(JSON.parse(readFileSync(new URL('../../config/seed-config.example.json', import.meta.url), 'utf8')));
-  const items = monthClose(cfg, { Business: 40000, Savings: 100000 }, { investingSoFar: 123456 });
-  assert.deepEqual(items.map((i) => i.key), ['invest', 'business', 'sinking', 'emergency']);
-  assert.equal(items.every((i) => i.from === 'Main Bank'), true);
-  const by = Object.fromEntries(items.map((i) => [i.key, i.cents]));
-  assert.equal(by.invest, 123456);
-  assert.equal(by.business, 60000); // target 1000.00 - 400.00
-  assert.equal(by.sinking, 20000);
-  assert.ok(by.emergency > 0);
-  assert.equal(monthClose(cfg, {}, { investingSoFar: -5 })[0].cents, 0);
-  const none = { ...cfg, allocation: { ...cfg.allocation, monthClose: undefined } };
-  assert.deepEqual(monthClose(none, {}, { investingSoFar: 1 }), []);
+  const g = cfg.allocation.goals;
+  cfg.allocation.payrollAccount = 'Main';
+  cfg.allocation.investmentAccounts = ['Broker'];
+  Object.assign(g.emergency, { target: 100000, accounts: ['Emerg'], depositTo: 'Emerg', perMonth: 0 });
+  Object.assign(g.sinking, { target: 50000, accounts: ['Sink'], depositTo: 'Sink', perMonth: 20000 });
+  Object.assign(g.business, { target: 30000, accounts: ['Biz'], depositTo: 'Biz', perMonth: 0 });
+  return cfg;
+};
+const by = (items: ReturnType<typeof monthClose>) => Object.fromEntries(items.map((i) => [i.key, i.cents]));
+
+test('monthClose: priority order, each step capped by gap, perMonth and what is left', () => {
+  const cfg = closeCfg();
+  const items = monthClose(cfg, { Main: 150000, Emerg: 40000, Sink: 0, Biz: 0 }, { investingSoFar: 99999 });
+  assert.deepEqual(items.map((i) => i.key), ['emergency', 'sinking', 'business', 'invest']);
+  assert.equal(items.every((i) => i.from === 'Main'), true);
+  assert.deepEqual(by(items), { emergency: 60000, sinking: 20000, business: 30000, invest: 40000 });
+  assert.deepEqual(items.map((i) => i.gap).slice(0, 3), [60000, 50000, 30000]);
+  assert.ok(items.reduce((s, i) => s + i.cents, 0) <= 150000);
+  assert.equal(items[3].to, 'Broker');
+});
+
+test('monthClose: payroll balance 0 gives zero transfers', () => {
+  const items = monthClose(closeCfg(), { Main: 0 }, { investingSoFar: 5000 });
+  assert.equal(items.every((i) => i.cents === 0), true);
+});
+
+test('monthClose: met goal is 0, negative investingSoFar gives 0 invest, no payroll gives none', () => {
+  const cfg = closeCfg();
+  const r = by(monthClose(cfg, { Main: 100000, Emerg: 100000, Sink: 60000, Biz: 30000 }, { investingSoFar: -5 }));
+  assert.deepEqual(r, { emergency: 0, sinking: 0, business: 0, invest: 0 });
+  cfg.allocation.payrollAccount = null;
+  assert.deepEqual(monthClose(cfg, { Main: 1 }, { investingSoFar: 1 }), []);
+});
+
+test('monthClose: step into the payroll account is skipped', () => {
+  const cfg = closeCfg();
+  cfg.allocation.goals.emergency.depositTo = 'Main';
+  const items = monthClose(cfg, { Main: 100000 }, { investingSoFar: 1 });
+  assert.deepEqual(items.map((i) => i.key), ['sinking', 'business', 'invest']);
 });
 
 test('yearReview: totals, deltas, best and worst month', () => {

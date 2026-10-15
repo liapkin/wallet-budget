@@ -232,7 +232,7 @@ export class Records {
   // Wallet writes only support EUR databases/accounts. `selectedOnly` returns the chosen account (review step).
   protected walletAccountOptions = (selectedOnly = false): ComboOption[] =>
     (this.refresh.walletAvailable() ? this.accounts.value() ?? [] : [])
-      .filter((a) => a.currency === 'EUR' && (!selectedOnly || a.id === this.walletAcc()))
+      .filter((a) => a.currency === 'EUR' && !a.id.startsWith('local:') && (!selectedOnly || a.id === this.walletAcc()))
       .map((a) => ({ value: a.id, label: a.name, hint: a.balanceCents == null ? '' : fmt(a.balanceCents) }));
   protected walletCategoryOptions = computed<ComboOption[]>(() => [
     { value: '', label: 'No category' },

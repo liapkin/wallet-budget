@@ -1,9 +1,11 @@
 import { Routes } from '@angular/router';
 import { Actuals } from './actuals';
 import { BudgetEdit } from './budget-edit';
+import { CryptoComponent } from './crypto';
 import { GroceriesComponent } from './groceries';
 import { History } from './history';
 import { InvestingComponent } from './investing';
+import { GoalsComponent } from './goals';
 import { MealsComponent } from './meals';
 import { Month } from './month';
 import { NetWorth } from './networth';
@@ -26,5 +28,8 @@ export const routes: Routes = [
   { path: 'meals', component: MealsComponent },
   { path: 'groceries', component: GroceriesComponent },
   { path: 'investing', component: InvestingComponent },
+  { path: 'goals', component: GoalsComponent },
+  { path: 'crypto', component: CryptoComponent, data: { kind: 'crypto', title: 'Crypto', configKey: 'crypto', import: true } },
+  { path: 'etfs', component: CryptoComponent, data: { kind: 'etf', title: 'ETFs', configKey: 'etfs', import: false } },
   { path: 'settings', component: Settings },
 ];

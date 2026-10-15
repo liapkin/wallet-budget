@@ -15,6 +15,9 @@ export type Rec = {
 export type Currency = 'EUR' | 'USD';
 
 // money fields are integer cents
+// cents; perMonth 0 = no cap
+export type Goal = { target: number; accounts: string[]; depositTo: string; perMonth: number };
+
 export type Config = {
   currency?: Currency; // omitted in legacy configs = EUR; one denomination per database
   income: {
@@ -34,26 +37,16 @@ export type Config = {
   }[];
   allocation: {
     funPerMonth: number;
-    sinkingFundTopUpPerMonth: number;
     investing: string;
     bankSavings: number;
-    savingsAccounts: string[];
     investmentAccounts: string[];
+    hiddenAccounts: string[];
     payrollAccount: string | null;
     cashSavings: number;
-    emergencyFundMonthsOfCore: number;
     annualIrregulars: number;
     funGroups: string[];
     coveredByCoreGroups: string[];
-    // account names for the month-end transfer suggestions; businessTarget is cents
-    monthClose?: {
-      payroll: string;
-      investAccount: string;
-      businessAccount: string;
-      businessTarget: number;
-      savingsAccount: string;
-      emergencyAccount: string;
-    };
+    goals: { emergency: Goal; sinking: Goal; business: Goal };
   };
   caps: {
     applyFrom: string;
@@ -70,6 +63,8 @@ export type Config = {
     netSalaryGrowth: number;
     houseFundFirst: boolean;
     houseFundReturn: number;
+    crypto: { symbol: string; amount: number; paid: number; tag?: string }[];
+    etfs: { symbol: string; amount: number; paid: number; tag?: string }[];
     houseTarget: {
       propertyPrice: number;
       depositShare: number;

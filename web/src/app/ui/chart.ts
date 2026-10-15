@@ -22,6 +22,7 @@ function theme() {
     legend: { top: 0, right: 0, type: 'scroll', textStyle: { color: muted, fontFamily: css('--font'), fontSize: 12 }, icon: 'roundRect', itemWidth: 10, itemHeight: 10, itemGap: 14 },
     tooltip: { backgroundColor: css('--surface'), borderColor: grid, borderWidth: 1, textStyle: { color: text, fontFamily: css('--font') }, extraCssText: 'box-shadow:' + css('--shadow-pop') },
     line: { lineStyle: { width: 2 }, symbolSize: 6, showSymbol: false },
+    pie: { itemStyle: { borderColor: css('--surface'), borderWidth: 2 }, label: { color: text, textBorderWidth: 0 }, labelLine: { lineStyle: { color: muted } } },
     bar: { barMaxWidth: 28, itemStyle: { borderRadius: [4, 4, 0, 0] } },
   };
 }

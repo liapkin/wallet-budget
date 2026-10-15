@@ -1,8 +1,7 @@
-import { Component, computed, inject, resource, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { allocation, annualInvesting, corePlan } from '../../../shared/src/budget.ts';
 import { currency, currencySymbol, fmt, parseMoney, val } from './format.ts';
 import { groupDot } from './format';
-import { Api } from './api';
 import { Combo, type ComboOption } from './ui/combo';
 import { DateTime } from './ui/date-time';
 import { Icon } from './ui/icons';
@@ -16,7 +15,6 @@ const SECTIONS = [
   ['income', 'Income & allocation'],
   ['core', 'Core lines'],
   ['caps', 'Caps'],
-  ['accounts', 'Accounts'],
   ['classification', 'Classification'],
 ];
 
@@ -47,10 +45,6 @@ const SECTIONS = [
     tfoot td { font-weight: 600; border-top: 1px solid var(--border); border-bottom: 0; }
     .tools { display: flex; gap: var(--sp-2); align-items: center; margin-bottom: var(--sp-3); }
     .tools input { flex: 1; max-width: 20rem; }
-    .acct { display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: var(--sp-2); }
-    .acct label { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border); border-radius: var(--r); cursor: pointer; }
-    .acct label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
-    .acct .bal { margin-left: auto; color: var(--muted); font-size: var(--fs-sm); }
     .chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
     @media (max-width: 800px) {
       .layout { grid-template-columns: 1fr; }
@@ -91,11 +85,9 @@ const SECTIONS = [
             <div class="grid">
               <label class="field">Net salary / month<span class="affix" [attr.data-pre]="currencySymbol()"><input class="in-affix" appMoney type="text" [value]="eur(c.income.netSalaryPerMonth)" (change)="money('income.netSalaryPerMonth', $event)" /></span></label>
               <label class="field">Fun / month<span class="affix" [attr.data-pre]="currencySymbol()"><input class="in-affix" appMoney type="text" [value]="eur(c.allocation.funPerMonth)" (change)="money('allocation.funPerMonth', $event)" /></span></label>
-              <label class="field">Sinking fund top-up / month<span class="affix" [attr.data-pre]="currencySymbol()"><input class="in-affix" appMoney type="text" [value]="eur(c.allocation.sinkingFundTopUpPerMonth)" (change)="money('allocation.sinkingFundTopUpPerMonth', $event)" /></span></label>
               <label class="field">Bank savings (fallback)<span class="affix" [attr.data-pre]="currencySymbol()"><input class="in-affix" appMoney type="text" [value]="eur(c.allocation.bankSavings)" (change)="money('allocation.bankSavings', $event)" /></span></label>
               <label class="field">Cash savings<span class="affix" [attr.data-pre]="currencySymbol()"><input class="in-affix" appMoney type="text" [value]="eur(c.allocation.cashSavings)" (change)="money('allocation.cashSavings', $event)" /></span></label>
               <label class="field">Annual irregulars<span class="affix" [attr.data-pre]="currencySymbol()"><input class="in-affix" appMoney type="text" [value]="eur(c.allocation.annualIrregulars)" (change)="money('allocation.annualIrregulars', $event)" /></span></label>
-              <label class="field">Emergency fund<span class="affix" data-suf="months of core"><input class="in-affix" inputmode="decimal" [value]="c.allocation.emergencyFundMonthsOfCore" (change)="plain('allocation.emergencyFundMonthsOfCore', $event)" /></span></label>
             </div>
             <h3>Bonus months (multiples of salary)</h3>
             <div class="grid">
@@ -145,28 +137,6 @@ const SECTIONS = [
               <label class="field">Takeout / month<span class="affix" [attr.data-pre]="currencySymbol()"><input class="in-affix" appMoney type="text" [value]="eur(c.caps.takeoutPerMonth)" (change)="money('caps.takeoutPerMonth', $event)" /></span></label>
               <label class="field">Kiosk / month<span class="affix" [attr.data-pre]="currencySymbol()"><input class="in-affix" appMoney type="text" [value]="eur(c.caps.kioskPerMonth)" (change)="money('caps.kioskPerMonth', $event)" /></span></label>
             </div>
-          </section>
-
-          <section class="card" id="accounts">
-            <h2>Accounts</h2>
-            @if (accounts.value()?.length) {
-              <h3 style="margin-top:0">Savings accounts</h3>
-              <div class="acct">
-                @for (a of accounts.value()!; track a.name) {
-                  <label><input type="checkbox" [checked]="c.allocation.savingsAccounts.includes(a.name)" (change)="toggle('allocation.savingsAccounts', a.name, $event)" />{{ a.name }}<span class="bal">{{ a.balanceCents === null ? '' : fmt(a.balanceCents) }}</span></label>
-                }
-              </div>
-              <h3>Investment accounts</h3>
-              <div class="acct">
-                @for (a of accounts.value()!; track a.name) {
-                  <label><input type="checkbox" [checked]="c.allocation.investmentAccounts.includes(a.name)" (change)="toggle('allocation.investmentAccounts', a.name, $event)" />{{ a.name }}<span class="bal">{{ a.balanceCents === null ? '' : fmt(a.balanceCents) }}</span></label>
-                }
-              </div>
-              <h3>Payroll account</h3>
-              <app-combo [options]="payrollOptions()" [value]="c.allocation.payrollAccount ?? ''" ariaLabel="Payroll account" (changed)="set('allocation.payrollAccount', $event || null)" />
-            } @else {
-              <p class="muted">No accounts yet. The bank savings fallback is used.</p>
-            }
           </section>
 
           <section class="card" id="classification">
@@ -252,9 +222,7 @@ export class BudgetEdit {
     ['allocation.coveredByCoreGroups', 'Covered by core lines (not counted as unplanned)'],
     ['wallet.excludedGroups', 'Excluded groups (non-spending)'],
   ];
-  private api = inject(Api);
   protected refresh = inject(Refresh);
-  protected accounts = resource({ params: () => this.refresh.tick(), loader: () => this.api.accounts() });
   private cd = configDraft('Budget saved', (c) => {
     currency.set(c.currency ?? 'EUR');
     this.refresh.tick.update((n) => n + 1);
@@ -290,10 +258,6 @@ export class BudgetEdit {
     const opts = ['manual', ...groups.map((g) => 'wallet:' + g)];
     return (opts.includes(cur) ? opts : [...opts, cur]).map((o) => ({ value: o, label: o.startsWith('wallet:') ? 'Records: ' + o.slice(7) : o }));
   }
-  protected payrollOptions = computed<ComboOption[]>(() => [
-    { value: '', label: 'None' },
-    ...(this.accounts.value() ?? []).map((a) => ({ value: a.name, label: a.name })),
-  ]);
   protected groupOptions = computed<ComboOption[]>(() => (this.draft()?.wallet.groups ?? []).map((g) => ({ value: g, label: g, ...groupDot(g) })));
 
   // ponytail: edits are applied by dotted path on a cloned draft; no per-field handlers
@@ -318,7 +282,6 @@ export class BudgetEdit {
   }
   protected plain = (path: string, e: Event, text = false) => this.set(path, text ? val(e) : num(e));
   protected check = (path: string, e: Event) => this.set(path, (e.target as HTMLInputElement).checked);
-  protected toggle = (path: string, item: string, e: Event) => this.flip(path, item, (e.target as HTMLInputElement).checked);
   protected flip(path: string, item: string, on?: boolean) {
     this.edit((c) => {
       const l = this.list(c, path);

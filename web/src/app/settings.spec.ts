@@ -186,10 +186,11 @@ describe('Settings', () => {
   });
 
   it('removes currency controls and local currency navigation from Budget', async () => {
+    const goal = { target: 0, accounts: [], depositTo: '', perMonth: 0 };
     Object.assign(stored, {
       income: { netSalaryPerMonth: 123400, bonusMonths: {}, bonusesGoToInvesting: false },
       coreExpenses: [],
-      allocation: { funPerMonth: 0, sinkingFundTopUpPerMonth: 0, bankSavings: 0, cashSavings: 0, annualIrregulars: 0, emergencyFundMonthsOfCore: 3, funGroups: [], coveredByCoreGroups: [] },
+      allocation: { funPerMonth: 0, bankSavings: 0, cashSavings: 0, annualIrregulars: 0, goals: { emergency: goal, sinking: goal, business: goal }, funGroups: [], coveredByCoreGroups: [] },
       caps: { applyFrom: '2026-01-01', bufferMonth: null, takeoutPerMonth: 0, kioskPerMonth: 0 },
       wallet: { groups: ['Other'], excludedGroups: [], merchantKeywords: [], categoryMap: [] },
     });

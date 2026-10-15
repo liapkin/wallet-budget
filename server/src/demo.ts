@@ -29,7 +29,11 @@ cfg.coreExpenses = [
   { key: 'training', label: 'Extra classes', plan: 9000, source: 'manual', standing: false, inPlan: false },
 ];
 cfg.allocation.funPerMonth = 60000;
-cfg.allocation.sinkingFundTopUpPerMonth = 50000;
+cfg.allocation.goals = {
+  emergency: { target: 1500000, accounts: ['Savings'], depositTo: 'Savings', perMonth: 0 },
+  sinking: { target: 900000, accounts: ['Savings'], depositTo: 'Savings', perMonth: 50000 },
+  business: { target: 0, accounts: [], depositTo: '', perMonth: 0 },
+};
 cfg.allocation.bankSavings = 2400000;
 cfg.allocation.annualIrregulars = 400000;
 cfg.allocation.coveredByCoreGroups = ['Housing', 'Car', 'Health', 'Taxes & insurance', 'Loan'];
@@ -49,11 +53,10 @@ for (const item of [...cfg.groceryList.weekly, ...cfg.groceryList.pantryMonthly]
   item.where = item.where === 'Market' ? 'Farmers market' : item.where;
   item.note = 'Fictional US price estimate';
 }
-cfg.allocation.savingsAccounts = ['Savings'];
 cfg.allocation.investmentAccounts = ['Broker'];
 cfg.allocation.payrollAccount = 'Main Bank';
 setConfig(cfg);
-const monthlyInvesting = cfg.income.netSalaryPerMonth - cfg.coreExpenses.filter((line) => line.inPlan !== false).reduce((sum, line) => sum + line.plan, 0) - cfg.allocation.funPerMonth - cfg.allocation.sinkingFundTopUpPerMonth;
+const monthlyInvesting = cfg.income.netSalaryPerMonth - cfg.coreExpenses.filter((line) => line.inPlan !== false).reduce((sum, line) => sum + line.plan, 0) - cfg.allocation.funPerMonth - cfg.allocation.goals.sinking.perMonth;
 
 const accounts: [string, number][] = [['Main Bank', 645050], ['Savings', 2400000], ['Cash', 15000], ['Credit Card', -86430], ['Broker', 5200000]];
 const insAcc = db.prepare("INSERT INTO accounts (id, name, balance_cents, currency, updated_at) VALUES (?, ?, ?, 'USD', ?)");

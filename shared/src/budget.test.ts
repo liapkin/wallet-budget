@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { allocation, annualInvesting, capsFor, coreActuals, monthStatus, savings } from './budget.ts';
+import { allocation, annualInvesting, capsFor, coreActuals, monthStatus, savings, savingsAccounts } from './budget.ts';
 import { seedToConfig } from './seed.ts';
 
 const seed = () => seedToConfig(JSON.parse(readFileSync(new URL('../../config/seed-config.example.json', import.meta.url), 'utf8')));
@@ -31,13 +31,24 @@ test('caps apply from applyFrom; bufferMonth yields null when set', () => {
   assert.deepEqual(capsFor('2027-03', c), { Takeout: 6000, Kiosk: 3000 });
 });
 
-test('savings: fallback, accounts, floor', () => {
-  assert.deepEqual(savings(real, {}), { total: 500000, emergencyFund: 428000, sinkingFund: 72000 });
+test('savings: fallback, goal accounts, per-goal have/target', () => {
+  assert.deepEqual(savings(real, {}), { total: 500000, emergency: { have: 0, target: 400000 }, sinking: { have: 0, target: 300000 } });
   const c = seed();
-  c.allocation.savingsAccounts = ['A'];
+  c.allocation.goals.emergency.accounts = ['A'];
+  c.allocation.goals.sinking.accounts = ['B'];
+  c.allocation.goals.business.accounts = ['A', 'C'];
   c.allocation.cashSavings = 1000;
-  assert.equal(savings(c, { A: 5000, B: 9 }).total, 6000);
-  assert.equal(savings(c, { A: 5000 }).sinkingFund, 0);
+  const s = savings(c, { A: 5000, B: 700, C: 9, D: 3 });
+  assert.equal(s.total, 5000 + 700 + 9 + 1000);
+  assert.deepEqual(s.emergency, { have: 5000, target: 400000 });
+  assert.deepEqual(s.sinking, { have: 700, target: 300000 });
+});
+
+test('savingsAccounts: union of goal accounts', () => {
+  const c = seed();
+  c.allocation.goals.emergency.accounts = ['A', 'B'];
+  c.allocation.goals.business.accounts = ['B', 'C'];
+  assert.deepEqual(savingsAccounts(c), ['A', 'B', 'C']);
 });
 
 test('core actuals: wallet-fed plus typed, manual null, non-standing hidden', () => {

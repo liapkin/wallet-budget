@@ -2,13 +2,17 @@ import { Type } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, provideRouter } from '@angular/router';
 import seed from '../../../../config/seed-config.example.json';
 import { seedToConfig } from '../../../../shared/src/seed.ts';
 import { currentMonth } from '../format';
 
 export const config = () => structuredClone(seedToConfig(seed));
 export const month = currentMonth();
+const emptyHoldings = {
+  summary: { coins: [], totals: { valueCents: 0, paidCents: 0, profitCents: 0, profitPct: null, pct24h: null }, best: null, worst: null, tags: [] },
+  history: [], updatedAt: null,
+};
 const group = config().wallet.groups[0];
 
 export const row = (id: number, over: Record<string, unknown> = {}) => ({
@@ -35,6 +39,8 @@ export const responses = (): Record<string, unknown> => ({
   [`/api/month-close/${month}`]: { transfers: [], done: [] },
   '/api/recurring': { items: [], monthlyTotalCents: 0 },
   '/api/balances/history': [],
+  '/api/holdings/crypto': emptyHoldings,
+  '/api/holdings/etf': emptyHoldings,
   [`/api/year/${month.slice(0, 4)}`]: { year: +month.slice(0, 4), totalCents: 0, prevTotalCents: 0, groups: [], best: null, worst: null },
 });
 
@@ -44,8 +50,8 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} };
 
 /** Creates the component, answers every GET with a fixture (unknown URL throws), and settles. */
-export async function mount<T>(type: Type<T>, over: Record<string, unknown> = {}) {
-  TestBed.configureTestingModule({ providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()] });
+export async function mount<T>(type: Type<T>, over: Record<string, unknown> = {}, routeData?: Record<string, unknown>) {
+  TestBed.configureTestingModule({ providers: [provideRouter([]), ...(routeData ? [{ provide: ActivatedRoute, useValue: { snapshot: { data: routeData } } }] : []), provideHttpClient(), provideHttpClientTesting()] });
   const data = { ...responses(), ...over };
   const http = TestBed.inject(HttpTestingController);
   const fixture = TestBed.createComponent(type);
