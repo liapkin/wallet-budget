@@ -5,6 +5,7 @@ import { currencySymbol, fmt } from './format';
 import { Api } from './api';
 import { ChartView } from './ui/chart';
 import { configDraft, editDraft } from './ui/config-draft';
+import { hidden } from './ui/privacy';
 import { Refresh } from './ui/refresh';
 import { Toast } from './ui/toast';
 
@@ -66,7 +67,7 @@ import { Toast } from './ui/toast';
               <tr>
                 <td class="strong">{{ c.symbol }}</td>
                 <td>{{ c.tag }}</td>
-                <td class="num">{{ c.amount }}</td>
+                <td class="num">{{ units(c.amount) }}</td>
                 <td class="num">{{ money(c.priceCents) }}</td>
                 <td class="num" [style.color]="tone(c.pct24h)">{{ pct(c.pct24h) }}</td>
                 <td class="num">{{ money(c.valueCents) }}</td>
@@ -158,6 +159,7 @@ export class CryptoComponent {
   protected tone = (n: number | null | undefined) => (n == null || n === 0 ? null : n > 0 ? 'var(--good)' : 'var(--bad)');
   protected pct = (n: number | null, sign = true) => (n === null ? '–' : `${sign && n > 0 ? '+' : ''}${n.toFixed(2)}%`);
   protected money = (c: number | null) => (c === null ? '–' : fmt(c));
+  protected units = (n: number) => (hidden() ? '••••' : String(n));
   protected profit = (c: CryptoCoin) => (c.profitCents === null ? '–' : `${fmt(c.profitCents)} ${this.pct(c.profitPct)}`);
   protected unitPrice = (h: { amount: number; paid: number }) => (h.amount > 0 ? String(+(h.paid / h.amount / 100).toFixed(6)) : '');
 
