@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, resource, signal } from '@angular/core';
+import { Component, computed, effect, inject, resource, signal, untracked } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { groceryMonthly, weeklyIngredientGrams } from '../../../shared/src/diet.ts';
 import { currencySymbol, fmt, parseMoney, val } from './format.ts';
@@ -8,6 +8,8 @@ import { Combo } from './ui/combo';
 import { editDraft } from './ui/config-draft';
 import { Icon } from './ui/icons';
 import { MoneyInput } from './ui/money-input';
+import { phone } from './ui/viewport';
+import { checkKeys, loadChecks, pruneChecks, resetChecks, saveChecks, toggleCheck } from './ui/checklist';
 import { Refresh } from './ui/refresh';
 import { Toast } from './ui/toast';
 
@@ -38,6 +40,15 @@ import { Toast } from './ui/toast';
     .collapsible { cursor: pointer; user-select: none; font-weight: 600; }
     .collapsible-content { margin-top: var(--sp-2); padding-left: var(--sp-3); font-size: var(--fs-sm); }
     .collapsible-item { padding: var(--sp-1) 0; }
+    .modebar { position: sticky; top: 0; z-index: 2; padding: var(--sp-2) 0; background: var(--bg); }
+    .modebar .seg { display: flex; }
+    .modebar .seg button { flex: 1; min-height: 44px; }
+    .shop-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin: var(--sp-2) 0; }
+    .shop-sub { display: flex; justify-content: space-between; margin-top: var(--sp-4); font-weight: 600; }
+    .shop-row { display: grid; grid-template-columns: auto 1fr auto; gap: 0 var(--sp-3); align-items: start; min-height: 44px; padding: var(--sp-2) var(--sp-1); border-bottom: 1px solid var(--border); cursor: pointer; }
+    .shop-row .meta { grid-column: 2; color: var(--muted); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+    .shop-row .name { overflow-wrap: anywhere; }
+    .shop-row.done .name, .shop-row.done .cost { text-decoration: line-through; color: var(--muted); }
     .kpi-badges { display: flex; gap: var(--sp-2); flex-wrap: wrap; align-items: center; }
     @media (max-width: 640px) {
       .items-table { min-width: 0; table-layout: auto; }
@@ -70,6 +81,15 @@ import { Toast } from './ui/toast';
       </div>
     </div>
 
+    @if (phone()) {
+      <div class="modebar">
+        <div class="seg">
+          <button [class.on]="shopping()" (click)="mode.set('shopping')">Shopping</button>
+          <button [class.on]="!shopping()" (click)="mode.set('edit')">Edit</button>
+        </div>
+      </div>
+    }
+
     @if (data.error()) {
       <p class="err">Failed to load config.</p>
     }
@@ -93,6 +113,22 @@ import { Toast } from './ui/toast';
         <td data-label="Note"><input class="note" type="text" [value]="it.note" [title]="it.note" (change)="upd(list, i, { note: val($event) })" /></td>
         <td class="del"><button class="ghost icon danger" (click)="remove(list, i)" title="Delete"><app-icon name="trash" /></button></td>
       </tr>
+    </ng-template>
+
+    <ng-template #shopRow let-it="it" let-key="key">
+      <label class="shop-row" [class.done]="checks()[key] != null">
+        <input type="checkbox" [checked]="checks()[key] != null" (change)="toggle(key)" />
+        <span class="name">{{ it.item }} <span class="muted">{{ it.qty }} {{ it.unit }}</span></span>
+        <span class="cost" [class.offer]="useOffers() && it.offerPrice != null">
+          {{ fmt(itemCostCents(it)) }}
+          @if (useOffers() && it.offerPrice != null) {
+            <span class="badge">offer</span>
+          }
+        </span>
+        @if (it.note) {
+          <span class="meta">{{ it.note }}</span>
+        }
+      </label>
     </ng-template>
 
     <ng-template #head>
@@ -123,6 +159,24 @@ import { Toast } from './ui/toast';
     </ng-template>
 
     @if (cfg(); as c) {
+     @if (shopping()) {
+      <div class="shop-head">
+        <strong>{{ checkedCount() }} of {{ totalCount() }} checked</strong>
+        <button class="ghost" [disabled]="checkedCount() === 0" (click)="reset()">Reset list</button>
+      </div>
+      @for (g of storeGroupedItems(); track g.store) {
+        <h2>{{ g.store }}</h2>
+        @for (r of g.rows; track r.i) {
+          <ng-container *ngTemplateOutlet="shopRow; context: { it: r.it, key: weeklyKeys()[r.i] }" />
+        }
+        <div class="shop-sub"><span>Subtotal</span><span>{{ fmt(storeTotal(g.rows)) }}</span></div>
+      }
+      <h2 style="margin-top: var(--sp-5)">Pantry</h2>
+      @for (item of draft()?.groceryList?.pantryMonthly ?? []; track $index; let i = $index) {
+        <ng-container *ngTemplateOutlet="shopRow; context: { it: item, key: pantryKeys()[i] }" />
+      }
+      <div class="shop-sub"><span>Pantry total</span><span>{{ fmt(monthlyData().pantry) }}</span></div>
+     } @else {
       <div class="kpis">
         <div class="kpi">
           <div class="label">Weekly cost</div>
@@ -208,6 +262,7 @@ import { Toast } from './ui/toast';
           <button class="primary" (click)="save()">Save</button>
         </div>
       }
+     }
     }
   `,
 })
@@ -217,6 +272,10 @@ export class GroceriesComponent {
   protected val = val;
   protected Math = Math;
   protected useOffers = signal(false);
+  protected phone = phone;
+  protected mode = signal<'shopping' | 'edit' | null>(null);
+  protected shopping = computed(() => phone() && (this.mode() ?? 'shopping') === 'shopping');
+  protected checks = signal(loadChecks(Date.now()));
   private api = inject(Api);
   private toast = inject(Toast);
   private refresh = inject(Refresh);
@@ -238,6 +297,33 @@ export class GroceriesComponent {
       const cfg = this.cfg();
       if (cfg) this.draft.set(structuredClone(cfg));
     });
+    // a check must never land on a renamed, moved or deleted item
+    effect(() => {
+      if (!this.draft()) return;
+      const valid = this.validKeys();
+      const cur = untracked(this.checks);
+      const next = pruneChecks(cur, valid);
+      if (Object.keys(next).length === Object.keys(cur).length) return;
+      this.checks.set(next);
+      saveChecks(next);
+    });
+  }
+
+  protected weeklyKeys = computed(() => checkKeys('weekly', this.draft()?.groceryList.weekly ?? []));
+  protected pantryKeys = computed(() => checkKeys('pantryMonthly', this.draft()?.groceryList.pantryMonthly ?? []));
+  private validKeys = computed(() => new Set([...this.weeklyKeys(), ...this.pantryKeys()]));
+  protected totalCount = computed(() => this.validKeys().size);
+  protected checkedCount = computed(() => Object.keys(this.checks()).filter((k) => this.validKeys().has(k)).length);
+
+  protected toggle(key: string) {
+    const next = toggleCheck(this.checks(), key, Date.now());
+    this.checks.set(next);
+    saveChecks(next);
+  }
+
+  protected reset() {
+    this.checks.set({});
+    resetChecks();
   }
 
   protected groceryPlan = computed(() => {
