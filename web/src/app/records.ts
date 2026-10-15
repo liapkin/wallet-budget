@@ -23,12 +23,23 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
     </div>
 
     <div class="filters">
-      <input class="search" type="search" placeholder="Search notes" aria-label="Search notes" (input)="onSearch($event)" />
+      <input class="search desk" type="search" placeholder="Search notes" aria-label="Search notes" [value]="searchText()" (input)="onSearch($event)" />
       <app-month-picker [(month)]="month" [months]="meta.value()?.months ?? null" />
       <app-combo [options]="accountOptions()" [value]="account()" (changed)="account.set($event)" ariaLabel="Account" />
       <label class="switch"><input type="checkbox" [checked]="showDups()" (change)="showDups.set(!showDups())" /> Show duplicates</label>
     </div>
-    <div class="chips">
+    <div class="phone-filters">
+      <input class="search" type="search" placeholder="Search notes" aria-label="Search notes" [value]="searchText()" (input)="onSearch($event)" />
+      <div class="pair">
+        <app-combo [options]="groupFilterOptions()" [value]="group()" (changed)="group.set($event)" ariaLabel="Group filter" />
+        <app-combo [options]="accountOptions()" [value]="account()" (changed)="account.set($event)" ariaLabel="Account" />
+      </div>
+      <div class="chips">
+        <button class="chip unclassified" [class.on]="group() === 'Other'" (click)="toggle('Other')"><span class="dot" [style.--dot]="color('Other')"></span>Unclassified</button>
+        <button class="chip" [class.on]="group() === 'Income'" (click)="toggle('Income')">Income</button>
+      </div>
+    </div>
+    <div class="chips all">
       @for (g of groups(); track g) {
         <button class="chip" [class.on]="group() === g" (click)="toggle(g)"><span class="dot" [class.hollow]="hollow(g)" [style.--dot]="color(g)"></span>{{ g }}</button>
       }
@@ -39,6 +50,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
       <div class="stat"><span class="label">Records</span><span class="value">{{ visible().length }}</span></div>
       <div class="stat"><span class="label">Spend</span><span class="value">{{ fmt(totals().spend) }}</span></div>
       <div class="stat"><span class="label">Income</span><span class="value pos">{{ fmt(totals().income) }}</span></div>
+      @if (group() || account() || searchText()) { <button class="link clear" (click)="clear()">Clear filters</button> }
     </div>
 
     @if (rows.isLoading() && !rows.hasValue()) {
@@ -155,6 +167,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
     .filters { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; margin-bottom: var(--sp-3); }
     .search { flex: 1; min-width: 12rem; max-width: 22rem; }
     .chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+    .phone-filters { display: none; }
     .chip.unclassified:not(.on) { border-style: dashed; }
     .summary { display: flex; gap: var(--sp-4); margin: 0 0 var(--sp-3); }
     .summary .stat { display: flex; flex-direction: column; gap: var(--sp-1); }
@@ -181,6 +194,16 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
     .field input:not([type='checkbox']), .field select { width: 100%; }
     .hint { color: var(--muted); font-size: var(--fs-sm); margin-top: var(--sp-1); }
     @media (max-width: 640px) {
+      .phone-filters { display: flex; flex-direction: column; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+      .phone-filters .search { flex: none; width: 100%; }
+      .pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+      .pair app-combo { display: block; }
+      .phone-filters .chips { margin: 0; }
+      .chips.all, .search.desk { display: none; }
+      .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); margin-bottom: var(--sp-2); }
+      .summary .stat { min-width: 0; }
+      .summary .value { font-size: var(--fs); overflow-wrap: anywhere; }
+      .summary .clear { grid-column: 1 / -1; justify-self: start; }
       .search { min-width: 0; max-width: none; flex: 1 1 100%; }
       .stack tr { display: flex; flex-direction: column; }
       .stack td { order: 4; }
@@ -189,7 +212,6 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
       .stack td.act { justify-content: flex-end; flex-wrap: wrap; }
       .act button.icon { min-width: 44px; min-height: 44px; }
       .popover { min-width: 0; width: calc(100vw - 4rem); }
-      .summary { gap: var(--sp-3); flex-wrap: wrap; }
     }
   `,
 })
@@ -211,6 +233,7 @@ export class Records {
   protected group = signal('');
   protected account = signal('');
   protected search = signal('');
+  protected searchText = signal('');
   protected showDups = signal(false);
   protected kw = signal<{ id: number; keyword: string; group: string } | null>(null);
   protected confirmId = signal<number | null>(null);
@@ -309,11 +332,24 @@ export class Records {
     { value: '', label: r.groupOverride ? 'Auto (computed)' : `Auto (${r.grp})`, ...(r.groupOverride ? {} : groupDot(r.grp)) },
     ...this.groupsFor(r).map((g) => ({ value: g, label: g, ...groupDot(g) })),
   ];
+  protected groupFilterOptions = computed<ComboOption[]>(() => [
+    { value: '', label: 'All groups' },
+    { value: 'Other', label: 'Unclassified', ...groupDot('Other') },
+    ...this.groups().map((g) => ({ value: g, label: g, ...groupDot(g) })),
+  ]);
+  protected clear() {
+    clearTimeout(this.timer);
+    this.group.set('');
+    this.account.set('');
+    this.search.set('');
+    this.searchText.set('');
+  }
   protected toggle = (g: string) => this.group.set(this.group() === g ? '' : g);
 
   protected onSearch(e: Event) {
     clearTimeout(this.timer);
     const v = val(e);
+    this.searchText.set(v);
     this.timer = setTimeout(() => this.search.set(v), 200);
   }
 

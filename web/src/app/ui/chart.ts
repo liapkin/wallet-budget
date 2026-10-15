@@ -63,6 +63,7 @@ export class ChartView implements OnDestroy {
       this.chart = echarts.init(el, 'app');
       this.ro.observe(el);
     }
+    const narrow = el.clientWidth < 480;
     let opt = this.option() as { series?: unknown; xAxis?: unknown; yAxis?: unknown; tooltip?: unknown };
     if (hidden()) {
       opt = JSON.parse(JSON.stringify(opt));
@@ -86,9 +87,24 @@ export class ChartView implements OnDestroy {
         });
       }
     }
+    let legend: unknown;
+    if (narrow) {
+      const pcts = new Map<string, string>();
+      const series = (Array.isArray(opt.series) ? opt.series : opt.series ? [opt.series] : []).map((s: any) => {
+        if (s?.type !== 'pie') return s;
+        const data: { name: string; value: number }[] = s.data ?? [];
+        const sum = data.reduce((a, d) => a + (Number(d.value) || 0), 0);
+        data.forEach((d) => pcts.set(d.name, sum ? ((Number(d.value) / sum) * 100).toFixed(1) : '0.0'));
+        return { ...s, center: ['50%', '40%'], label: { ...s.label, show: false }, labelLine: { ...s.labelLine, show: false } };
+      });
+      if (pcts.size) {
+        opt = { ...opt, series };
+        legend = { show: true, type: 'plain', orient: 'horizontal', top: 'auto', bottom: 0, left: 0, right: 0, itemGap: 10, textStyle: { fontSize: 11, color: css('--muted') }, formatter: (name: string) => `${name}  ${pcts.get(name) ?? ''}%` };
+      }
+    }
     const n = Array.isArray(opt.series) ? opt.series.length : opt.series ? 1 : 0;
     if (opt.tooltip && typeof opt.tooltip === 'object') opt = { ...opt, tooltip: { ...opt.tooltip, confine: true } };
-    this.chart.setOption({ tooltip: { show: true, trigger: 'item', confine: true }, legend: { show: n >= 2 }, ...opt }, true);
+    this.chart.setOption({ tooltip: { show: true, trigger: 'item', confine: true }, legend: { show: n >= 2 }, ...opt, ...(legend ? { legend } : {}) }, true);
   }
 
   private dispose() {
