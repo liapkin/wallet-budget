@@ -19,8 +19,8 @@ function theme(narrow: boolean) {
     textStyle: { fontFamily: css('--font'), color: muted },
     categoryAxis: { ...axis, splitLine: { show: false } },
     valueAxis: { ...axis, axisLine: { show: false } },
-    legend: { top: 0, right: 0, type: 'scroll', textStyle: { color: muted, fontFamily: css('--font'), fontSize: narrow ? 11 : 12 }, icon: 'roundRect', itemWidth: 10, itemHeight: 10, itemGap: 14 },
-    tooltip: { confine: true, backgroundColor: css('--surface'), borderColor: grid, borderWidth: 1, textStyle: { color: text, fontFamily: css('--font') }, extraCssText: 'box-shadow:' + css('--shadow-pop') },
+    legend: { top: 0, type: 'scroll', orient: 'horizontal', ...(narrow ? { left: 0, right: 0 } : { right: 0 }), textStyle: { color: muted, fontFamily: css('--font'), fontSize: narrow ? 11 : 12 }, icon: 'roundRect', itemWidth: 10, itemHeight: 10, itemGap: narrow ? 10 : 14 },
+    tooltip: { confine: true, backgroundColor: css('--surface'), borderColor: grid, borderWidth: 1, textStyle: { color: text, fontFamily: css('--font') }, extraCssText: 'box-shadow:' + css('--shadow-pop') + ';max-width:calc(100vw - 3rem);white-space:normal' },
     line: { lineStyle: { width: 2 }, symbolSize: 6, showSymbol: false },
     pie: { itemStyle: { borderColor: css('--surface'), borderWidth: 2 }, label: { color: text, textBorderWidth: 0 }, labelLine: { lineStyle: { color: muted } } },
     bar: { barMaxWidth: 28, itemStyle: { borderRadius: [4, 4, 0, 0] } },
@@ -87,6 +87,7 @@ export class ChartView implements OnDestroy {
       }
     }
     const n = Array.isArray(opt.series) ? opt.series.length : opt.series ? 1 : 0;
+    if (opt.tooltip && typeof opt.tooltip === 'object') opt = { ...opt, tooltip: { ...opt.tooltip, confine: true } };
     this.chart.setOption({ tooltip: { show: true, trigger: 'item', confine: true }, legend: { show: n >= 2 }, ...opt }, true);
   }
 

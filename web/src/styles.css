@@ -265,6 +265,9 @@ dialog .actions { display: flex; justify-content: flex-end; gap: var(--sp-2); ma
   .card { padding: var(--sp-4); }
   .card-head { flex-wrap: wrap; gap: var(--sp-2); }
   .seg, .actions, dialog .actions { flex-wrap: wrap; }
+  .card-head h2 { flex: 1 0 100%; }
+  .card-head .seg { width: 100%; flex-wrap: nowrap; }
+  .card-head .seg button { flex: 1; white-space: nowrap; padding-inline: var(--sp-2); }
   input, select, textarea { font-size: 16px; min-height: 44px; }
   input[type='checkbox'], input[type='radio'] { min-height: 0; }
   button:not(.icon):not(.link) { min-height: 44px; }
