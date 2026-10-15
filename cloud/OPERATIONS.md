@@ -10,7 +10,7 @@ Cloudflare Workers Builds settings (Worker, repository root, branch `main`, buil
 
 - Build command: `pnpm install --frozen-lockfile && pnpm --filter web exec ng build`
 - Deploy command, preview Worker: `pnpm --filter cloud exec wrangler deploy --env preview`
-- Deploy command, production Worker: `pnpm --filter cloud deploy`
+- Deploy command, production Worker: `pnpm --filter cloud run deploy` (`run` is required: bare `pnpm deploy` is a pnpm built-in)
 
 The asset directory is `web/dist/web/browser`; assets are built by Cloudflare, never locally.
 

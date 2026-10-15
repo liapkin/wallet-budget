@@ -11,7 +11,7 @@
     "demo": "node scripts/demo.mjs",
     "test:demo": "node --test scripts/demo.test.mjs",
     "cloud:check": "pnpm --filter cloud check",
-    "cloud:deploy": "pnpm --filter cloud deploy",
+    "cloud:deploy": "pnpm --filter cloud run deploy",
     "cloud:migrate": "node scripts/cloud-migrate.mjs",
     "cloud:snapshot": "node scripts/cloud-snapshot.mjs",
     "cloud:recover": "node scripts/cloud-recover.mjs",
