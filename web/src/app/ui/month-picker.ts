@@ -1,14 +1,14 @@
 import { Component, computed, DestroyRef, ElementRef, HostListener, inject, input, model, signal } from '@angular/core';
 import { addMonths, currentMonth, monthLabel } from '../format';
 import { Icon } from './icons';
-import { closeOnOutside } from './popover';
+import { closeOnOutside, PopoverFit } from './popover';
 
 const NAMES = Array.from({ length: 12 }, (_, i) => new Date(Date.UTC(2000, i, 1)).toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' }));
 
 /** `<app-month-picker [(month)]="m" [months]="optionalList">`; months beyond the current one are disabled unless listed. */
 @Component({
   selector: 'app-month-picker',
-  imports: [Icon],
+  imports: [Icon, PopoverFit],
   template: `
     <div class="mp" role="group" aria-label="Month" tabindex="0" (keydown.arrowLeft)="step(-1)" (keydown.arrowRight)="step(1)">
       <button class="icon" type="button" aria-label="Previous month" [disabled]="!ok(prev())" (click)="step(-1)"><app-icon name="chevronLeft" /></button>

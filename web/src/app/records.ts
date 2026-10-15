@@ -10,6 +10,7 @@ import { MoneyInput } from './ui/money-input';
 import { MonthPicker } from './ui/month-picker';
 import { Refresh } from './ui/refresh';
 import { Toast } from './ui/toast';
+import { phone } from './ui/viewport';
 
 const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 'Request failed');
 
@@ -81,7 +82,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
                   @if (r.groupOverride) { <span class="badge">manual</span> }
                   <button class="link" (click)="kw.set(kw()?.id === r.id ? null : { id: r.id, keyword: r.note, group: r.grp })">Always</button>
                   @if (kw()?.id === r.id) {
-                    <form class="popover" (submit)="addKeyword($event)">
+                    <form [class.popover]="!phone()" [class.inline]="phone()" (submit)="addKeyword($event)">
                       <div class="pform">
                         <span>Always classify notes containing</span>
                         <input name="keyword" [value]="kw()!.keyword" required />
@@ -182,7 +183,8 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
     .pform .row { display: flex; justify-content: flex-end; gap: var(--sp-2); }
     .act { text-align: right; }
     .act button { margin-left: var(--sp-1); }
-    dialog { overflow: visible; }
+    dialog { overflow: auto; max-height: calc(100dvh - 2rem); }
+    dialog .actions { position: sticky; bottom: calc(-1 * var(--sp-5)); margin-bottom: calc(-1 * var(--sp-5)); padding: var(--sp-3) 0 var(--sp-5); background: var(--surface); }
     dialog h2 { margin-bottom: var(--sp-3); }
     .dform { display: flex; flex-direction: column; gap: var(--sp-3); margin-top: var(--sp-4); }
     .dform .affix input { width: 100%; text-align: left; }
@@ -211,7 +213,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
       .gcell { flex-wrap: wrap; justify-content: flex-start; }
       .stack td.act { justify-content: flex-end; flex-wrap: wrap; }
       .act button.icon { min-width: 44px; min-height: 44px; }
-      .popover { min-width: 0; width: calc(100vw - 4rem); }
+      .inline { flex: 1 0 100%; text-align: left; white-space: normal; margin-top: var(--sp-1); }
     }
   `,
 })
@@ -224,6 +226,7 @@ export class Records {
   protected fmt = fmt;
   protected currencySymbol = currencySymbol;
   protected val = val;
+  protected phone = phone;
   protected color = groupColor;
   protected hollow = (g: string) => HOLLOW.has(g);
   protected day = dayLabel;

@@ -1,7 +1,7 @@
 import { afterRenderEffect, booleanAttribute, Component, DestroyRef, computed, ElementRef, HostListener, inject, input, model, signal } from '@angular/core';
 import { athensNow } from '../format';
 import { Icon } from './icons';
-import { closeOnOutside } from './popover';
+import { closeOnOutside, PopoverFit } from './popover';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const shiftDay = (d: string, n: number) => {
@@ -32,7 +32,7 @@ const HOURS = Array.from({ length: 24 }, (_, i) => pad(i));
  */
 @Component({
   selector: 'app-date-time',
-  imports: [Icon],
+  imports: [Icon, PopoverFit],
   template: `
     <div class="dt">
       <div class="fields">

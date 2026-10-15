@@ -1,5 +1,6 @@
-import { booleanAttribute, Component, DestroyRef, computed, effect, ElementRef, HostListener, inject, input, model, output, signal, viewChild } from '@angular/core';
+import { afterRenderEffect, booleanAttribute, Component, DestroyRef, computed, effect, ElementRef, inject, input, model, output, signal, viewChild } from '@angular/core';
 import { Icon } from './icons';
+import { placeMenu } from './placement';
 import { closeOnOutside } from './popover';
 
 export interface ComboOption { value: string; label: string; dot?: string; hollow?: boolean; hint?: string; group?: string }
@@ -21,7 +22,7 @@ let uid = 0;
       <svg class="caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
     </button>
     @if (open()) {
-      <div class="pop" [style.top.px]="pos().top" [style.left.px]="pos().left" [style.min-width.px]="pos().width" (keydown)="onKey($event)">
+      <div #pop class="pop" (keydown)="onKey($event)">
         <input #search type="text" autocomplete="off" placeholder="Search…" aria-label="Search" role="combobox" aria-autocomplete="list" aria-expanded="true"
           [attr.aria-controls]="id + '-list'" [attr.aria-activedescendant]="rows().length ? id + '-' + active() : null"
           [value]="query()" (input)="query.set($any($event.target).value); active.set(0)" />
@@ -61,7 +62,7 @@ let uid = 0;
     .dot.hollow { background: transparent; box-shadow: inset 0 0 0 2px var(--dot, var(--c-other)); }
     .pop { position: fixed; z-index: 50; display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-1); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-pop); }
     .pop input { width: 100%; }
-    .list { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow-y: auto; }
+    .list { list-style: none; margin: 0; padding: 0; max-height: 320px; min-height: 0; overflow-y: auto; }
     li { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1) var(--sp-2); border-radius: var(--r-sm); cursor: pointer; white-space: nowrap; }
     li.act { background: var(--accent-soft); }
     li[aria-selected='true'] { font-weight: 700; }
@@ -88,10 +89,10 @@ export class Combo {
   protected open = signal(false);
   protected query = signal('');
   protected active = signal(0);
-  protected pos = signal({ top: 0, left: 0, width: 0 });
   private el = inject<ElementRef<HTMLElement>>(ElementRef);
   private trigger = viewChild.required<ElementRef<HTMLButtonElement>>('trigger');
   private search = viewChild<ElementRef<HTMLInputElement>>('search');
+  private pop = viewChild<ElementRef<HTMLElement>>('pop');
 
   protected selected = computed(() => this.options().find((o) => o.value === this.value()));
   private toggled = signal<Record<string, boolean>>({});
@@ -131,6 +132,24 @@ export class Combo {
       s.focus();
       s.setSelectionRange(s.value.length, s.value.length);
     });
+    // Keep the menu inside the visible area (keyboard included); reposition rather than close on viewport changes.
+    afterRenderEffect({
+      write: (onCleanup) => {
+        if (!this.open()) return;
+        this.rows();
+        this.place();
+        const vv = window.visualViewport;
+        const on = () => this.place();
+        vv?.addEventListener('resize', on);
+        vv?.addEventListener('scroll', on);
+        window.addEventListener('resize', on);
+        onCleanup(() => {
+          vv?.removeEventListener('resize', on);
+          vv?.removeEventListener('scroll', on);
+          window.removeEventListener('resize', on);
+        });
+      },
+    });
     effect(() => {
       const i = this.active();
       if (this.open()) this.el.nativeElement.querySelector(`[id="${this.id}-${i}"]`)?.scrollIntoView({ block: 'nearest' });
@@ -142,13 +161,29 @@ export class Combo {
     else this.show('');
   }
   private show(q: string) {
-    const r = this.trigger().nativeElement.getBoundingClientRect();
-    this.pos.set({ top: r.bottom + 4, left: r.left, width: r.width });
     this.query.set(q);
     this.toggled.set({});
     this.recent.set(this.loadRecent());
     this.active.set(q ? 0 : Math.max(0, this.rows().findIndex((r) => r.o?.value === this.value())));
     this.open.set(true);
+  }
+  private place() {
+    const pop = this.pop()?.nativeElement;
+    const list = pop?.querySelector<HTMLElement>('.list');
+    if (!pop || !list) return;
+    const a = this.trigger().nativeElement.getBoundingClientRect();
+    const vv = window.visualViewport;
+    pop.style.minWidth = `${a.width}px`;
+    list.style.maxHeight = '';
+    const chrome = pop.offsetHeight - list.offsetHeight;
+    const p = placeMenu({
+      anchor: a,
+      menu: { width: pop.offsetWidth, height: pop.offsetHeight },
+      viewport: { width: vv?.width ?? window.innerWidth, height: vv?.height ?? window.innerHeight, offsetTop: vv?.offsetTop, offsetLeft: vv?.offsetLeft },
+    });
+    pop.style.top = `${p.top}px`;
+    pop.style.left = `${p.left}px`;
+    list.style.maxHeight = `${Math.max(0, Math.min(320, p.maxHeight - chrome))}px`;
   }
   private close(refocus = false) {
     this.open.set(false);
@@ -215,10 +250,5 @@ export class Combo {
       e.stopPropagation();
       this.close(true);
     } else if (e.key === 'Tab') this.close();
-  }
-
-  @HostListener('window:resize')
-  onResize() {
-    if (this.open()) this.close();
   }
 }

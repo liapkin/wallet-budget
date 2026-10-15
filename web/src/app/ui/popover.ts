@@ -1,4 +1,5 @@
-import type { DestroyRef, ElementRef } from '@angular/core';
+import { afterNextRender, Directive, DestroyRef, ElementRef, inject } from '@angular/core';
+import { placeMenu } from './placement';
 
 /** Close a popover on a click or scroll outside `host`. Listeners live until `destroyRef` fires. */
 export function closeOnOutside(host: ElementRef<HTMLElement>, isOpen: () => boolean, close: () => void, destroyRef: DestroyRef) {
@@ -9,4 +10,38 @@ export function closeOnOutside(host: ElementRef<HTMLElement>, isOpen: () => bool
     document.removeEventListener('click', outside);
     window.removeEventListener('scroll', outside, true);
   });
+}
+
+/** Keeps an absolutely positioned `.popover` inside the visible area: shifts it sideways, flips it above its anchor, or caps its height and scrolls. */
+@Directive({ selector: '.popover' })
+export class PopoverFit {
+  constructor() {
+    const el: HTMLElement = inject(ElementRef).nativeElement;
+    const fit = () => {
+      const anchor = el.parentElement?.getBoundingClientRect();
+      if (!anchor) return;
+      Object.assign(el.style, { left: '', right: '', top: '', bottom: '', maxHeight: '', overflowY: '' });
+      const r = el.getBoundingClientRect();
+      const vv = window.visualViewport;
+      const p = placeMenu({
+        anchor,
+        menu: { width: r.width, height: r.height },
+        viewport: { width: vv?.width ?? window.innerWidth, height: vv?.height ?? window.innerHeight, offsetTop: vv?.offsetTop, offsetLeft: vv?.offsetLeft },
+      });
+      el.style.left = `${p.left - anchor.left}px`;
+      el.style.right = 'auto';
+      if (p.placement === 'above') Object.assign(el.style, { top: 'auto', bottom: 'calc(100% + var(--sp-1))' });
+      if (p.maxHeight < r.height) Object.assign(el.style, { maxHeight: `${p.maxHeight}px`, overflowY: 'auto' });
+    };
+    afterNextRender(fit);
+    const vv = window.visualViewport;
+    window.addEventListener('resize', fit);
+    vv?.addEventListener('resize', fit);
+    vv?.addEventListener('scroll', fit);
+    inject(DestroyRef).onDestroy(() => {
+      window.removeEventListener('resize', fit);
+      vv?.removeEventListener('resize', fit);
+      vv?.removeEventListener('scroll', fit);
+    });
+  }
 }
