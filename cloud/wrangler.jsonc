@@ -24,7 +24,7 @@
   ],
   "vars": {
     "HOSTED": "1",
-    "MIGRATION_ENABLED": "1",
+    "MIGRATION_ENABLED": "0",
     "RECOVERY_ENABLED": "0"
   },
   "env": {
