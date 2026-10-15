@@ -27,4 +27,29 @@ describe('Combo menu placement', () => {
     add.mockRestore();
     remove.mockRestore();
   });
+
+  it('stays open when the page scrolls or the viewport changes, and closes on an outside click', async () => {
+    const f = TestBed.createComponent(Combo);
+    f.componentRef.setInput('options', [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }]);
+    f.detectChanges();
+    document.body.appendChild(f.nativeElement);
+    (f.nativeElement.querySelector('.trigger') as HTMLButtonElement).click();
+    f.detectChanges();
+    await f.whenStable();
+    expect(f.nativeElement.querySelector('.pop')).not.toBeNull();
+
+    // opening focuses the search box, which scrolls the page on phones; resize comes from the keyboard
+    document.dispatchEvent(new Event('scroll'));
+    window.dispatchEvent(new Event('scroll'));
+    window.dispatchEvent(new Event('resize'));
+    f.detectChanges();
+    await f.whenStable();
+    expect(f.nativeElement.querySelector('.pop')).not.toBeNull();
+
+    document.body.click();
+    f.detectChanges();
+    await f.whenStable();
+    expect(f.nativeElement.querySelector('.pop')).toBeNull();
+    f.nativeElement.remove();
+  });
 });

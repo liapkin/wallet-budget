@@ -2,13 +2,14 @@ import { afterNextRender, Directive, DestroyRef, ElementRef, inject } from '@ang
 import { placeMenu } from './placement';
 
 /** Close a popover on a click or scroll outside `host`. Listeners live until `destroyRef` fires. */
-export function closeOnOutside(host: ElementRef<HTMLElement>, isOpen: () => boolean, close: () => void, destroyRef: DestroyRef) {
+export function closeOnOutside(host: ElementRef<HTMLElement>, isOpen: () => boolean, close: () => void, destroyRef: DestroyRef, opts: { scroll?: boolean } = {}) {
+  const scroll = opts.scroll ?? true;
   const outside = (e: Event) => isOpen() && !(e.target instanceof Node && host.nativeElement.contains(e.target)) && close();
   document.addEventListener('click', outside);
-  window.addEventListener('scroll', outside, true);
+  if (scroll) window.addEventListener('scroll', outside, true);
   destroyRef.onDestroy(() => {
     document.removeEventListener('click', outside);
-    window.removeEventListener('scroll', outside, true);
+    if (scroll) window.removeEventListener('scroll', outside, true);
   });
 }
 

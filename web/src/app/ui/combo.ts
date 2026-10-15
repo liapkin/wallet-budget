@@ -60,7 +60,7 @@ let uid = 0;
     .caret { flex: none; color: var(--muted); }
     .dot { flex: none; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--dot, var(--c-other)); }
     .dot.hollow { background: transparent; box-shadow: inset 0 0 0 2px var(--dot, var(--c-other)); }
-    .pop { position: fixed; z-index: 50; display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-1); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-pop); }
+    .pop { position: fixed; top: 0; left: 0; z-index: 50; display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-1); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-pop); }
     .pop input { width: 100%; }
     .list { list-style: none; margin: 0; padding: 0; max-height: 320px; min-height: 0; overflow-y: auto; }
     li { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1) var(--sp-2); border-radius: var(--r-sm); cursor: pointer; white-space: nowrap; }
@@ -125,11 +125,12 @@ export class Combo {
   });
 
   constructor() {
-    closeOnOutside(this.el, this.open, () => this.close(), inject(DestroyRef));
+    // No close-on-scroll: opening focuses the search box, which scrolls the page or shifts the view when the keyboard appears, and that must not close the menu. place() follows scrolls instead.
+    closeOnOutside(this.el, this.open, () => this.close(), inject(DestroyRef), { scroll: false });
     effect(() => {
       const s = this.search()?.nativeElement;
       if (!s) return;
-      s.focus();
+      s.focus({ preventScroll: true });
       s.setSelectionRange(s.value.length, s.value.length);
     });
     // Keep the menu inside the visible area (keyboard included); reposition rather than close on viewport changes.
@@ -140,13 +141,19 @@ export class Combo {
         this.place();
         const vv = window.visualViewport;
         const on = () => this.place();
+        // page scrolls move the trigger: follow it, but ignore the menu's own list scrolling
+        const onScroll = (e: Event) => {
+          if (!(e.target instanceof Node && this.pop()?.nativeElement.contains(e.target))) this.place();
+        };
         vv?.addEventListener('resize', on);
         vv?.addEventListener('scroll', on);
         window.addEventListener('resize', on);
+        window.addEventListener('scroll', onScroll, true);
         onCleanup(() => {
           vv?.removeEventListener('resize', on);
           vv?.removeEventListener('scroll', on);
           window.removeEventListener('resize', on);
+          window.removeEventListener('scroll', onScroll, true);
         });
       },
     });
