@@ -11,6 +11,7 @@ import type { SyncJob } from '../../shared/src/sync-job.ts';
 import { accessToken, verifyAccessJwt, type AccessSettings } from './access.ts';
 import { DurableDatabase, type DurableStorage } from './database.ts';
 import { MigrationStore } from './migration.ts';
+import { routeKey, UsageMeter } from './meter.ts';
 import { canRunSync, nextAlarmAt, SYNC_INTERVAL_MS } from './schedule.ts';
 
 const BLOCKED_RETRY_MS = 300_000;
@@ -83,6 +84,7 @@ export class BudgetObject extends DurableObject<Env> {
   private readonly runtime: Runtime;
   private readonly sync: CloudSyncController;
   private readonly recovery: DurableObjectStorage;
+  private readonly usage = new UsageMeter();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -132,9 +134,18 @@ export class BudgetObject extends DurableObject<Env> {
       }
       return new Response('Maintenance', { status: 503, headers: { 'cache-control': 'no-store', 'retry-after': '60' } });
     }
+    if (request.method === 'GET' && path === '/__cloud/usage') {
+      return new Response(JSON.stringify(this.usage.report()), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+    }
     if (path.startsWith('/__cloud/')) return new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
     if (!this.migration.ready()) return new Response('Maintenance', { status: 503, headers: { 'cache-control': 'no-store', 'retry-after': '60' } });
-    return withRuntime(this.runtime, () => handleAsNodeRequest(EXPRESS_PORT, request));
+    if (!path.startsWith('/api/')) return withRuntime(this.runtime, () => handleAsNodeRequest(EXPRESS_PORT, request));
+    const { result, meter } = await this.usage.track(routeKey(request.method, path), () =>
+      withRuntime(this.runtime, () => handleAsNodeRequest(EXPRESS_PORT, request)));
+    const response = new Response(result.body, result);
+    response.headers.set('x-rows-read', String(meter.rowsRead));
+    response.headers.set('x-rows-written', String(meter.rowsWritten));
+    return response;
   }
 
   async alarm(): Promise<void> {
@@ -143,7 +154,7 @@ export class BudgetObject extends DurableObject<Env> {
       await this.ctx.storage.setAlarm(Date.now() + BLOCKED_RETRY_MS);
       return;
     }
-    await withRuntime(this.runtime, () => this.sync.step());
+    await this.usage.track('alarm:sync', () => withRuntime(this.runtime, () => this.sync.step()));
   }
 }
 

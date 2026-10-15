@@ -1,7 +1,21 @@
 import type { Database, RunResult, Statement } from '../../server/src/runtime.ts';
+import { meterStore } from './meter.ts';
 
 export interface SqlCursor<T = Record<string, unknown>> {
   toArray(): T[];
+  readonly rowsRead?: number;
+  readonly rowsWritten?: number;
+}
+
+/** Consumes the cursor, then adds its row counts to the current request's meter. */
+function drain<T>(cursor: SqlCursor<T>): T[] {
+  const rows = cursor.toArray();
+  const m = meterStore.getStore();
+  if (m) {
+    m.rowsRead += cursor.rowsRead ?? 0;
+    m.rowsWritten += cursor.rowsWritten ?? 0;
+  }
+  return rows;
 }
 
 export interface DurableSql {
@@ -23,18 +37,18 @@ class DurableStatement implements Statement {
   }
 
   get(...params: unknown[]): any {
-    return this.sql.exec(this.query, ...params).toArray()[0];
+    return drain(this.sql.exec(this.query, ...params))[0];
   }
 
   all(...params: unknown[]): any[] {
-    return this.sql.exec(this.query, ...params).toArray();
+    return drain(this.sql.exec(this.query, ...params));
   }
 
   run(...params: unknown[]): RunResult {
-    this.sql.exec(this.query, ...params).toArray();
-    const result = this.sql.exec<{ changes: number; lastInsertRowid: number }>(
+    drain(this.sql.exec(this.query, ...params));
+    const result = drain(this.sql.exec<{ changes: number; lastInsertRowid: number }>(
       'SELECT changes() AS changes, last_insert_rowid() AS lastInsertRowid',
-    ).toArray()[0];
+    ))[0];
     return { changes: result?.changes ?? 0, lastInsertRowid: result?.lastInsertRowid ?? 0 };
   }
 }
@@ -52,7 +66,7 @@ export class DurableDatabase implements Database {
   }
 
   exec(sql: string): void {
-    this.storage.sql.exec(sql).toArray();
+    drain(this.storage.sql.exec(sql));
   }
 
   transaction<T>(fn: () => T): T {

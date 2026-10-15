@@ -107,4 +107,17 @@ test('runtime on workerd', { timeout: 300_000 }, async (t) => {
     assert.equal((await call(preview, '/api/config')).status, 200);
     assert.equal((await call(prod, '/api/config')).status, 503);
   });
+
+  await t.test('f) meters rows per request and serves /__cloud/usage to Access only', async () => {
+    const r = await call(preview, '/api/config');
+    const read = Number(r.headers.get('x-rows-read'));
+    assert.ok(Number.isFinite(read) && read > 0);
+    assert.ok(Number.isFinite(Number(r.headers.get('x-rows-written'))));
+    const u = await call(preview, '/__cloud/usage');
+    assert.equal(u.status, 200);
+    const body = await u.json() as { totals: { calls: number }; routes: { route: string }[] };
+    assert.ok(body.routes.some((x) => x.route === 'GET /api/config'));
+    assert.ok(body.totals.calls > 0);
+    assert.ok([401, 403].includes((await call(preview, '/__cloud/usage', false)).status));
+  });
 });
