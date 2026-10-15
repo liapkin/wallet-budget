@@ -4,7 +4,13 @@ This deployment uses one SQLite-backed Durable Object named `owner`, Worker stat
 
 ## Build and Access
 
-Cloudflare build command: `pnpm install --frozen-lockfile && pnpm --filter web exec ng build && pnpm --filter cloud deploy`. The asset directory is `web/dist/web/browser`; production assets are built by Cloudflare, not locally.
+Cloudflare Workers Builds settings (Worker, repository root, branch `main`, build variable `NODE_VERSION=24`, preview builds off):
+
+- Build command: `pnpm install --frozen-lockfile && pnpm --filter web exec ng build`
+- Deploy command, preview Worker: `pnpm --filter cloud exec wrangler deploy --env preview`
+- Deploy command, production Worker: `pnpm --filter cloud deploy`
+
+The asset directory is `web/dist/web/browser`; assets are built by Cloudflare, never locally.
 
 Create one Cloudflare Access self-hosted application for both the production and preview `workers.dev` hostnames. Add only the owner's email with One-time PIN, set the application and policy session duration to 24 hours, and deny everyone else. Set Worker variables `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD`, and `OWNER_EMAIL`. Store `WALLET_API_TOKEN` and `COINMARKETCAP_API_KEY` with `wrangler secret put`; never put their values in Wrangler config. The Worker validates the Access JWT signature, issuer, audience, expiry, token type, and owner email itself, so missing settings fail closed.
 
