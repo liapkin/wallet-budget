@@ -7,6 +7,7 @@ import { ChartView } from './ui/chart';
 import { configDraft, editDraft } from './ui/config-draft';
 import { hidden } from './ui/privacy';
 import { Refresh } from './ui/refresh';
+import { phone } from './ui/viewport';
 import { Toast } from './ui/toast';
 
 @Component({
@@ -46,7 +47,7 @@ import { Toast } from './ui/toast';
       <section class="card">
         <div class="card-head"><h2>Allocation</h2></div>
         @if (s().totals.valueCents > 0) {
-          <app-chart [option]="pie()" [height]="pieH" />
+          <app-chart [option]="pie()" [height]="pieH()" />
         } @else {
           <p class="muted">No priced holdings yet.</p>
         }
@@ -137,7 +138,7 @@ import { Toast } from './ui/toast';
 export class CryptoComponent {
   protected route = inject(ActivatedRoute).snapshot.data as { kind: 'crypto' | 'etf'; title: string; configKey: 'crypto' | 'etfs'; import: boolean };
   protected fmt = fmt;
-  protected pieH = window.matchMedia?.('(max-width: 640px)').matches ? 320 : 300;
+  protected pieH = computed(() => (phone() ? 320 : 300));
   protected currencySymbol = currencySymbol;
   private api = inject(Api);
   private tick = inject(Refresh).tick;

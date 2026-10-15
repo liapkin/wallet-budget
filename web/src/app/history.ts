@@ -6,6 +6,7 @@ import { Api } from './api';
 import { chartColor, shortMonth } from './format';
 import { ChartView } from './ui/chart';
 import { Refresh } from './ui/refresh';
+import { phone } from './ui/viewport';
 
 const COUNTED = ['Takeout', 'Kiosk'];
 const FIRST_FEED = '2026-07';
@@ -61,7 +62,7 @@ const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: '
             <button [class.on]="!daily()" (click)="daily.set(false)">All spend</button>
           </div>
         </div>
-        <app-chart [option]="chart()" [height]="chartH" />
+        <app-chart [option]="chart()" [height]="chartH()" />
       </section>
 
       <div class="scroll tall">
@@ -126,7 +127,7 @@ const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: '
 })
 export class History {
   protected fmt = fmt;
-  protected chartH = window.matchMedia?.('(max-width: 640px)').matches ? 260 : 320;
+  protected chartH = computed(() => (phone() ? 260 : 320));
   protected counted = COUNTED;
   protected ranges = RANGES;
   protected yearly = signal(false);

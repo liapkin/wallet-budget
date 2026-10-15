@@ -7,6 +7,7 @@ import type { Config } from '../../../shared/src/types.ts';
 import { axisEuro, currencySymbol, fmt } from './format';
 import { ChartView } from './ui/chart';
 import { Refresh } from './ui/refresh';
+import { phone } from './ui/viewport';
 
 type Snap = { day: string; account: string; balanceCents: number };
 
@@ -29,7 +30,7 @@ type Snap = { day: string; account: string; balanceCents: number };
         <div class="kpi big"><div class="label">Total</div><div class="value">{{ fmt(today().total) }}</div></div>
       </div>
       @if (days().length > 1) {
-        <section class="card"><div class="card-head"><h2>Balance over time</h2></div><app-chart [option]="chart()" [height]="chartH" /></section>
+        <section class="card"><div class="card-head"><h2>Balance over time</h2></div><app-chart [option]="chart()" [height]="chartH()" /></section>
       }
       <p class="muted">
         @if (days().length) { History starts on {{ days()[0] }}; a point is added on every fetch. } @else { No history yet; a point is added on every fetch. }
@@ -39,7 +40,7 @@ type Snap = { day: string; account: string; balanceCents: number };
 })
 export class NetWorth {
   protected fmt = fmt;
-  protected chartH = window.matchMedia?.('(max-width: 640px)').matches ? 260 : 320;
+  protected chartH = computed(() => (phone() ? 260 : 320));
   private http = inject(HttpClient);
   private tick = inject(Refresh).tick;
   protected data = resource({

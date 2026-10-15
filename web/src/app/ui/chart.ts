@@ -42,7 +42,14 @@ export class ChartView implements OnDestroy {
   private host = viewChild.required<ElementRef<HTMLDivElement>>('host');
   private chart?: echarts.ECharts;
   private dark = isDark();
-  private ro = new ResizeObserver(() => this.chart?.resize());
+  private narrow = false;
+  private ro = new ResizeObserver(() => {
+    if (!this.chart) return;
+    const n = this.host().nativeElement.clientWidth < 480;
+    if (n === this.narrow) return this.chart.resize();
+    this.dispose();
+    this.render();
+  });
 
   constructor() {
     effect(() => {
@@ -59,11 +66,12 @@ export class ChartView implements OnDestroy {
   private render() {
     const el = this.host().nativeElement;
     if (!this.chart) {
-      echarts.registerTheme('app', theme(el.clientWidth < 480));
+      this.narrow = el.clientWidth < 480;
+      echarts.registerTheme('app', theme(this.narrow));
       this.chart = echarts.init(el, 'app');
       this.ro.observe(el);
     }
-    const narrow = el.clientWidth < 480;
+    const narrow = this.narrow;
     let opt = this.option() as { series?: unknown; xAxis?: unknown; yAxis?: unknown; tooltip?: unknown };
     if (hidden()) {
       opt = JSON.parse(JSON.stringify(opt));
