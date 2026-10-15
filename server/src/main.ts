@@ -14,7 +14,7 @@ import { toCents } from '../../shared/src/money.ts';
 import type { Config } from '../../shared/src/types.ts';
 
 const demo = process.env.DEMO === '1';
-const app = express();
+export const app = express();
 
 const LOCAL = new Set(['127.0.0.1', 'localhost']);
 // Blocks DNS rebinding (Host) and cross-site browser requests (Origin) against the unauthenticated API.
@@ -274,6 +274,50 @@ app.get('/api/recurring', (req, res) => {
   const grp = new Map(rows.map((r) => [r.id, r.grp]));
   const items = recurring(rows.map(toRec), (r) => grp.get(r.id));
   res.json({ items, monthlyTotalCents: items.reduce((s, i) => s + i.typicalCents, 0) });
+});
+
+// ATM withdrawals not yet paired as a Wallet transfer to Cash, from either side of the pair.
+const UNPAIRED_ATM = `source='api' AND grp='Cash withdrawal' AND type='Expenses' AND is_dup=0 AND account<>'Cash'
+  AND json_extract(raw_json, '$.transfer') IS NULL
+  AND ext_id NOT IN (SELECT json_extract(raw_json, '$.transfer.mirrorRecord.id') FROM records WHERE json_extract(raw_json, '$.transfer') IS NOT NULL)`;
+const cashAccount = () => db.prepare("SELECT id, currency FROM accounts WHERE name='Cash'").get() as { id: string; currency: string } | undefined;
+
+app.get('/api/cash-topups', (req, res) => {
+  // ponytail: 60-day window so old history does not flood the inbox.
+  const since = new Date(Date.now() - 60 * 86_400_000).toISOString();
+  const items = db.prepare(`${SELECT} WHERE ${UNPAIRED_ATM} AND date_utc>=? ORDER BY date_utc DESC`).all(since).map(present);
+  res.json({ cashAccountId: cashAccount()?.id ?? null, items });
+});
+
+// Creates the Cash side of the transfer in Wallet, paired to the existing ATM record.
+app.post('/api/cash-topups/:id', async (req, res, next) => {
+  try {
+    if (demo) bad('Disabled in demo mode');
+    const w = db.prepare(`SELECT ext_id AS extId, amount_cents AS cents, date_utc AS dateUtc FROM records WHERE id=? AND ${UNPAIRED_ATM}`).get(Number(req.params.id)) as
+      | { extId: string; cents: number; dateUtc: string }
+      | undefined;
+    if (!w) return void res.status(404).json({ error: 'not an unpaired ATM withdrawal' });
+    const acc = cashAccount();
+    if (!acc) bad('No Wallet account named Cash');
+    if (acc!.currency !== 'EUR') bad('only EUR accounts are supported');
+    const payload = { accountId: acc!.id, amount: { value: -w.cents / 100, currencyCode: 'EUR' }, recordDate: w.dateUtc, transfer: { pairingMode: 'existing', recordId: w.extId } };
+    let result: any;
+    try {
+      result = (await post('/v1/api/records', [payload])).results?.[0];
+    } catch (e) {
+      return void res.status(502).json({ error: `Wallet rejected the transfer: ${(e as Error).message}` });
+    }
+    if (!result?.success || !result.record) {
+      return void res.status(502).json({ error: `Wallet rejected the transfer: ${String(result?.error ?? 'no result').slice(0, 120)}` });
+    }
+    insertApiRecord(result.record);
+    // the Cash side is Income in Wallet; keep it out of income and spending
+    db.prepare("UPDATE records SET created_in_app=1, group_override='Cash withdrawal' WHERE ext_id=?").run(result.record.id);
+    runPipeline();
+    res.status(201).json(present(db.prepare(`${SELECT} WHERE ext_id=?`).get(result.record.id)));
+  } catch (e) {
+    next(e);
+  }
 });
 
 app.get('/api/possible-duplicates', (req, res) => {

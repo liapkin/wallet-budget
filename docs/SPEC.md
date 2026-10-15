@@ -43,6 +43,10 @@ Wallet exports `.xls` with a `Records` sheet and these columns, in order:
 
 A record is a duplicate when its `payment_type` is `MOBILE_PAYMENT` and a `TRANSFER` record with the same amount exists dated from 1 day before to 7 days after it. Keep the `TRANSFER` record. Each `TRANSFER` absorbs at most one `MOBILE_PAYMENT`. Duplicates are flagged, never deleted, and excluded from every total.
 
+### Cash top-ups
+
+An ATM withdrawal (Wallet record, group `Cash withdrawal`, expense, not a duplicate, account other than `Cash`, last 60 days) is unpaired when neither it nor any record mirroring it is a Wallet transfer. The Inbox lists unpaired withdrawals; "Add to Cash" creates, after the user confirms, the `Cash` side of the transfer in Wallet, paired to the existing withdrawal. That side is grouped `Cash withdrawal`, so it counts as neither income nor spending.
+
 ### Groups
 
 Precedence, first match wins:

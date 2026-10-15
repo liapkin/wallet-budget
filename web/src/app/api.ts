@@ -48,6 +48,8 @@ export class Api {
   possibleDuplicates = () => firstValueFrom(this.http.get<{ a: Row; b: Row }[]>('/api/possible-duplicates'));
   decideDuplicate = (a: number, b: number, decision: 'dup' | 'not') =>
     firstValueFrom(this.http.post<void>('/api/possible-duplicates', { a, b, decision }));
+  cashTopups = () => firstValueFrom(this.http.get<{ cashAccountId: string | null; items: Row[] }>('/api/cash-topups'));
+  cashTopUp = (id: number) => firstValueFrom(this.http.post<Row>(`/api/cash-topups/${id}`, {}));
   unclassified = () => firstValueFrom(this.http.get<Unclassified[]>('/api/unclassified'));
   bulkGroup = (ids: number[], group: string) => firstValueFrom(this.http.post<void>('/api/records/bulk-group', { ids, group }));
   monthClose = (month: string) => firstValueFrom(this.http.get<MonthClose>(`/api/month-close/${month}`));

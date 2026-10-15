@@ -16,6 +16,7 @@ const daysApart = (a: Row, b: Row) => Math.round(Math.abs(Date.parse(a.dateUtc) 
     <div class="page-head"><h1>Inbox</h1></div>
     <div class="seg" role="group" aria-label="Inbox">
       <button type="button" [class.on]="tab() === 'dups'" (click)="tab.set('dups')">Possible duplicates ({{ dups.value()?.length ?? 0 }})</button>
+      <button type="button" [class.on]="tab() === 'cash'" (click)="tab.set('cash')">Cash top-ups ({{ cash.value()?.items?.length ?? 0 }})</button>
       <button type="button" [class.on]="tab() === 'unc'" (click)="tab.set('unc')">Unclassified ({{ unc.value()?.length ?? 0 }})</button>
     </div>
 
@@ -48,6 +49,31 @@ const daysApart = (a: Row, b: Row) => Math.round(Math.abs(Date.parse(a.dateUtc) 
                 </dl>
               }
             </div>
+          </section>
+        }
+      }
+    } @else if (tab() === 'cash') {
+      @if (cash.error()) {
+        <p class="err">Failed to load cash top-ups.</p>
+      } @else if (!cash.hasValue()) {
+        <div class="skeleton" style="height: 10rem"></div>
+      } @else if (!cash.value()!.cashAccountId) {
+        <div class="empty"><strong>No Wallet account named Cash</strong></div>
+      } @else if (!cash.value()!.items.length) {
+        <div class="empty"><strong>All clear</strong><span>Every ATM withdrawal is a transfer to Cash.</span></div>
+      } @else {
+        @for (r of cash.value()!.items; track r.id) {
+          <section class="card">
+            <div class="card-head">
+              <span class="muted">Pairs as a Wallet transfer of {{ fmt(abs(r)) }} from {{ r.account }} to Cash</span>
+              <div class="actions"><button class="primary" [disabled]="adding() !== null" (click)="topUp(r)">Add to Cash</button></div>
+            </div>
+            <dl class="rec">
+              <dt>Date</dt><dd>{{ day(r.dateUtc) }}</dd>
+              <dt>Account</dt><dd>{{ r.account }}</dd>
+              <dt>Note</dt><dd>{{ r.note || '—' }}</dd>
+              <dt>Amount</dt><dd class="strong">{{ amount(r) }}</dd>
+            </dl>
           </section>
         }
       }
@@ -138,15 +164,17 @@ export class Inbox {
   protected day = dayLabel;
   protected color = groupColor;
   protected hollow = (g: string) => HOLLOW.has(g);
+  protected abs = (r: Row) => Math.abs(r.amountCents);
   protected diff = (a: Row, b: Row) => Math.abs(Math.abs(a.amountCents) - Math.abs(b.amountCents));
 
-  protected tab = signal<'dups' | 'unc'>('dups');
+  protected tab = signal<'dups' | 'cash' | 'unc'>('dups');
   protected sel = signal<Set<number>>(new Set());
   protected bulkGroup = signal<string | null>(null);
   protected kw = signal<{ id: number; keyword: string; group: string } | null>(null);
 
   protected meta = resource({ params: () => this.refresh.tick(), loader: () => this.api.meta() });
   protected dups = resource({ params: () => this.refresh.tick(), loader: () => this.api.possibleDuplicates() });
+  protected cash = resource({ params: () => this.refresh.tick(), loader: () => this.api.cashTopups() });
   protected unc = resource({ params: () => this.refresh.tick(), loader: () => this.api.unclassified() });
 
   protected groupOptions = computed<ComboOption[]>(() =>
@@ -188,6 +216,15 @@ export class Inbox {
 
   protected decide(a: Row, b: Row, decision: 'dup' | 'not') {
     return this.run(() => this.api.decideDuplicate(a.id, b.id, decision), decision === 'dup' ? 'Marked as same payment' : 'Marked as different');
+  }
+
+  protected adding = signal<number | null>(null);
+  protected async topUp(r: Row) {
+    // one Wallet write per click: a double click would create two records
+    if (this.adding() !== null) return;
+    this.adding.set(r.id);
+    await this.run(() => this.api.cashTopUp(r.id), 'Transfer to Cash added');
+    this.adding.set(null);
   }
 
   protected async apply(ids: number[], group: string) {

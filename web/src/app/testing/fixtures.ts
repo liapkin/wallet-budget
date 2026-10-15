@@ -30,6 +30,7 @@ export const responses = (): Record<string, unknown> => ({
   '/api/wallet-categories': [],
   '/api/records': [row(1), row(2)],
   '/api/possible-duplicates': [],
+  '/api/cash-topups': { cashAccountId: null, items: [] },
   '/api/unclassified': [],
   [`/api/month-close/${month}`]: { transfers: [], done: [] },
   '/api/recurring': { items: [], monthlyTotalCents: 0 },
