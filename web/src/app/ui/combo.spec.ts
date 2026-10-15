@@ -1,47 +1,45 @@
 import { TestBed } from '@angular/core/testing';
-import { vi } from 'vitest';
 import { Combo } from './combo';
 
-describe('Combo menu placement', () => {
-  it('positions and caps the menu when opened, and drops listeners on close', async () => {
-    const add = vi.spyOn(window, 'addEventListener');
-    const remove = vi.spyOn(window, 'removeEventListener');
+const open = async (f: ReturnType<typeof TestBed.createComponent<Combo>>) => {
+  f.componentRef.setInput('options', [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }]);
+  f.detectChanges();
+  document.body.appendChild(f.nativeElement);
+  (f.nativeElement.querySelector('.trigger') as HTMLButtonElement).click();
+  f.detectChanges();
+  await f.whenStable();
+};
+
+describe('Combo menu', () => {
+  it('is placed under its trigger and capped to the visible area when opened', async () => {
     const f = TestBed.createComponent(Combo);
-    f.componentRef.setInput('options', [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }]);
-    f.detectChanges();
-    const trigger = f.nativeElement.querySelector('.trigger') as HTMLButtonElement;
-    trigger.click();
-    f.detectChanges();
-    await f.whenStable();
+    await open(f);
     const pop = f.nativeElement.querySelector('.pop') as HTMLElement;
     expect(pop.style.top).toMatch(/px$/);
     expect(pop.style.left).toMatch(/px$/);
     expect((f.nativeElement.querySelector('.list') as HTMLElement).style.maxHeight).toMatch(/px$/);
-    expect(add.mock.calls.some(([t]) => t === 'resize')).toBe(true);
-
-    trigger.click();
-    f.detectChanges();
-    await f.whenStable();
-    expect(f.nativeElement.querySelector('.pop')).toBeNull();
-    expect(remove.mock.calls.some(([t]) => t === 'resize')).toBe(true);
-    add.mockRestore();
-    remove.mockRestore();
+    f.nativeElement.remove();
   });
 
-  it('stays open when the page scrolls or the viewport changes, and closes on an outside click', async () => {
+  it('does not track the viewport: keyboard and resize events leave it open and untouched', async () => {
     const f = TestBed.createComponent(Combo);
-    f.componentRef.setInput('options', [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }]);
-    f.detectChanges();
-    document.body.appendChild(f.nativeElement);
-    (f.nativeElement.querySelector('.trigger') as HTMLButtonElement).click();
+    await open(f);
+    const pop = f.nativeElement.querySelector('.pop') as HTMLElement;
+    const before = pop.style.top;
+    window.dispatchEvent(new Event('resize'));
+    window.visualViewport?.dispatchEvent(new Event('resize'));
     f.detectChanges();
     await f.whenStable();
     expect(f.nativeElement.querySelector('.pop')).not.toBeNull();
+    expect(pop.style.top).toBe(before);
+    f.nativeElement.remove();
+  });
 
-    // opening focuses the search box, which scrolls the page on phones; resize comes from the keyboard
+  it('stays open for a small scroll (focus shifts) and closes on an outside click', async () => {
+    const f = TestBed.createComponent(Combo);
+    await open(f);
     document.dispatchEvent(new Event('scroll'));
     window.dispatchEvent(new Event('scroll'));
-    window.dispatchEvent(new Event('resize'));
     f.detectChanges();
     await f.whenStable();
     expect(f.nativeElement.querySelector('.pop')).not.toBeNull();

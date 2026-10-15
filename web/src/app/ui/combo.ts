@@ -2,6 +2,7 @@ import { afterRenderEffect, booleanAttribute, Component, DestroyRef, computed, e
 import { Icon } from './icons';
 import { placeMenu } from './placement';
 import { closeOnOutside } from './popover';
+import { phone } from './viewport';
 
 export interface ComboOption { value: string; label: string; dot?: string; hollow?: boolean; hint?: string; group?: string }
 interface Row { o?: ComboOption & { create?: boolean }; head?: string; n?: number; open?: boolean }
@@ -125,37 +126,34 @@ export class Combo {
   });
 
   constructor() {
-    // No close-on-scroll: opening focuses the search box, which scrolls the page or shifts the view when the keyboard appears, and that must not close the menu. place() follows scrolls instead.
+    // Outside clicks close the menu; scrolling is handled below (a small scroll is not "outside").
     closeOnOutside(this.el, this.open, () => this.close(), inject(DestroyRef), { scroll: false });
     effect(() => {
       const s = this.search()?.nativeElement;
       if (!s) return;
-      s.focus({ preventScroll: true });
+      // on phones don't pop the keyboard on open (it covers the list and shifts the layout); tap the search box to type
+      if (!phone()) s.focus({ preventScroll: true });
       s.setSelectionRange(s.value.length, s.value.length);
     });
-    // Keep the menu inside the visible area (keyboard included); reposition rather than close on viewport changes.
+    // Place the menu under its trigger, clamped to the visible area, once on open and when the filtered rows change.
+    // No live tracking of the keyboard or viewport: re-placing on every viewport change made the menu jump.
     afterRenderEffect({
-      write: (onCleanup) => {
+      write: () => {
         if (!this.open()) return;
         this.rows();
         this.place();
-        const vv = window.visualViewport;
-        const on = () => this.place();
-        // page scrolls move the trigger: follow it, but ignore the menu's own list scrolling
-        const onScroll = (e: Event) => {
-          if (!(e.target instanceof Node && this.pop()?.nativeElement.contains(e.target))) this.place();
-        };
-        vv?.addEventListener('resize', on);
-        vv?.addEventListener('scroll', on);
-        window.addEventListener('resize', on);
-        window.addEventListener('scroll', onScroll, true);
-        onCleanup(() => {
-          vv?.removeEventListener('resize', on);
-          vv?.removeEventListener('scroll', on);
-          window.removeEventListener('resize', on);
-          window.removeEventListener('scroll', onScroll, true);
-        });
       },
+    });
+    // The menu is fixed on screen, so a real page scroll closes it; the small shifts from focusing a field do not.
+    effect((onCleanup) => {
+      if (!this.open()) return;
+      const y = window.scrollY;
+      const on = (e: Event) => {
+        if (e.target instanceof Node && this.pop()?.nativeElement.contains(e.target)) return;
+        if (Math.abs(window.scrollY - y) > 80) this.close();
+      };
+      window.addEventListener('scroll', on, { capture: true, passive: true });
+      onCleanup(() => window.removeEventListener('scroll', on, true));
     });
     effect(() => {
       const i = this.active();

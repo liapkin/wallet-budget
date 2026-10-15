@@ -34,15 +34,7 @@ export class PopoverFit {
       if (p.placement === 'above') Object.assign(el.style, { top: 'auto', bottom: 'calc(100% + var(--sp-1))' });
       if (p.maxHeight < r.height) Object.assign(el.style, { maxHeight: `${p.maxHeight}px`, overflowY: 'auto' });
     };
+    // fit once when the panel opens; re-fitting on every keyboard/viewport change made it jump on phones
     afterNextRender(fit);
-    const vv = window.visualViewport;
-    window.addEventListener('resize', fit);
-    vv?.addEventListener('resize', fit);
-    vv?.addEventListener('scroll', fit);
-    inject(DestroyRef).onDestroy(() => {
-      window.removeEventListener('resize', fit);
-      vv?.removeEventListener('resize', fit);
-      vv?.removeEventListener('scroll', fit);
-    });
   }
 }
