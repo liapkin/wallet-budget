@@ -5,7 +5,9 @@ import { firstValueFrom } from 'rxjs';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { dayLabel } from './format';
 import { Api } from './api';
+import { Brand } from './ui/brand';
 import { Icon, IconName } from './ui/icons';
+import { Pip } from './ui/pip';
 import { hidden, togglePrivacy } from './ui/privacy';
 import { cycleTheme, theme, themeLabel } from './ui/theme';
 import { Refresh } from './ui/refresh';
@@ -29,7 +31,7 @@ const NAV: { label: string; items: { path: string; label: string; icon: IconName
 ];
 
 @Component({
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgTemplateOutlet, Icon, Toasts],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgTemplateOutlet, Brand, Icon, Pip, Toasts],
   selector: 'app-root',
   templateUrl: './app.html',
   styleUrl: './app.css',
