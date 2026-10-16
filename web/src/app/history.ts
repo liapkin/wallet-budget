@@ -5,6 +5,7 @@ import { byYear, type Cell } from '../../../shared/src/summary.ts';
 import { Api } from './api';
 import { chartColor, shortMonth } from './format';
 import { ChartView } from './ui/chart';
+import { Pip } from './ui/pip';
 import { Refresh } from './ui/refresh';
 import { phone } from './ui/viewport';
 
@@ -16,7 +17,7 @@ const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: '
 
 @Component({
   selector: 'app-history',
-  imports: [ChartView],
+  imports: [ChartView, Pip],
   styles: `
     .sep { border-left: 2px solid var(--border); }
     td small { display: block; font-size: var(--fs-xs); line-height: 1.2; }
@@ -52,7 +53,7 @@ const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: '
       <div class="card"><div class="skeleton" style="height: 300px"></div></div>
       <div class="card"><div class="skeleton" style="height: 220px"></div></div>
     } @else if (!rows().length) {
-      <div class="card empty"><strong>No history yet</strong><span>Add records to see spending over time.</span></div>
+      <div class="card empty"><app-pip scene="no-history" /><strong>No history yet</strong><span>Add records to see spending over time.</span></div>
     } @else {
       <section class="card">
         <div class="card-head">

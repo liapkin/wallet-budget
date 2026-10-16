@@ -1,44 +1,55 @@
 import { Component, computed, input } from '@angular/core';
 
+/** 16x16 pixel icons, each one path of filled rectangles. */
 const PATHS = {
-  calendar: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
-  history: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2',
-  list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
-  wallet: 'M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5M16 14h.01',
-  pencil: 'M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z',
-  sliders: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
-  chart: 'M3 3v18h18M7 15l4-4 3 3 5-6',
-  trend: 'M22 7l-8.5 8.5-5-5L2 17M16 7h6v6',
-  utensils: 'M3 2v7c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2V2M6 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7',
-  cart: 'M8 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM19 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12',
-  refresh: 'M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5',
-  monitor: 'M20 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zM8 21h8M12 17v4',
-  sun: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41',
-  moon: 'M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z',
-  menu: 'M4 6h16M4 12h16M4 18h16',
-  x: 'M18 6 6 18M6 6l12 12',
-  chevronLeft: 'm15 18-6-6 6-6',
-  chevronRight: 'm9 18 6-6-6-6',
-  plus: 'M12 5v14M5 12h14',
-  trash: 'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6',
-  check: 'M20 6 9 17l-5-5',
-  logo: 'M12 3 3 8l9 5 9-5-9-5zM3 13l9 5 9-5M3 18l9 5 9-5',
-  repeat: 'm17 2 4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3',
-  inbox: 'M22 12h-6l-2 3h-4l-2-3H2M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z',
-  eye: 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
-  eyeOff: 'M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1 4.24 4.24M1 1l22 22',
-  arrowRight: 'M5 12h14M13 6l6 6-6 6',
-};
+  calendar: 'M14 0h1v1h-1zM13 1h3v1h-3zM4 2h1v2h-1zM11 2h1v2h-1zM14 2h1v1h-1zM2 4h12v2h-12zM2 6h1v7h-1zM13 6h1v7h-1zM4 7h1v1h-1zM7 7h1v1h-1zM10 7h1v1h-1zM4 9h1v1h-1zM7 9h1v1h-1zM10 9h1v1h-1zM4 11h1v1h-1zM7 11h1v1h-1zM2 13h12v1h-12z',
+  history: 'M14 1h1v1h-1zM4 2h8v1h-8zM2 3h3v1h-3zM11 3h2v1h-2zM2 4h2v1h-2zM12 4h1v1h-1zM2 5h1v1h-1zM7 5h1v3h-1zM13 5h1v6h-1zM2 7h1v4h-1zM7 8h4v1h-4zM3 11h1v1h-1zM12 11h1v1h-1zM3 12h2v1h-2zM11 12h2v1h-2zM4 13h8v1h-8z',
+  list: 'M14 0h1v1h-1zM13 1h3v1h-3zM14 2h1v1h-1zM2 4h2v1h-2zM6 4h8v1h-8zM2 8h2v1h-2zM6 8h8v1h-8zM2 12h2v1h-2zM6 12h8v1h-8z',
+  wallet: 'M14 1h1v1h-1zM2 3h12v1h-12zM1 4h1v9h-1zM14 4h1v2h-1zM9 6h6v1h-6zM9 7h1v2h-1zM11 7h1v1h-1zM14 7h1v2h-1zM9 9h6v1h-6zM14 10h1v3h-1zM2 13h12v1h-12z',
+  pencil: 'M12 1h2v1h-2zM11 2h4v1h-4zM10 3h4v1h-4zM9 4h4v1h-4zM8 5h4v1h-4zM7 6h4v1h-4zM6 7h4v1h-4zM5 8h4v1h-4zM4 9h4v1h-4zM3 10h4v1h-4zM2 11h4v1h-4zM2 12h3v1h-3zM2 13h1v1h-1z',
+  sliders: 'M4 3h3v1h-3zM2 4h12v1h-12zM4 5h3v1h-3zM8 7h3v1h-3zM2 8h12v1h-12zM8 9h3v1h-3zM6 11h3v1h-3zM2 12h12v1h-12zM6 13h3v1h-3z',
+  chart: 'M14 0h1v1h-1zM13 1h3v1h-3zM2 2h1v11h-1zM14 2h1v1h-1zM13 6h1v1h-1zM12 7h1v1h-1zM7 8h1v1h-1zM11 8h1v1h-1zM6 9h1v1h-1zM8 9h1v1h-1zM10 9h1v1h-1zM5 10h1v1h-1zM9 10h1v1h-1zM4 11h1v1h-1zM2 13h12v1h-12z',
+  trend: 'M7 3h6v1h-6zM11 4h2v1h-2zM10 5h1v1h-1zM12 5h1v4h-1zM9 6h1v1h-1zM8 7h1v1h-1zM7 8h1v1h-1zM6 9h1v1h-1zM5 10h1v1h-1zM4 11h1v1h-1zM3 12h1v1h-1z',
+  utensils: 'M14 1h1v1h-1zM3 2h1v4h-1zM5 2h1v4h-1zM7 2h1v4h-1zM11 2h2v6h-2zM3 6h5v1h-5zM5 7h1v7h-1zM11 8h1v6h-1z',
+  cart: 'M14 0h1v1h-1zM13 1h3v1h-3zM14 2h1v1h-1zM1 3h3v1h-3zM3 4h1v1h-1zM3 5h12v1h-12zM4 6h1v2h-1zM13 6h1v2h-1zM5 8h1v1h-1zM12 8h1v1h-1zM6 9h6v1h-6zM5 11h2v2h-2zM10 11h2v2h-2z',
+  refresh: 'M14 0h1v1h-1zM13 1h3v1h-3zM4 2h6v1h-6zM14 2h1v1h-1zM3 3h1v1h-1zM10 3h1v1h-1zM2 4h1v4h-1zM11 4h1v1h-1zM10 5h3v1h-3zM11 6h2v1h-2zM12 7h1v1h-1zM3 8h1v1h-1zM13 8h1v4h-1zM3 9h2v1h-2zM3 10h3v1h-3zM4 11h1v1h-1zM5 12h1v1h-1zM12 12h1v1h-1zM6 13h6v1h-6z',
+  monitor: 'M2 2h12v1h-12zM1 3h1v8h-1zM14 3h1v8h-1zM1 11h14v1h-14zM7 12h2v1h-2zM4 13h8v1h-8z',
+  sun: 'M7 1h2v2h-2zM3 3h1v1h-1zM12 3h1v1h-1zM6 5h4v1h-4zM5 6h6v4h-6zM1 7h2v2h-2zM13 7h2v2h-2zM6 10h4v1h-4zM3 12h1v1h-1zM12 12h1v1h-1zM7 13h2v2h-2z',
+  moon: 'M5 2h2v1h-2zM3 3h3v1h-3zM2 4h4v2h-4zM1 6h5v2h-5zM1 8h6v1h-6zM1 9h7v1h-7zM2 10h8v1h-8zM12 10h1v1h-1zM2 11h11v1h-11zM3 12h9v1h-9zM5 13h5v1h-5z',
+  menu: 'M2 3h12v2h-12zM2 7h12v2h-12zM2 11h12v2h-12z',
+  x: 'M3 3h2v1h-2zM11 3h2v1h-2zM4 4h2v1h-2zM10 4h2v1h-2zM5 5h2v1h-2zM9 5h2v1h-2zM6 6h4v1h-4zM7 7h2v1h-2zM6 8h4v1h-4zM5 9h2v1h-2zM9 9h2v1h-2zM4 10h2v1h-2zM10 10h2v1h-2zM3 11h2v1h-2zM11 11h2v1h-2zM2 12h2v1h-2zM12 12h2v1h-2z',
+  chevronLeft: 'M10 2h2v1h-2zM9 3h2v1h-2zM8 4h2v1h-2zM7 5h2v1h-2zM6 6h2v1h-2zM5 7h2v2h-2zM6 9h2v1h-2zM7 10h2v1h-2zM8 11h2v1h-2zM9 12h2v1h-2zM10 13h2v1h-2z',
+  chevronRight: 'M4 2h2v1h-2zM5 3h2v1h-2zM6 4h2v1h-2zM7 5h2v1h-2zM8 6h2v1h-2zM9 7h2v2h-2zM8 9h2v1h-2zM7 10h2v1h-2zM6 11h2v1h-2zM5 12h2v1h-2zM4 13h2v1h-2z',
+  plus: 'M7 3h2v4h-2zM2 7h12v2h-12zM7 9h2v4h-2z',
+  trash: 'M6 2h4v1h-4zM2 3h12v1h-12zM3 4h1v8h-1zM12 4h1v8h-1zM6 6h1v6h-1zM9 6h1v6h-1zM3 12h10v1h-10z',
+  check: 'M12 4h2v1h-2zM11 5h2v1h-2zM10 6h2v1h-2zM9 7h2v1h-2zM2 8h2v1h-2zM8 8h2v1h-2zM3 9h2v1h-2zM7 9h2v1h-2zM4 10h4v1h-4zM5 11h2v1h-2z',
+  logo: 'M14 0h1v1h-1zM13 1h3v1h-3zM4 2h8v1h-8zM14 2h1v1h-1zM3 3h2v1h-2zM11 3h2v1h-2zM3 4h1v1h-1zM12 4h1v1h-1zM2 5h1v6h-1zM13 5h1v6h-1zM5 6h1v2h-1zM10 6h1v2h-1zM5 9h1v1h-1zM10 9h1v1h-1zM6 10h4v1h-4zM3 11h1v1h-1zM12 11h1v1h-1zM3 12h2v1h-2zM11 12h2v1h-2zM4 13h8v1h-8z',
+  repeat: 'M11 2h1v1h-1zM12 3h1v1h-1zM1 4h13v1h-13zM12 5h1v1h-1zM11 6h1v1h-1zM4 9h1v1h-1zM3 10h1v1h-1zM2 11h13v1h-13zM3 12h1v1h-1zM4 13h1v1h-1z',
+  inbox: 'M14 0h1v1h-1zM13 1h3v1h-3zM7 2h2v4h-2zM14 2h1v1h-1zM5 6h6v1h-6zM6 7h4v1h-4zM7 8h2v1h-2zM2 10h1v3h-1zM13 10h1v3h-1zM2 13h12v1h-12z',
+  eye: 'M14 0h1v1h-1zM13 1h3v1h-3zM14 2h1v1h-1zM4 4h8v1h-8zM2 5h2v1h-2zM12 5h2v1h-2zM1 6h1v1h-1zM6 6h4v4h-4zM14 6h1v1h-1zM0 7h1v2h-1zM15 7h1v2h-1zM1 9h1v1h-1zM14 9h1v1h-1zM2 10h2v1h-2zM12 10h2v1h-2zM4 11h8v1h-8z',
+  eyeOff: 'M12 3h1v1h-1zM4 4h5v1h-5zM11 4h1v1h-1zM2 5h2v1h-2zM10 5h1v1h-1zM13 5h1v1h-1zM1 6h1v1h-1zM6 6h1v1h-1zM9 6h1v1h-1zM14 6h1v1h-1zM0 7h1v2h-1zM8 7h1v1h-1zM15 7h1v2h-1zM7 8h1v1h-1zM1 9h1v1h-1zM6 9h1v1h-1zM9 9h1v1h-1zM14 9h1v1h-1zM2 10h1v1h-1zM5 10h1v1h-1zM12 10h2v1h-2zM4 11h1v1h-1zM7 11h5v1h-5zM3 12h1v1h-1z',
+  arrowRight: 'M10 4h2v1h-2zM11 5h2v1h-2zM12 6h2v1h-2zM2 7h12v2h-12zM12 9h2v1h-2zM11 10h2v1h-2zM10 11h2v1h-2z',
+  selector: 'M7 2h2v1h-2zM6 3h1v1h-1zM9 3h1v1h-1zM5 4h1v1h-1zM10 4h1v1h-1zM4 5h1v1h-1zM11 5h1v1h-1zM4 10h1v1h-1zM11 10h1v1h-1zM5 11h1v1h-1zM10 11h1v1h-1zM6 12h1v1h-1zM9 12h1v1h-1zM7 13h2v1h-2z',
+  template: 'M2 2h12v1h-12zM1 3h1v2h-1zM14 3h1v2h-1zM1 5h14v1h-14zM1 6h1v7h-1zM6 6h1v7h-1zM14 6h1v7h-1zM2 13h12v1h-12z',
+  styles: 'M7 1h2v2h-2zM6 3h1v2h-1zM9 3h1v2h-1zM5 5h1v2h-1zM10 5h1v2h-1zM4 7h1v1h-1zM11 7h1v1h-1zM3 8h1v3h-1zM12 8h1v3h-1zM5 9h1v2h-1zM4 11h1v1h-1zM11 11h1v1h-1zM5 12h1v1h-1zM10 12h1v1h-1zM6 13h4v1h-4z',
+  networth: 'M14 1h1v1h-1zM12 3h2v10h-2zM7 6h2v7h-2zM2 9h2v4h-2zM1 13h14v1h-14z',
+  goals: 'M12 1h2v1h-2zM4 2h8v1h-8zM13 2h2v1h-2zM3 3h2v1h-2zM11 3h2v2h-2zM14 3h1v1h-1zM3 4h1v1h-1zM2 5h1v6h-1zM7 5h2v1h-2zM10 5h1v1h-1zM13 5h1v6h-1zM6 6h1v1h-1zM9 6h1v1h-1zM5 7h1v2h-1zM7 7h2v2h-2zM10 7h1v2h-1zM6 9h1v1h-1zM9 9h1v1h-1zM7 10h2v1h-2zM3 11h1v1h-1zM12 11h1v1h-1zM3 12h2v1h-2zM11 12h2v1h-2zM4 13h8v1h-8z',
+  coin: 'M14 0h1v1h-1zM13 1h3v1h-3zM4 2h8v1h-8zM14 2h1v1h-1zM3 3h2v1h-2zM11 3h2v1h-2zM3 4h1v1h-1zM12 4h1v1h-1zM2 5h1v6h-1zM6 5h3v1h-3zM13 5h1v6h-1zM6 6h1v1h-1zM9 6h1v1h-1zM6 7h3v1h-3zM6 8h1v2h-1zM9 8h1v2h-1zM6 10h3v1h-3zM3 11h1v1h-1zM12 11h1v1h-1zM3 12h2v1h-2zM11 12h2v1h-2zM4 13h8v1h-8z',
+  etf: 'M14 0h1v1h-1zM13 1h3v1h-3zM4 2h8v1h-8zM14 2h1v1h-1zM3 3h2v1h-2zM7 3h1v5h-1zM11 3h2v1h-2zM3 4h1v1h-1zM12 4h1v1h-1zM2 5h1v6h-1zM13 5h1v3h-1zM7 8h7v1h-7zM13 9h1v2h-1zM3 11h1v1h-1zM12 11h1v1h-1zM3 12h2v1h-2zM11 12h2v1h-2zM4 13h8v1h-8z',
+  groceries: 'M14 0h1v1h-1zM13 1h3v1h-3zM14 2h1v1h-1zM6 3h4v1h-4zM5 4h1v2h-1zM10 4h1v2h-1zM2 6h12v1h-12zM2 7h1v6h-1zM13 7h1v6h-1zM2 13h12v1h-12z',
+  settings: 'M7 1h2v2h-2zM2 2h2v2h-2zM12 2h2v2h-2zM6 3h4v1h-4zM4 4h2v1h-2zM10 4h2v1h-2zM4 5h1v1h-1zM11 5h1v1h-1zM3 6h1v1h-1zM6 6h4v1h-4zM12 6h1v1h-1zM1 7h3v2h-3zM6 7h1v2h-1zM9 7h1v2h-1zM12 7h3v2h-3zM3 9h1v1h-1zM6 9h4v1h-4zM12 9h1v1h-1zM4 10h1v1h-1zM11 10h1v1h-1zM4 11h2v1h-2zM10 11h2v1h-2zM2 12h2v2h-2zM6 12h4v1h-4zM12 12h2v2h-2zM7 13h2v2h-2z',
+} as const;
 export type IconName = keyof typeof PATHS;
 
-/** `<app-icon name="calendar" [size]="18">`: 24px stroke icon, inherits currentColor. */
+/** `<app-icon name="calendar">`: 16px pixel icon, inherits currentColor. Sizes snap to a multiple of 16 so pixels stay sharp. */
 @Component({
   selector: 'app-icon',
-  template: `<svg [attr.width]="size()" [attr.height]="size()" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="d()" /></svg>`,
+  template: `<svg [attr.width]="px()" [attr.height]="px()" viewBox="0 0 16 16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path [attr.d]="d()" /></svg>`,
   styles: `:host { display: inline-flex; flex: none; } svg { display: block; }`,
 })
 export class Icon {
   name = input.required<IconName>();
-  size = input(18);
+  size = input(16);
+  protected px = computed(() => Math.max(16, Math.round(this.size() / 16) * 16));
   protected d = computed(() => PATHS[this.name()]);
 }

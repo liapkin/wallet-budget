@@ -6,6 +6,7 @@ import { currentMonth, monthLabel } from './format';
 import { Icon } from './ui/icons';
 import { MoneyInput } from './ui/money-input';
 import { MonthPicker } from './ui/month-picker';
+import { Pip } from './ui/pip';
 import { Refresh } from './ui/refresh';
 import { Toast } from './ui/toast';
 
@@ -14,7 +15,7 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0
 
 @Component({
   selector: 'app-actuals',
-  imports: [Icon, MoneyInput, MonthPicker],
+  imports: [Icon, MoneyInput, MonthPicker, Pip],
   template: `
     <div class="page-head">
       <h1>Core actuals</h1>
@@ -51,7 +52,7 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0
             </label>
           </div>
         } @empty {
-          <div class="empty"><strong>No core lines</strong></div>
+          <div class="empty"><app-pip scene="no-records" /><strong>No core lines</strong></div>
         }
       </div>
 

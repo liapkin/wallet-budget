@@ -20,12 +20,12 @@ const NAV: { label: string; items: { path: string; label: string; icon: IconName
     items: [
       { path: 'records', label: 'Records', icon: 'list' }, { path: 'budget', label: 'Budget', icon: 'sliders' },
       { path: 'actuals', label: 'Core actuals', icon: 'wallet' }, { path: 'investing', label: 'Investing', icon: 'trend' },
-      { path: 'goals', label: 'Goals', icon: 'wallet' }, { path: 'crypto', label: 'Crypto', icon: 'chart' }, { path: 'etfs', label: 'ETFs', icon: 'trend' },
+      { path: 'goals', label: 'Goals', icon: 'goals' }, { path: 'crypto', label: 'Crypto', icon: 'coin' }, { path: 'etfs', label: 'ETFs', icon: 'etf' },
     ],
   },
-  { label: 'Insights', items: [{ path: 'recurring', label: 'Recurring', icon: 'repeat' }, { path: 'networth', label: 'Net worth', icon: 'trend' }, { path: 'year', label: 'Year', icon: 'calendar' }] },
-  { label: 'Food', items: [{ path: 'meals', label: 'Meals', icon: 'utensils' }, { path: 'groceries', label: 'Groceries', icon: 'cart' }] },
-  { label: 'App', items: [{ path: 'settings', label: 'Settings', icon: 'sliders' }] },
+  { label: 'Insights', items: [{ path: 'recurring', label: 'Recurring', icon: 'repeat' }, { path: 'networth', label: 'Net worth', icon: 'networth' }, { path: 'year', label: 'Year', icon: 'calendar' }] },
+  { label: 'Food', items: [{ path: 'meals', label: 'Meals', icon: 'utensils' }, { path: 'groceries', label: 'Groceries', icon: 'groceries' }] },
+  { label: 'App', items: [{ path: 'settings', label: 'Settings', icon: 'settings' }] },
 ];
 
 @Component({

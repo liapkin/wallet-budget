@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, resource, signal } from '@angular/
 import { Api, type Row } from './api';
 import { dayLabel, fmt, groupColor, groupDot, HOLLOW } from './format';
 import { Combo, type ComboOption } from './ui/combo';
+import { Pip } from './ui/pip';
 import { Refresh } from './ui/refresh';
 import { Toast } from './ui/toast';
 
@@ -11,7 +12,7 @@ const daysApart = (a: Row, b: Row) => Math.round(Math.abs(Date.parse(a.dateUtc) 
 
 @Component({
   selector: 'app-inbox',
-  imports: [Combo],
+  imports: [Combo, Pip],
   template: `
     <div class="page-head"><h1>Inbox</h1></div>
     <div class="seg" role="group" aria-label="Inbox">
@@ -26,7 +27,7 @@ const daysApart = (a: Row, b: Row) => Math.round(Math.abs(Date.parse(a.dateUtc) 
       } @else if (!dups.hasValue()) {
         <div class="skeleton" style="height: 10rem"></div>
       } @else if (!dups.value()!.length) {
-        <div class="empty"><strong>All clear</strong><span>No possible duplicates.</span></div>
+        <div class="empty"><app-pip scene="all-clear" /><strong>All clear</strong><span>No possible duplicates.</span></div>
       } @else {
         @for (p of dups.value()!; track p.a.id + '-' + p.b.id) {
           <section class="card">
@@ -60,7 +61,7 @@ const daysApart = (a: Row, b: Row) => Math.round(Math.abs(Date.parse(a.dateUtc) 
       } @else if (!cash.value()!.cashAccountId) {
         <div class="empty"><strong>No Wallet account named Cash</strong></div>
       } @else if (!cash.value()!.items.length) {
-        <div class="empty"><strong>All clear</strong><span>Every ATM withdrawal is a transfer to Cash.</span></div>
+        <div class="empty"><app-pip scene="all-clear" /><strong>All clear</strong><span>Every ATM withdrawal is a transfer to Cash.</span></div>
       } @else {
         @for (r of cash.value()!.items; track r.id) {
           <section class="card">
@@ -83,7 +84,7 @@ const daysApart = (a: Row, b: Row) => Math.round(Math.abs(Date.parse(a.dateUtc) 
       } @else if (!unc.hasValue()) {
         <div class="skeleton" style="height: 10rem"></div>
       } @else if (!unc.value()!.length) {
-        <div class="empty"><strong>All clear</strong><span>Every record has a group.</span></div>
+        <div class="empty"><app-pip scene="all-clear" /><strong>All clear</strong><span>Every record has a group.</span></div>
       } @else {
         <div class="scroll tall">
           <table class="stack">

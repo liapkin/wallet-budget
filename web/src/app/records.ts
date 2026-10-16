@@ -8,6 +8,7 @@ import { DateTime } from './ui/date-time';
 import { Icon } from './ui/icons';
 import { MoneyInput } from './ui/money-input';
 import { MonthPicker } from './ui/month-picker';
+import { Pip } from './ui/pip';
 import { Refresh } from './ui/refresh';
 import { Toast } from './ui/toast';
 import { phone } from './ui/viewport';
@@ -16,7 +17,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
 
 @Component({
   selector: 'app-records',
-  imports: [Combo, DateTime, Icon, MoneyInput, MonthPicker],
+  imports: [Combo, DateTime, Icon, MoneyInput, MonthPicker, Pip],
   template: `
     <div class="page-head">
       <h1>Records</h1>
@@ -57,7 +58,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
     @if (rows.isLoading() && !rows.hasValue()) {
       <div class="skeleton" style="height: 12rem"></div>
     } @else if (!visible().length) {
-      <div class="empty scroll"><strong>No records</strong><span>Nothing matches these filters.</span></div>
+      <div class="empty scroll"><app-pip scene="no-records" /><strong>No records</strong><span>Nothing matches these filters.</span></div>
     } @else {
       <div class="scroll tall">
         <table class="stack">

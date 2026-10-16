@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { athensDay } from '../../../shared/src/month.ts';
 import { fmt, groupColor, monthLabel } from './format';
 import { Icon } from './ui/icons';
+import { Pip } from './ui/pip';
 import { Refresh } from './ui/refresh';
 
 type YearData = {
@@ -14,7 +15,7 @@ type YearData = {
 
 @Component({
   selector: 'app-year',
-  imports: [Icon],
+  imports: [Icon, Pip],
   styles: `.kpis { grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); } td .dot { margin-right: var(--sp-2); } .neg { color: var(--good); } .up { color: var(--bad); }`,
   template: `
     <div class="page-head">
@@ -31,7 +32,7 @@ type YearData = {
     } @else if (!data.value()) {
       <div class="card"><div class="skeleton" style="height: 200px"></div></div>
     } @else if (!data.value()!.totalCents && !data.value()!.prevTotalCents) {
-      <div class="card empty"><strong>No spending in {{ year() }}</strong></div>
+      <div class="card empty"><app-pip scene="no-spending" /><strong>No spending in {{ year() }}</strong></div>
     } @else {
       @let d = data.value()!;
       <div class="kpis">

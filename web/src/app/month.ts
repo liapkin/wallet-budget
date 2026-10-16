@@ -9,6 +9,7 @@ import { dayLabel, groupColor, HOLLOW } from './format';
 import { ChartView } from './ui/chart';
 import { Icon } from './ui/icons';
 import { MonthPicker } from './ui/month-picker';
+import { Pip } from './ui/pip';
 import { Refresh } from './ui/refresh';
 import { Toast } from './ui/toast';
 
@@ -16,7 +17,7 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
 
 @Component({
   selector: 'app-month',
-  imports: [Icon, MonthPicker, ChartView, RouterLink, NgTemplateOutlet],
+  imports: [Icon, MonthPicker, ChartView, RouterLink, NgTemplateOutlet, Pip],
   styles: `
     .hero { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-4); }
     .hero .kpi.big { grid-column: span 2; }
@@ -122,7 +123,7 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
           @if (daily().hasData) {
             <app-chart [option]="chart()" [height]="280" />
           } @else {
-            <div class="empty"><strong>No spending yet</strong><span>Nothing recorded for {{ label() }}.</span></div>
+            <div class="empty"><app-pip scene="no-spending" /><strong>No spending yet</strong><span>Nothing recorded for {{ label() }}.</span></div>
           }
         } @else {
           <div class="skeleton" style="height: 280px"></div>
@@ -168,7 +169,7 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
             <p class="muted">{{ month() === cfg.value()!.caps.bufferMonth ? 'Buffer month, no target' : 'No caps before ' + cfg.value()!.caps.applyFrom }}</p>
           }
           @if (!v.bars.length) {
-            <div class="empty"><strong>No spending yet</strong><span>Nothing recorded for {{ label() }}.</span></div>
+            <div class="empty"><app-pip scene="no-spending" /><strong>No spending yet</strong><span>Nothing recorded for {{ label() }}.</span></div>
           }
           <div class="rows">
             @for (b of v.bars; track b.group) {
@@ -207,7 +208,7 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
           <a routerLink="/records">All records →</a>
         </div>
         @if (records.value() && !latest().length) {
-          <div class="empty"><strong>No records</strong><span>Nothing recorded for {{ label() }}.</span></div>
+          <div class="empty"><app-pip scene="no-records" /><strong>No records</strong><span>Nothing recorded for {{ label() }}.</span></div>
         }
         <ul class="latest">
           @for (r of latest(); track r.id) {
