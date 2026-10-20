@@ -9,6 +9,7 @@ import { startScheduler } from './scheduler.ts';
 import { importCrypto, refreshHoldings } from './holdings.ts';
 import { walletPayload } from './wallet-payload.ts';
 import { dietConfigError } from './diet-config.ts';
+import { habitsConfigError } from './habits-config.ts';
 import { athensDay, athensLocalToUtc, athensMonth } from '../../shared/src/month.ts';
 import { capsFor, monthStatus } from '../../shared/src/budget.ts';
 import { monthClose, pairKey, possibleDuplicates, recurring, suggestGroup, yearReview } from '../../shared/src/insights.ts';
@@ -62,9 +63,11 @@ app.get('/api/config', (req, res) => {
 export function updateConfig(req: Request, res: Response) {
   const body = req.body;
   if (!body || typeof body !== 'object' || Array.isArray(body)) bad('config must be an object');
-  for (const k of Object.keys(getConfig())) if (k !== 'currency' && !(k in body)) bad(`missing config key: ${k}`);
+  for (const k of Object.keys(getConfig())) if (k !== 'currency' && k !== 'habits' && !(k in body)) bad(`missing config key: ${k}`);
   const dietError = dietConfigError(body.diet);
   if (dietError) bad(dietError);
+  const habitsError = habitsConfigError(body.habits);
+  if (habitsError) bad(habitsError);
   try {
     setConfig(body as Config);
   } catch (e) {
@@ -464,6 +467,48 @@ app.get('/api/year/:y', (req, res) => {
   const cell = (s: string) => (/[",\n]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s);
   const lines = ['group,amount,prev,delta', ...review.groups.map((g) => [cell(g.group), eur(g.cents), eur(g.prevCents), eur(g.deltaCents)].join(','))];
   res.type('text/csv').attachment(`year-${year}.csv`).send(lines.join('\n') + '\n');
+});
+
+const dayParam = (v: unknown): string => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v)) ? v : bad('day must be YYYY-MM-DD'));
+const habitParam = (v: unknown): string => (getConfig().habits?.some((h) => h.id === v) ? (v as string) : bad('unknown habit'));
+
+app.get('/api/habits', (req, res) => {
+  const from = dayParam(req.query.from);
+  const to = dayParam(req.query.to);
+  res.json(db.prepare('SELECT day, habit FROM habit_log WHERE day BETWEEN ? AND ? ORDER BY day, habit').all(from, to));
+});
+
+app.put('/api/habits/:day/:habit', (req, res) => {
+  db.prepare('INSERT OR IGNORE INTO habit_log (day, habit) VALUES (?, ?)').run(dayParam(req.params.day), habitParam(req.params.habit));
+  res.status(204).end();
+});
+
+app.delete('/api/habits/:day/:habit', (req, res) => {
+  db.prepare('DELETE FROM habit_log WHERE day=? AND habit=?').run(dayParam(req.params.day), req.params.habit);
+  res.status(204).end();
+});
+
+app.get('/api/push/key', (req, res) => {
+  res.json({ key: runtimeEnv().VAPID_PUBLIC_KEY || null });
+});
+
+// Never log subscriptions: the endpoint is a bearer URL for pushing to this device.
+app.post('/api/push/subscribe', (req, res) => {
+  const { endpoint, keys } = req.body ?? {};
+  let https = false;
+  try {
+    https = typeof endpoint === 'string' && new URL(endpoint).protocol === 'https:';
+  } catch {}
+  if (!https || typeof keys?.p256dh !== 'string' || typeof keys?.auth !== 'string' || !keys.p256dh || !keys.auth) bad('invalid push subscription');
+  db.prepare('INSERT OR REPLACE INTO push_subscriptions (endpoint, json) VALUES (?, ?)').run(endpoint, JSON.stringify({ endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth } }));
+  res.status(204).end();
+});
+
+app.delete('/api/push/subscribe', (req, res) => {
+  const endpoint = req.body?.endpoint;
+  if (typeof endpoint !== 'string' || !endpoint) bad('endpoint required');
+  db.prepare('DELETE FROM push_subscriptions WHERE endpoint=?').run(endpoint);
+  res.status(204).end();
 });
 
 const syncController = () => currentRuntime()?.sync ?? localSyncController;

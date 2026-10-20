@@ -13,6 +13,7 @@ export const TABLES = {
   crypto_snapshots: ['ts', 'symbol', 'amount', 'price_cents', 'pct24h', 'kind'],
   dup_decisions: ['a', 'b', 'decision'],
   month_close: ['month', 'json'],
+  habit_log: ['day', 'habit'],
 } as const;
 
 export type TableName = keyof typeof TABLES;

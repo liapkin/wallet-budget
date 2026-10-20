@@ -12,7 +12,9 @@ import { accessToken, verifyAccessJwt, type AccessSettings } from './access.ts';
 import { DurableDatabase, type DurableStorage } from './database.ts';
 import { MigrationStore } from './migration.ts';
 import { routeKey, UsageMeter } from './meter.ts';
-import { canRunSync, nextAlarmAt, SYNC_INTERVAL_MS } from './schedule.ts';
+import { nextReminderAt } from '../../shared/src/habits.ts';
+import type { Habit } from '../../shared/src/types.ts';
+import { canRunSync, nextAlarmAt, sendReminders, SYNC_INTERVAL_MS } from './schedule.ts';
 
 const BLOCKED_RETRY_MS = 300_000;
 
@@ -29,6 +31,8 @@ interface Env extends AccessSettings {
   RECOVERY_ENABLED?: string;
   WALLET_API_TOKEN?: string;
   COINMARKETCAP_API_KEY?: string;
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_KEY?: string;
 }
 
 const runtimeEnv = (env: Env): Record<string, string | undefined> => ({
@@ -36,6 +40,7 @@ const runtimeEnv = (env: Env): Record<string, string | undefined> => ({
   MIGRATION_ENABLED: env.MIGRATION_ENABLED,
   WALLET_API_TOKEN: env.WALLET_API_TOKEN,
   COINMARKETCAP_API_KEY: env.COINMARKETCAP_API_KEY,
+  VAPID_PUBLIC_KEY: env.VAPID_PUBLIC_KEY,
 });
 
 const accessRequired = (): Response => new Response(JSON.stringify({ error: 'Access required', code: 'ACCESS_REQUIRED' }), {
@@ -91,14 +96,30 @@ export class BudgetObject extends DurableObject<Env> {
     this.db = new DurableDatabase(ctx.storage as unknown as DurableStorage);
     this.migration = new MigrationStore(this.db);
     this.recovery = ctx.storage;
-    this.sync = new CloudSyncController((time) => ctx.storage.setAlarm(time));
+    this.sync = new CloudSyncController((time) => this.arm(time));
     this.runtime = { db: this.db, env: runtimeEnv(env), sync: this.sync };
     ctx.blockConcurrencyWhile(async () => {
       const initial = env.PREVIEW_SEED === '1' ? seedToConfig(seed as Parameters<typeof seedToConfig>[0]) : undefined;
       initializeSchema(this.db, initial);
       if (env.PREVIEW_SEED === '1') this.migration.markReady();
-      if ((await ctx.storage.getAlarm()) === null) await ctx.storage.setAlarm(Date.now());
+      if ((await ctx.storage.getAlarm()) === null) await this.arm(Date.now());
     });
+  }
+
+  private habits(): Habit[] {
+    const row = this.db.prepare('SELECT json FROM config').get() as { json: string } | undefined;
+    return row ? (JSON.parse(row.json).habits ?? []) : [];
+  }
+
+  private syncDue(): number {
+    return this.ctx.storage.kv.get<number>('sync_due_at') ?? 0;
+  }
+
+  /** One DO alarm serves both: the sync schedule (kept in DO kv as sync_due_at) and the next habit reminder. */
+  private async arm(syncDue: number): Promise<void> {
+    this.ctx.storage.kv.put('sync_due_at', syncDue); // not in SQL: the migration needs sync_state empty
+    const reminder = this.env.VAPID_PRIVATE_KEY && this.env.VAPID_PUBLIC_KEY ? nextReminderAt(this.habits(), new Date().toISOString()) : undefined;
+    await this.ctx.storage.setAlarm(Math.min(syncDue, reminder ?? Infinity));
   }
 
   private async recoveryRequest(request: Request): Promise<Response> {
@@ -129,7 +150,7 @@ export class BudgetObject extends DurableObject<Env> {
     if (this.env.MIGRATION_ENABLED === '1') {
       if (path.startsWith('/__cloud/migration/') || path === '/__cloud/export') {
         const response = await this.migration.handle(request);
-        if (response.ok && path === '/__cloud/migration/finalize') await this.ctx.storage.setAlarm(Date.now());
+        if (response.ok && path === '/__cloud/migration/finalize') await this.arm(Date.now());
         return response;
       }
       return new Response('Maintenance', { status: 503, headers: { 'cache-control': 'no-store', 'retry-after': '60' } });
@@ -142,6 +163,7 @@ export class BudgetObject extends DurableObject<Env> {
     if (!path.startsWith('/api/')) return withRuntime(this.runtime, () => handleAsNodeRequest(EXPRESS_PORT, request));
     const { result, meter } = await this.usage.track(routeKey(request.method, path), () =>
       withRuntime(this.runtime, () => handleAsNodeRequest(EXPRESS_PORT, request)));
+    if (request.method === 'PUT' && path === '/api/config' && result.ok) await this.arm(this.syncDue()); // habit times may have changed
     const response = new Response(result.body, result);
     response.headers.set('x-rows-read', String(meter.rowsRead));
     response.headers.set('x-rows-written', String(meter.rowsWritten));
@@ -151,9 +173,18 @@ export class BudgetObject extends DurableObject<Env> {
   async alarm(): Promise<void> {
     const flags = { ready: this.migration.ready(), migrationEnabled: this.env.MIGRATION_ENABLED === '1', recoveryEnabled: this.env.RECOVERY_ENABLED === '1' };
     if (!canRunSync(flags)) {
-      await this.ctx.storage.setAlarm(Date.now() + BLOCKED_RETRY_MS);
+      await this.arm(Date.now() + BLOCKED_RETRY_MS);
       return;
     }
+    const now = Date.now();
+    const { VAPID_PUBLIC_KEY: publicKey, VAPID_PRIVATE_KEY: privateKey, OWNER_EMAIL } = this.env;
+    try {
+      const keys = publicKey && privateKey ? { publicKey, privateKey, subject: `mailto:${OWNER_EMAIL ?? 'owner@example.invalid'}` } : undefined;
+      await sendReminders(this.db, this.habits(), keys, now);
+    } catch (e) {
+      console.error('reminders failed:', (e as Error).message); // must not end the sync schedule
+    }
+    if (now < this.syncDue()) return this.arm(this.syncDue());
     await this.usage.track('alarm:sync', () => withRuntime(this.runtime, () => this.sync.step()));
   }
 }

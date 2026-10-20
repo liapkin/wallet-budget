@@ -33,6 +33,8 @@ CREATE TABLE IF NOT EXISTS balance_snapshots (day TEXT, account TEXT, balance_ce
 CREATE TABLE IF NOT EXISTS crypto_snapshots (ts TEXT, symbol TEXT, amount REAL, price_cents INTEGER, pct24h REAL, PRIMARY KEY(ts, symbol));
 CREATE TABLE IF NOT EXISTS dup_decisions (a INTEGER, b INTEGER, decision TEXT CHECK(decision IN ('dup','not')), PRIMARY KEY(a, b));
 CREATE TABLE IF NOT EXISTS month_close (month TEXT PRIMARY KEY, json TEXT);
+CREATE TABLE IF NOT EXISTS habit_log (day TEXT, habit TEXT, PRIMARY KEY(day, habit));
+CREATE TABLE IF NOT EXISTS push_subscriptions (endpoint TEXT PRIMARY KEY, json TEXT);
 CREATE INDEX IF NOT EXISTS records_month ON records(month);
 CREATE INDEX IF NOT EXISTS records_source_date ON records(source, date_utc);
 CREATE INDEX IF NOT EXISTS records_grp ON records(grp);
@@ -41,6 +43,7 @@ CREATE INDEX IF NOT EXISTS records_grp ON records(grp);
 const normalizeConfig = (cfg: Config): Config => ({
   ...cfg,
   currency: cfg.currency ?? 'EUR',
+  habits: cfg.habits ?? [],
   investing: {
     ...cfg.investing,
     crypto: (cfg.investing.crypto ?? []).map((h) => ({ ...h, paid: h.paid ?? 0 })),

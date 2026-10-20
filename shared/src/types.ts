@@ -18,7 +18,10 @@ export type Currency = 'EUR' | 'USD';
 // cents; perMonth 0 = no cap
 export type Goal = { target: number; accounts: string[]; depositTo: string; perMonth: number };
 
+export type Habit = { id: string; name: string; time?: string; note?: string }; // time is Athens-local HH:MM
+
 export type Config = {
+  habits?: Habit[];
   currency?: Currency; // omitted in legacy configs = EUR; one denomination per database
   income: {
     netSalaryPerMonth: number;
