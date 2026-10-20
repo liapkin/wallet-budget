@@ -54,6 +54,8 @@ Local server listens on localhost only. The database, exports, `.env` and person
 
 Optional Cloudflare deployment serves this app from a free HTTPS address, with owner-only Cloudflare Access and a SQLite-backed Durable Object. Install through Android Chrome's menu; viewing and edits require internet. Local mode and demo remain available, without automatic database synchronization.
 
+Habits are a daily checklist with optional reminder times, seeded from `habits` in the seed config. Reminders are Web Push and hosted only: Android Chrome receives them; on iOS the app must be added to the Home Screen first. VAPID setup: [cloud/OPERATIONS.md](cloud/OPERATIONS.md).
+
 Run `pnpm cloud:check` for cloud validation. Production frontend builds run in Cloudflare's build pipeline. Deployment, migration, free-tier limits and recovery: [docs/HOSTING.md](docs/HOSTING.md).
 
 ## Credits

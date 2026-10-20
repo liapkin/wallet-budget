@@ -98,7 +98,16 @@ Fifteen years, yearly steps. Contribution in year n = annual investing × (1 + s
 - Grocery list: weekly items and a monthly pantry. Cost = quantity × (offer price if present, else regular price). Monthly cost = weekly × 52/12 + pantry, compared with the groceries core line.
 - Weekly ingredient quantities are derived from the week's meals.
 
-## 6. Screens
+## 6. Habits
+
+- A habit is config: `id`, `name`, optional `time` (`HH:MM`, Europe/Athens) and optional `note`. Seeded from `habits` in the seed config; editable in the app.
+- The done log holds one row per habit per Athens-local day.
+- Streak: consecutive done days ending today, or ending yesterday when today is not yet done.
+- Reminders fire once per habit per day, at its time, while the habit is not done. Delivery is Web Push to every subscribed device. Hosted only; local mode sends none.
+- Reminder text holds only the habit name and note.
+- Push subscriptions are device-bound and are not migrated or backed up.
+
+## 7. Screens
 
 1. **Month** (home): groups against plan and caps, takeout per day, days left, investing remainder so far, savings, invested and payroll balances.
 2. **History**: one row per month, same columns, duplicates excluded.
@@ -108,7 +117,7 @@ Fifteen years, yearly steps. Contribution in year n = annual investing × (1 + s
 6. **Meal plan** and **Grocery list**.
 7. **Investing**: the projection.
 
-## 7. Phases and acceptance checks
+## 8. Phases and acceptance checks
 
 Acceptance values for a specific dataset live in docs/SPEC.local.md and *.local.test.ts. Tracked tests use `config/seed-config.example.json` or inline fixtures.
 
@@ -117,5 +126,6 @@ Acceptance values for a specific dataset live in docs/SPEC.local.md and *.local.
 3. **Budget, caps, core actuals, Month screen.** With the seed values the allocation sums to the salary.
 4. **Meal plan and grocery list.** Day totals, week average, protein target and grocery cost follow the formulas in section 5.
 5. **Investing projection.** Contribution, balance and first-year-covering-house-cash follow section 4.
+6. **Habits.** A streak with done days two and one days ago and today not done is 2; marking today done makes it 3. A habit at 14:00 not yet done sends one push per subscribed device at 14:00 Athens time; a second run that day sends nothing; a habit done before its time sends nothing. Local mode sends no push. Reminder payloads contain only the habit name and note. Reminder times stay at the same Athens-local hour across the DST change.
 
 Later, optional: weekly supermarket offers suggesting offer prices; export to xlsx.

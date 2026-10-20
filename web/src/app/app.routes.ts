@@ -3,6 +3,7 @@ import { Actuals } from './actuals';
 import { BudgetEdit } from './budget-edit';
 import { CryptoComponent } from './crypto';
 import { GroceriesComponent } from './groceries';
+import { HabitsComponent } from './habits';
 import { History } from './history';
 import { InvestingComponent } from './investing';
 import { GoalsComponent } from './goals';
@@ -27,6 +28,7 @@ export const routes: Routes = [
   { path: 'actuals', component: Actuals },
   { path: 'meals', component: MealsComponent },
   { path: 'groceries', component: GroceriesComponent },
+  { path: 'habits', component: HabitsComponent },
   { path: 'investing', component: InvestingComponent },
   { path: 'goals', component: GoalsComponent },
   { path: 'crypto', component: CryptoComponent, data: { kind: 'crypto', title: 'Crypto', configKey: 'crypto', import: true } },

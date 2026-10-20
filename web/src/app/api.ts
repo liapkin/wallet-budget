@@ -91,6 +91,12 @@ export class Api {
   refreshHoldings = (kind: 'crypto' | 'etf') => this.write(this.http.post<CryptoData>(`/api/holdings/${kind}/refresh`, {}));
   importCrypto = (body: { overview: string; transactions: string; tag: string }) =>
     this.write(this.http.post<CryptoData>('/api/crypto/import', body));
+  habitLog = (from: string, to: string) => firstValueFrom(this.http.get<{ day: string; habit: string }[]>('/api/habits', { params: { from, to } }));
+  setHabit = (day: string, habit: string, done: boolean) =>
+    firstValueFrom(done ? this.http.put<void>(`/api/habits/${day}/${habit}`, {}) : this.http.delete<void>(`/api/habits/${day}/${habit}`));
+  pushKey = () => firstValueFrom(this.http.get<{ key: string | null }>('/api/push/key'));
+  pushSubscribe = (sub: PushSubscriptionJSON) => firstValueFrom(this.http.post<void>('/api/push/subscribe', sub));
+  pushUnsubscribe = (endpoint: string) => firstValueFrom(this.http.delete<void>('/api/push/subscribe', { body: { endpoint } }));
   sync = () => this.write(this.http.post<SyncJob>('/api/sync', {}));
   syncStatus = () => firstValueFrom(this.http.get<SyncJob>('/api/sync'));
 }

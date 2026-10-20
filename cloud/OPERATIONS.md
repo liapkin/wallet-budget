@@ -20,6 +20,18 @@ Verify both production and preview URLs before uploading data: unauthenticated r
 
 Preview alone sets `PREVIEW_SEED=1`, which seeds generic example data and marks only its isolated namespace ready. Production never sets this variable and remains in maintenance until a validated import finishes.
 
+## Push reminders
+
+Habit reminders use Web Push with a VAPID key pair. Generate it once, outside the project:
+
+```sh
+pnpm dlx web-push generate-vapid-keys
+```
+
+Set the public key as the Worker variable `VAPID_PUBLIC_KEY` in the Wrangler config or the dashboard. Store the private key with `wrangler secret put VAPID_PRIVATE_KEY`; never put it in Wrangler config. Keep the same pair for the life of the deployment: a new pair invalidates every existing subscription.
+
+Push subscriptions are bound to each device and browser. They are not migrated, snapshotted or recovered. After a migration, snapshot restore or recovery, re-enable notifications on each device from the Habits page.
+
 ## Migration and snapshots
 
 Production starts empty and stays in maintenance until a migration has finalized. Set `MIGRATION_ENABLED=1` only for the migration window. This enables only versioned, allowlisted migration/export endpoints. Copy the short-lived `CF_Authorization` application cookie from an authenticated browser; the script reads it through a silent prompt and does not save it in shell history. Then run:

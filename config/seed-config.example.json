@@ -744,5 +744,18 @@
     ],
     "offersSource": "",
     "rule": "cost = qty * (offerPrice ?? regularPrice); monthly = weekly * 52/12 + pantry"
-  }
+  },
+  "habits": [
+    {
+      "id": "stretch",
+      "name": "Stretch",
+      "time": "07:30"
+    },
+    {
+      "id": "read",
+      "name": "Read",
+      "time": "22:00",
+      "note": "20 minutes"
+    }
+  ]
 }
