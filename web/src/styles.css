@@ -83,6 +83,7 @@
 * { box-sizing: border-box; }
 html, body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
 button, a, label, input, select, summary { touch-action: manipulation; }
+html { touch-action: manipulation; }
 body { margin: 0; background: var(--bg); color: var(--text); font: var(--fs)/1.5 var(--font); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
 h1 { font-size: var(--fs-xl); font-weight: 700; letter-spacing: 0; margin: 0; }
@@ -203,6 +204,7 @@ label.switch input:checked::after { transform: translateX(1rem); }
 .skeleton { display: block; min-height: 1em; border-radius: var(--r); background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 50%, var(--surface-2) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite linear; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+@media (prefers-reduced-motion: reduce) { ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none; } }
 .empty { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding: var(--sp-6) var(--sp-4); text-align: center; color: var(--muted); }
 .empty strong { color: var(--text); font-size: var(--fs-lg); }
 
@@ -263,7 +265,7 @@ dialog .actions { display: flex; justify-content: flex-end; gap: var(--sp-2); ma
    - td.stack-hide           hidden on phones
    Above 640px it is a normal table. Wide matrices stay in .scroll (edge shadows, optional .sticky-first). */
 @media (max-width: 640px) {
-  main { padding-inline: 12px; padding-bottom: calc(var(--sp-4) + env(safe-area-inset-bottom)); }
+  main { padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); padding-bottom: calc(var(--sp-4) + env(safe-area-inset-bottom)); }
   .card { padding: var(--sp-4); }
   .card-head { flex-wrap: wrap; gap: var(--sp-2); }
   .seg, .actions, dialog .actions { flex-wrap: wrap; }

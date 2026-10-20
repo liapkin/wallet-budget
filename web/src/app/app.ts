@@ -55,6 +55,7 @@ export class App {
   private moreBtn = viewChild<ElementRef<HTMLButtonElement>>('moreBtn');
   protected ready = signal(false);
   protected hidden = hidden;
+  protected backgrounded = signal(document.visibilityState === 'hidden');
   protected togglePrivacy = togglePrivacy;
   protected theme = theme;
   protected cycleTheme = cycleTheme;
@@ -69,7 +70,14 @@ export class App {
       document.documentElement.classList.toggle('has-tabbar', this.narrow());
     });
     effect(() => {
-      document.body.classList.toggle('privacy', this.hidden());
+      document.body.classList.toggle('privacy', this.hidden() || this.backgrounded());
+    });
+    effect(() => {
+      if (!('setAppBadge' in navigator)) return;
+      const n = this.inbox.value() ?? 0;
+      const badge = n > 0 ? navigator.setAppBadge(n) : navigator.clearAppBadge();
+      // iOS rejects without notification permission; nothing to recover.
+      badge.catch(() => {});
     });
     effect(() => {
       if (this.meta.isLoading() || this.meta.error()) {
@@ -99,6 +107,11 @@ export class App {
     if (!this.menuOpen()) return;
     this.menuOpen.set(false);
     this.moreBtn()?.nativeElement.focus();
+  }
+
+  @HostListener('document:visibilitychange')
+  onVisibilityChange() {
+    this.backgrounded.set(document.visibilityState === 'hidden');
   }
 
   @HostListener('window:keydown', ['$event'])

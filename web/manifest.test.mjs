@@ -22,3 +22,15 @@ test('manifest supports online standalone install', async () => {
     assert.equal(`${png.readUInt32BE(16)}x${png.readUInt32BE(20)}`, icon.sizes);
   }
 });
+
+test('manifest declares app shortcuts with existing icons', async () => {
+  const manifest = JSON.parse(await readFile(new URL('public/manifest.webmanifest', root), 'utf8'));
+  assert.equal(manifest.shortcuts.length, 3);
+  for (const shortcut of manifest.shortcuts) {
+    assert.ok(shortcut.name);
+    assert.match(shortcut.url, /^\//);
+    for (const icon of shortcut.icons) {
+      await readFile(new URL(`public/${icon.src}`, root));
+    }
+  }
+});
