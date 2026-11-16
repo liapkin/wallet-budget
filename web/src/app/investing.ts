@@ -93,17 +93,17 @@ const HOUSE: Field[] = [
             <details>
               <summary>Yearly breakdown</summary>
               <div class="scroll tall" style="box-shadow:none">
-                <table class="sticky-first">
+                <table class="sticky-first stack">
                   <thead><tr><th>Year</th><th class="num">Contribution</th><th class="num">ETF</th><th class="num">House fund</th><th class="num">Total</th><th class="num">Real</th></tr></thead>
                   <tbody>
                     @for (r of rows(); track r.year) {
                       <tr [class.hit]="r.year === covers()">
-                        <td>{{ r.year }}</td>
-                        <td class="num">{{ fmt(r.contribution) }}</td>
-                        <td class="num">{{ fmt(r.etf) }}</td>
-                        <td class="num">{{ fmt(r.houseFund) }}</td>
-                        <td class="num">{{ fmt(r.total) }}</td>
-                        <td class="num">{{ fmt(r.real) }}</td>
+                        <td class="stack-title">{{ r.year }}</td>
+                        <td class="num" data-label="Contribution">{{ fmt(r.contribution) }}</td>
+                        <td class="num" data-label="ETF">{{ fmt(r.etf) }}</td>
+                        <td class="num" data-label="House fund">{{ fmt(r.houseFund) }}</td>
+                        <td class="num" data-label="Total">{{ fmt(r.total) }}</td>
+                        <td class="num" data-label="Real">{{ fmt(r.real) }}</td>
                       </tr>
                     }
                   </tbody>

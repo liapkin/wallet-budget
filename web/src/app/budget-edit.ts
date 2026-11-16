@@ -46,6 +46,10 @@ const SECTIONS = [
     .tools { display: flex; gap: var(--sp-2); align-items: center; margin-bottom: var(--sp-3); }
     .tools input { flex: 1; max-width: 20rem; }
     .chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+    @media (max-width: 640px) {
+      .stack td.del { justify-content: flex-end; }
+      .stack td[data-label] > :is(input, app-combo) { flex: 1; max-width: 62%; }
+    }
     @media (max-width: 800px) {
       .layout { grid-template-columns: minmax(0, 1fr); }
       .layout > * { min-width: 0; }
@@ -108,20 +112,20 @@ const SECTIONS = [
           <section class="card" id="core">
             <h2>Core lines</h2>
             <div class="scroll" style="box-shadow:none">
-              <table>
+              <table class="stack">
                 <thead><tr><th>Label</th><th>Plan</th><th>Source</th><th>Standing</th><th>In plan</th><th>Note</th><th></th></tr></thead>
                 <tbody>
                   @for (l of c.coreExpenses; track $index; let i = $index) {
                     <tr>
-                      <td><input [value]="l.label" (change)="plain('coreExpenses.' + i + '.label', $event, true)" /></td>
-                      <td><span class="affix" [attr.data-pre]="currencySymbol()"><input appMoney type="text" [value]="eur(l.plan)" (change)="money('coreExpenses.' + i + '.plan', $event)" /></span></td>
-                      <td>
+                      <td class="stack-title"><input aria-label="Label" [value]="l.label" (change)="plain('coreExpenses.' + i + '.label', $event, true)" /></td>
+                      <td data-label="Plan"><span class="affix" [attr.data-pre]="currencySymbol()"><input appMoney type="text" [value]="eur(l.plan)" (change)="money('coreExpenses.' + i + '.plan', $event)" /></span></td>
+                      <td data-label="Source">
                         <app-combo [options]="sourceOptions(l.source)" [value]="l.source" ariaLabel="Source" (changed)="set('coreExpenses.' + i + '.source', $event)" />
                       </td>
-                      <td><label class="switch"><input type="checkbox" aria-label="Standing" [checked]="l.standing !== false" (change)="check('coreExpenses.' + i + '.standing', $event)" /></label></td>
-                      <td><label class="switch"><input type="checkbox" aria-label="In plan" [checked]="l.inPlan !== false" (change)="check('coreExpenses.' + i + '.inPlan', $event)" /></label></td>
-                      <td><input [value]="l.note ?? ''" (change)="plain('coreExpenses.' + i + '.note', $event, true)" /></td>
-                      <td><button class="icon danger" aria-label="Delete line" (click)="remove('coreExpenses', i)"><app-icon name="trash" /></button></td>
+                      <td data-label="Standing"><label class="switch"><input type="checkbox" aria-label="Standing" [checked]="l.standing !== false" (change)="check('coreExpenses.' + i + '.standing', $event)" /></label></td>
+                      <td data-label="In plan"><label class="switch"><input type="checkbox" aria-label="In plan" [checked]="l.inPlan !== false" (change)="check('coreExpenses.' + i + '.inPlan', $event)" /></label></td>
+                      <td data-label="Note"><input [value]="l.note ?? ''" (change)="plain('coreExpenses.' + i + '.note', $event, true)" /></td>
+                      <td class="del"><button class="icon danger" aria-label="Delete line" (click)="remove('coreExpenses', i)"><app-icon name="trash" /></button></td>
                     </tr>
                   }
                 </tbody>
@@ -169,14 +173,14 @@ const SECTIONS = [
               <button (click)="add('wallet.merchantKeywords', { keyword: '', group: c.wallet.groups[0] }); kwQ.set('')"><app-icon name="plus" [size]="14" /> Add keyword</button>
             </div>
             <div class="scroll tall" style="box-shadow:none">
-              <table>
+              <table class="stack">
                 <tbody>
                   @for (k of c.wallet.merchantKeywords; track $index; let i = $index) {
                     @if (match(k.keyword, k.group, kwQ())) {
                       <tr>
-                        <td><input [value]="k.keyword" (change)="plain('wallet.merchantKeywords.' + i + '.keyword', $event, true)" /></td>
-                        <td><app-combo [options]="groupOptions()" [value]="k.group" ariaLabel="Group" (changed)="set('wallet.merchantKeywords.' + i + '.group', $event)" /></td>
-                        <td><button class="icon danger" aria-label="Delete keyword" (click)="remove('wallet.merchantKeywords', i)"><app-icon name="trash" /></button></td>
+                        <td class="stack-title"><input aria-label="Keyword" [value]="k.keyword" (change)="plain('wallet.merchantKeywords.' + i + '.keyword', $event, true)" /></td>
+                        <td data-label="Group"><app-combo [options]="groupOptions()" [value]="k.group" ariaLabel="Group" (changed)="set('wallet.merchantKeywords.' + i + '.group', $event)" /></td>
+                        <td class="del"><button class="icon danger" aria-label="Delete keyword" (click)="remove('wallet.merchantKeywords', i)"><app-icon name="trash" /></button></td>
                       </tr>
                     }
                   }
@@ -191,14 +195,14 @@ const SECTIONS = [
                 <button (click)="add('wallet.categoryMap', { walletCategory: '', group: c.wallet.groups[0] }); catQ.set('')"><app-icon name="plus" [size]="14" /> Add category</button>
               </div>
               <div class="scroll tall" style="box-shadow:none">
-                <table>
+                <table class="stack">
                   <tbody>
                     @for (k of c.wallet.categoryMap; track $index; let i = $index) {
                       @if (match(k.walletCategory, k.group, catQ())) {
                         <tr>
-                          <td><input [value]="k.walletCategory" (change)="plain('wallet.categoryMap.' + i + '.walletCategory', $event, true)" /></td>
-                          <td><app-combo [options]="groupOptions()" [value]="k.group" ariaLabel="Group" (changed)="set('wallet.categoryMap.' + i + '.group', $event)" /></td>
-                          <td><button class="icon danger" aria-label="Delete category" (click)="remove('wallet.categoryMap', i)"><app-icon name="trash" /></button></td>
+                          <td class="stack-title"><input aria-label="Wallet category" [value]="k.walletCategory" (change)="plain('wallet.categoryMap.' + i + '.walletCategory', $event, true)" /></td>
+                          <td data-label="Group"><app-combo [options]="groupOptions()" [value]="k.group" ariaLabel="Group" (changed)="set('wallet.categoryMap.' + i + '.group', $event)" /></td>
+                          <td class="del"><button class="icon danger" aria-label="Delete category" (click)="remove('wallet.categoryMap', i)"><app-icon name="trash" /></button></td>
                         </tr>
                       }
                     }

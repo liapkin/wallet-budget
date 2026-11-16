@@ -27,7 +27,13 @@ const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: '
     th { white-space: normal; min-width: 5.5rem; line-height: 1.2; vertical-align: bottom; }
     th:first-child { min-width: 0; }
     .zero { color: var(--muted); opacity: 0.6; }
-    @media (max-width: 640px) { th { min-width: 4.5rem; } th, td { padding-inline: var(--sp-2); } }
+    @media (max-width: 640px) {
+      /* one card per period; heat tints only read across a grid */
+      .stack td { background: none !important; position: static; }
+      .stack .sep { border-left: 0; }
+      .stack td small { display: inline; margin-left: var(--sp-2); }
+      .stack tfoot td { border-top: 0; }
+    }
   `,
   template: `
     <div class="page-head">
@@ -66,7 +72,7 @@ const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: '
       </section>
 
       <div class="scroll tall">
-        <table class="sticky-first">
+        <table class="sticky-first stack">
           <thead>
             <tr>
               <th>{{ yearly() ? 'Year' : 'Month' }}</th>
@@ -85,26 +91,28 @@ const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: '
           <tbody>
             @for (r of rows(); track r.period) {
               <tr>
-                <td class="nowrap">
+                <td class="nowrap stack-title">
                   {{ r.label }}
                   @if (r.lower) {
                     <span class="badge" title="records are incomplete before the configured month">lower bound</span>
                   }
                 </td>
                 @for (c of cols(); track c) {
-                  <td class="num" [style.background]="tint(r.cells[c]?.cents ?? 0, c)">
-                    @if (r.cells[c]?.cents) { {{ fmt(r.cells[c].cents) }} } @else { <span class="zero">–</span> }
-                    @if (counted.includes(c) && r.cells[c]) {
-                      <small class="muted">{{ r.cells[c].count }} {{ c === 'Takeout' ? 'orders' : 'visits' }}</small>
-                    }
+                  <td class="num" [class.stack-hide]="!r.cells[c]?.cents" [attr.data-label]="c" [style.background]="tint(r.cells[c]?.cents ?? 0, c)">
+                    <span>
+                      @if (r.cells[c]?.cents) { {{ fmt(r.cells[c].cents) }} } @else { <span class="zero">–</span> }
+                      @if (counted.includes(c) && r.cells[c]) {
+                        <small class="muted">{{ r.cells[c].count }} {{ c === 'Takeout' ? 'orders' : 'visits' }}</small>
+                      }
+                    </span>
                   </td>
                 }
-                <td class="num strong">{{ fmt(r.total) }}</td>
-                <td class="num sep">@if (r.invested) { {{ fmt(r.invested) }} } @else { <span class="zero">–</span> }</td>
-                <td class="num">@if (r.income) { {{ fmt(r.income) }} } @else { <span class="zero">–</span> }</td>
-                <td class="num" [class.err]="r.income > 0 && r.total > r.income">@if (r.income > 0) { {{ saved(r.income, r.total) }} } @else { <span class="zero">–</span> }</td>
+                <td class="num strong" data-label="Total spend">{{ fmt(r.total) }}</td>
+                <td class="num sep" [class.stack-hide]="!r.invested" data-label="Invested">@if (r.invested) { {{ fmt(r.invested) }} } @else { <span class="zero">–</span> }</td>
+                <td class="num" [class.stack-hide]="!r.income" data-label="Income">@if (r.income) { {{ fmt(r.income) }} } @else { <span class="zero">–</span> }</td>
+                <td class="num" [class.stack-hide]="r.income <= 0" data-label="Saved" [class.err]="r.income > 0 && r.total > r.income">@if (r.income > 0) { {{ saved(r.income, r.total) }} } @else { <span class="zero">–</span> }</td>
                 @if (yearly()) {
-                  <td class="num">{{ fmt(r.avg) }}</td>
+                  <td class="num" data-label="Avg / month">{{ fmt(r.avg) }}</td>
                 }
               </tr>
             }
@@ -112,16 +120,16 @@ const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: '
           <tfoot>
             @for (f of foot(); track f.label) {
               <tr>
-                <td class="nowrap">{{ f.label }}</td>
+                <td class="nowrap stack-title">{{ f.label }}</td>
                 @for (c of cols(); track c) {
-                  <td class="num">@if (f.cells[c]) { {{ fmt(f.cells[c]) }} } @else { <span class="zero">–</span> }</td>
+                  <td class="num" [class.stack-hide]="!f.cells[c]" [attr.data-label]="c">@if (f.cells[c]) { {{ fmt(f.cells[c]) }} } @else { <span class="zero">–</span> }</td>
                 }
-                <td class="num">{{ fmt(f.total) }}</td>
-                <td class="num sep">@if (f.invested) { {{ fmt(f.invested) }} } @else { <span class="zero">–</span> }</td>
-                <td class="num">@if (f.income) { {{ fmt(f.income) }} } @else { <span class="zero">–</span> }</td>
-                <td class="num">@if (f.income > 0) { {{ saved(f.income, f.total) }} } @else { <span class="zero">–</span> }</td>
+                <td class="num" data-label="Total spend">{{ fmt(f.total) }}</td>
+                <td class="num sep" [class.stack-hide]="!f.invested" data-label="Invested">@if (f.invested) { {{ fmt(f.invested) }} } @else { <span class="zero">–</span> }</td>
+                <td class="num" [class.stack-hide]="!f.income" data-label="Income">@if (f.income) { {{ fmt(f.income) }} } @else { <span class="zero">–</span> }</td>
+                <td class="num" [class.stack-hide]="f.income <= 0" data-label="Saved">@if (f.income > 0) { {{ saved(f.income, f.total) }} } @else { <span class="zero">–</span> }</td>
                 @if (yearly()) {
-                  <td class="num"></td>
+                  <td class="num stack-hide"></td>
                 }
               </tr>
             }

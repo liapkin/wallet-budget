@@ -57,8 +57,8 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0
         }
       </div>
 
-      <h2>{{ year() }} by month</h2>
-      <div class="scroll">
+      <h2 class="yr">{{ year() }} by month</h2>
+      <div class="scroll yr">
         <table class="sticky-first">
           <thead>
             <tr>
@@ -104,6 +104,8 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0
     td.walletcell { color: var(--muted); }
     .wsum { display: block; }
     td input.cell { width: 5.5rem; }
+    /* phone: the cards above edit any month through the picker; a month x line matrix does not fit */
+    @media (max-width: 640px) { .yr { display: none; } .cards { grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); } }
     @media (max-width: 640px) { td input.cell { width: 4.5rem; min-width: 0; } th, td { padding-inline: var(--sp-2); } th { min-width: 4.5rem; } }
     td .app-icon, td app-icon { color: var(--good); vertical-align: middle; }
     tr.cur td, tr.cur td:first-child { background: var(--accent-soft); }

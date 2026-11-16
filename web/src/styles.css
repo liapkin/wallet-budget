@@ -287,9 +287,11 @@ dialog .actions { display: flex; justify-content: flex-end; gap: var(--sp-2); ma
   .stack td[data-label]::before { content: attr(data-label); color: var(--muted); font-size: var(--fs-sm); text-align: left; white-space: normal; }
   .stack td.stack-title { display: block; font-weight: 700; text-align: left; }
   .stack td.stack-hide { display: none; }
+  .stack tfoot, .stack tfoot tr { display: block; }
+  .stack tfoot tr { background: var(--surface-2); }
   .stack td { overflow-wrap: anywhere; min-width: 0; }
   .stack td input, .stack td select, .stack td app-combo { width: 100%; }
-  .scroll.tall:has(table.stack) { max-height: none; overflow: visible; border: 0; box-shadow: none; background: none; }
+  .scroll:has(table.stack) { max-height: none; overflow: visible; border: 0; box-shadow: none; background: none; }
   .card-head h2, .chip, .stat .value, .kpi .value { overflow-wrap: anywhere; min-width: 0; }
   button.icon { width: 44px; height: 44px; }
   button.link, a.link { min-height: 44px; display: inline-flex; align-items: center; }
