@@ -16,7 +16,6 @@ import { MealsComponent } from './meals';
 import { Month } from './month';
 import { App } from './app';
 import { NetWorth } from './networth';
-import { Recurring } from './recurring';
 import { Records } from './records';
 import { Settings } from './settings';
 import { Year } from './year';
@@ -100,14 +99,6 @@ describe('screen smoke tests', () => {
   it('settings', async () => {
     const el = await mount(Settings);
     expect(el.querySelector('h1')?.textContent).toContain('Settings');
-  });
-  it('recurring: table row', async () => {
-    const items = [{ merchant: 'Streamco', group: 'Subscriptions', typicalCents: 999, lastDate: `${month}-01`, nextDate: `${month}-28` }];
-    const el = await mount(Recurring, { '/api/recurring': { items, monthlyTotalCents: 999 } });
-    expect(el.querySelector('tbody tr')?.textContent).toContain('Streamco');
-  });
-  it('recurring: empty state', async () => {
-    expect((await mount(Recurring)).textContent).toContain('No recurring charges found');
   });
   it('networth', async () => {
     const el = await mount(NetWorth);

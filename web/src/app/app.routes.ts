@@ -11,7 +11,6 @@ import { GoalsComponent } from './goals';
 import { MealsComponent } from './meals';
 import { Month } from './month';
 import { NetWorth } from './networth';
-import { Recurring } from './recurring';
 import { Records } from './records';
 import { Settings } from './settings';
 import { Year } from './year';
@@ -22,7 +21,6 @@ export const routes: Routes = [
   { path: 'analysis/:group', component: Analysis },
   { path: 'history', component: History },
   { path: 'inbox', loadComponent: () => import('./inbox').then((m) => m.Inbox) },
-  { path: 'recurring', component: Recurring },
   { path: 'networth', component: NetWorth },
   { path: 'year', component: Year },
   { path: 'records', component: Records },

@@ -25,7 +25,7 @@ const NAV: { label: string; items: { path: string; label: string; icon: IconName
       { path: 'goals', label: 'Goals', icon: 'goals' }, { path: 'crypto', label: 'Crypto', icon: 'coin' }, { path: 'etfs', label: 'ETFs', icon: 'etf' },
     ],
   },
-  { label: 'Insights', items: [{ path: 'recurring', label: 'Recurring', icon: 'repeat' }, { path: 'networth', label: 'Net worth', icon: 'networth' }, { path: 'year', label: 'Year', icon: 'calendar' }] },
+  { label: 'Insights', items: [{ path: 'networth', label: 'Net worth', icon: 'networth' }, { path: 'year', label: 'Year', icon: 'calendar' }] },
   { label: 'Food', items: [{ path: 'meals', label: 'Meals', icon: 'utensils' }, { path: 'groceries', label: 'Groceries', icon: 'groceries' }] },
   { label: 'Health', items: [{ path: 'habits', label: 'Habits', icon: 'check' }] },
   { label: 'App', items: [{ path: 'settings', label: 'Settings', icon: 'settings' }] },

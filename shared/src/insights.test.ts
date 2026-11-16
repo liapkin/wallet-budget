@@ -1,38 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { merchantOf, recurring, possibleDuplicates, pairKey, suggestGroup, monthClose, yearReview } from './insights.ts';
+import { merchantOf, possibleDuplicates, pairKey, suggestGroup, monthClose, yearReview } from './insights.ts';
 import { seedToConfig } from './seed.ts';
 import { readFileSync } from 'node:fs';
 import type { Rec } from './types.ts';
 
 const rec = (id: number, dateUtc: string, amountCents: number, o: Partial<Rec> = {}): Rec => ({
   id, source: 'api', account: 'a', category: 'c', amountCents, type: 'Expenses', paymentType: 'CARD', note: '', dateUtc, groupOverride: null, ...o,
-});
-const stream = (note: string, amounts: number[], day = 5) =>
-  amounts.map((c, i) => rec(100 + i, `2026-${String(i + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T10:00:00Z`, -c, { note }));
-const grp = () => 'Subs';
-
-test('recurring: monthly stream with noisy notes', () => {
-  const rs = stream('Netflix card 1234 POS', [1000, 1000, 1000]).map((r, i) => ({ ...r, note: `NETFLIX #${i}77 Card ${i}99` }));
-  const [r] = recurring(rs, grp);
-  assert.equal(r.merchant, 'netflix');
-  assert.equal(r.group, 'Subs');
-  assert.equal(r.typicalCents, 1000);
-  assert.equal(r.lastDate, '2026-03-05');
-  assert.equal(r.nextDate, '2026-04-04'); // last + mean gap (59 days / 2 rounded = 30)
-  assert.equal(r.priceChange, undefined);
-});
-
-test('recurring: needs 3, monthly gaps, similar amounts', () => {
-  assert.equal(recurring(stream('x', [1000, 1000]), grp).length, 0);
-  assert.equal(recurring(stream('x', [1000, 1000, 2000]), grp).length, 0);
-  const weekly = [0, 7, 14].map((d, i) => rec(i, `2026-01-${String(d + 1).padStart(2, '0')}T10:00:00Z`, -500, { note: 'gym' }));
-  assert.equal(recurring(weekly, grp).length, 0);
-});
-
-test('recurring: price change on last charge, income ignored', () => {
-  const [r] = recurring([...stream('spotify', [1000, 1000, 1200]), rec(9, '2026-03-06T10:00:00Z', 5000, { type: 'Income', note: 'spotify' })], grp);
-  assert.deepEqual(r.priceChange, { fromCents: 1000, toCents: 1200 });
 });
 
 test('possibleDuplicates: close amount, close date, different account', () => {

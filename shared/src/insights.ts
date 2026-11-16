@@ -1,13 +1,9 @@
-import { athensDay } from './month.ts';
 import type { Summary } from './summary.ts';
 import type { Config, Rec } from './types.ts';
 
 const DAY = 86_400_000;
-const dayNum = (d: string): number => Date.parse(d) / DAY;
-const median = (xs: number[]): number => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
-const addDays = (d: string, n: number): string => new Date((dayNum(d) + n) * DAY).toISOString().slice(0, 10);
 
-// ---- recurring costs
+// ---- merchant matching
 
 // lowercase words only: drops card/terminal numbers, #refs and generic payment noise
 const NOISE = new Set(['card', 'pos', 'terminal', 'tid', 'visa', 'mastercard', 'payment']);
@@ -16,45 +12,6 @@ const words = (note: string): string[] => note.toLowerCase().split(/[^a-zͰ-Ͽ]+
 const LOOKALIKE: Record<string, string> = { α: 'a', β: 'b', ε: 'e', ζ: 'z', η: 'h', ι: 'i', κ: 'k', μ: 'm', ν: 'n', ο: 'o', ρ: 'p', τ: 't', υ: 'y', χ: 'x' };
 const foldWord = (w: string): string => (/[a-z]/.test(w) ? w.replace(/[α-ω]/g, (c) => LOOKALIKE[c] ?? c) : w);
 export const merchantOf = (note: string): string => words(note).map(foldWord).join(' ');
-
-export type Recurring = {
-  merchant: string;
-  group: string;
-  typicalCents: number;
-  lastDate: string;
-  nextDate: string;
-  priceChange?: { fromCents: number; toCents: number };
-};
-
-export function recurring(recs: Rec[], groupOf: (r: Rec) => string): Recurring[] {
-  const byMerchant = new Map<string, Rec[]>();
-  for (const r of recs) {
-    const m = merchantOf(r.note);
-    if (r.type === 'Expenses' && m) byMerchant.set(m, [...(byMerchant.get(m) ?? []), r]);
-  }
-  const out: Recurring[] = [];
-  for (const [merchant, all] of byMerchant) {
-    const rs = all.sort((a, b) => a.dateUtc.localeCompare(b.dateUtc));
-    const amounts = rs.map((r) => -r.amountCents);
-    const typical = median(amounts.slice(0, -1).length ? amounts.slice(0, -1) : amounts); // history, not the latest charge
-    const dates = rs.map((r) => athensDay(r.dateUtc));
-    const gaps = dates.slice(1).map((d, i) => dayNum(d) - dayNum(dates[i]));
-    const last = amounts[amounts.length - 1];
-    // ~monthly: 25-35 days apart; history within 15% of typical, the latest charge within 50% (a price change)
-    if (rs.length < 3 || gaps.some((g) => g < 25 || g > 35)) continue;
-    if (amounts.slice(0, -1).some((a) => Math.abs(a - typical) > typical * 0.15) || Math.abs(last - typical) > typical * 0.5) continue;
-    const lastDate = dates[dates.length - 1];
-    out.push({
-      merchant,
-      group: groupOf(rs[rs.length - 1]),
-      typicalCents: typical,
-      lastDate,
-      nextDate: addDays(lastDate, Math.round((dayNum(lastDate) - dayNum(dates[0])) / gaps.length)),
-      ...(Math.abs(last - typical) > typical * 0.01 ? { priceChange: { fromCents: typical, toCents: last } } : {}),
-    });
-  }
-  return out.sort((a, b) => b.typicalCents - a.typicalCents);
-}
 
 // ---- possible duplicates
 

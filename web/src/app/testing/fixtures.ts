@@ -39,7 +39,6 @@ export const responses = (): Record<string, unknown> => ({
   '/api/cash-topups': { cashAccountId: null, items: [] },
   '/api/unclassified': [],
   [`/api/month-close/${month}`]: { transfers: [], done: [] },
-  '/api/recurring': { items: [], monthlyTotalCents: 0 },
   '/api/balances/history': [],
   '/api/holdings/crypto': emptyHoldings,
   '/api/holdings/etf': emptyHoldings,
