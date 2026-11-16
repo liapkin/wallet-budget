@@ -12,6 +12,15 @@ export function editDraft<T>(draft: WritableSignal<T | null>, fn: (c: T) => void
   });
 }
 
+let pending: (() => boolean) | null = null;
+/** True while the page on screen holds unsaved edits; the route guard asks before leaving. */
+export const unsaved = (): boolean => pending?.() ?? false;
+/** Registers a page's dirty check for the route guard. Call in an injection context. */
+export function trackUnsaved(dirty: () => boolean) {
+  pending = dirty;
+  inject(DestroyRef).onDestroy(() => { if (pending === dirty) pending = null; });
+}
+
 /** Saved/draft config pair with dirty tracking, save and the unsaved-changes unload guard. Call in an injection context. */
 export function configDraft(savedMsg: string, onSaved?: (c: Config) => void) {
   const api = inject(Api);
@@ -27,6 +36,7 @@ export function configDraft(savedMsg: string, onSaved?: (c: Config) => void) {
   };
   api.config().then(load, () => failed.set(true));
 
+  trackUnsaved(dirty);
   const unload = (e: BeforeUnloadEvent) => dirty() && e.preventDefault();
   window.addEventListener('beforeunload', unload);
   inject(DestroyRef).onDestroy(() => window.removeEventListener('beforeunload', unload));

@@ -28,6 +28,7 @@ async function setup(narrow: boolean, inbox = 0) {
   const http = TestBed.inject(HttpTestingController);
   http.match('/api/possible-duplicates').forEach((r) => r.flush(Array(inbox).fill({})));
   http.match('/api/unclassified').forEach((r) => r.flush([]));
+  http.match('/api/cash-topups').forEach((r) => r.flush({ cashAccountId: null, items: [] }));
   await fixture.whenStable();
   fixture.detectChanges();
   return fixture;

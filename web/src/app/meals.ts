@@ -5,7 +5,7 @@ import { fmt, val } from './format.ts';
 import type { Config } from '../../../shared/src/types.ts';
 import { Api } from './api';
 import { Combo } from './ui/combo';
-import { editDraft } from './ui/config-draft';
+import { editDraft, trackUnsaved } from './ui/config-draft';
 import { Toast } from './ui/toast';
 
 type Row = Record<string, string>;
@@ -233,6 +233,7 @@ export class MealsComponent {
     if (!cfg || !dft) return false;
     return JSON.stringify(cfg) !== JSON.stringify(dft);
   });
+  private guard = trackUnsaved(this.dirty);
 
   constructor() {
     // Keep draft in sync with loaded config

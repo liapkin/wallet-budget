@@ -26,7 +26,7 @@ function keyBytes(b64url: string) {
     .row .grow { flex: 1; min-width: 0; }
     .tick { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; padding: 0; border: 1px solid var(--border); border-radius: var(--r); background: transparent; color: var(--accent); cursor: pointer; }
     .tick[aria-pressed='true'] { background: var(--accent-soft); border-color: var(--accent); }
-    .overdue { color: var(--err, #c0392b); }
+    .overdue { color: var(--bad); }
     .cells { display: flex; gap: 2px; flex-wrap: wrap; margin-top: var(--sp-1); }
     .cells i { width: 0.6rem; height: 0.6rem; border-radius: 2px; background: var(--border); }
     .cells i.on { background: var(--accent); }

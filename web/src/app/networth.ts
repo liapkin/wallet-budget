@@ -23,11 +23,11 @@ type Snap = { day: string; account: string; balanceCents: number };
       <div class="card"><div class="skeleton" style="height: 240px"></div></div>
     } @else {
       <div class="kpis">
-        <div class="kpi"><div class="label">Savings</div><div class="value">{{ fmt(today().savings) }}</div></div>
+        <div class="kpi"><div class="label">Savings</div><div class="value">{{ fmt(today().savings) }}</div>@if (ago(); as a) { <div class="sub">{{ delta(today().savings - a.savings) }} vs 30 days ago</div> }</div>
         @for (n of invNames(); track n) {
           <div class="kpi"><div class="label">{{ n }}</div><div class="value">{{ fmt(today().inv[n]) }}</div></div>
         }
-        <div class="kpi big"><div class="label">Total</div><div class="value">{{ fmt(today().total) }}</div></div>
+        <div class="kpi big"><div class="label">Total</div><div class="value">{{ fmt(today().total) }}</div>@if (ago(); as a) { <div class="sub">{{ delta(today().total - a.total) }} vs 30 days ago</div> }</div>
       </div>
       @if (days().length > 1) {
         <section class="card"><div class="card-head"><h2>Balance over time</h2></div><app-chart [option]="chart()" [height]="chartH()" /></section>
@@ -66,6 +66,14 @@ export class NetWorth {
   );
   protected invNames = computed(() => this.data.value()!.cfg.allocation.investmentAccounts);
   protected days = computed(() => [...new Set(this.data.value()?.history.map((h) => h.day))].sort());
+
+  /** Balances at the latest snapshot at least 30 days old; null while history is shorter. */
+  protected ago = computed(() => {
+    const cut = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+    const day = this.days().filter((d) => d <= cut).at(-1);
+    return day ? this.split(this.data.value()!.history.filter((x) => x.day === day).map((x) => ({ name: x.account, cents: x.balanceCents }))) : null;
+  });
+  protected delta = (c: number) => (c < 0 ? '−' : '+') + fmt(Math.abs(c));
 
   protected chart = computed(() => {
     const h = this.data.value()!.history;

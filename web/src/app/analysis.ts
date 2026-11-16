@@ -35,7 +35,7 @@ const LIST_CAP = 50;
       </div>
     </div>
     @if (data.error() || summary.error()) {
-      <p class="err">Failed to load analysis. Check that the server is running.</p>
+      <p class="err">Could not load analysis. <button type="button" (click)="data.reload(); summary.reload()">Retry</button></p>
     } @else if (!data.value() || !summary.value()) {
       <div class="card"><div class="skeleton" style="height: 300px"></div></div>
     } @else {

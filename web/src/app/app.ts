@@ -44,10 +44,10 @@ export class App {
   private api = inject(Api);
   private http = inject(HttpClient);
   /** Badge is decorative: a failed count shows nothing rather than an error. */
-  private count = (url: string) => firstValueFrom(this.http.get<unknown[]>(url)).then((l) => l.length, () => 0);
+  private count = (url: string) => firstValueFrom(this.http.get<unknown[] | { items: unknown[] }>(url)).then((l) => (Array.isArray(l) ? l : l.items).length, () => 0);
   protected inbox = resource({
     params: () => this.refresh.tick(),
-    loader: async () => (await Promise.all([this.count('/api/possible-duplicates'), this.count('/api/unclassified')])).reduce((n, c) => n + c, 0),
+    loader: async () => (await Promise.all([this.count('/api/possible-duplicates'), this.count('/api/unclassified'), this.count('/api/cash-topups')])).reduce((n, c) => n + c, 0),
   });
   protected narrow = narrow;
   protected menuOpen = signal(false);
@@ -56,6 +56,7 @@ export class App {
   protected ready = signal(false);
   protected hidden = hidden;
   protected backgrounded = signal(document.visibilityState === 'hidden');
+  private hiddenAt = 0;
   protected togglePrivacy = togglePrivacy;
   protected theme = theme;
   protected cycleTheme = cycleTheme;
@@ -116,7 +117,14 @@ export class App {
 
   @HostListener('document:visibilitychange')
   onVisibilityChange() {
-    this.backgrounded.set(document.visibilityState === 'hidden');
+    const away = document.visibilityState === 'hidden';
+    this.backgrounded.set(away);
+    if (away) return void (this.hiddenAt = Date.now());
+    // the server syncs hourly on its own; an installed app resumed later would keep showing what it loaded before
+    if (this.hiddenAt && Date.now() - this.hiddenAt > 5 * 60_000) {
+      this.api.clearCache();
+      this.refresh.tick.update((n) => n + 1);
+    }
   }
 
   @HostListener('window:keydown', ['$event'])

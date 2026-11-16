@@ -32,6 +32,7 @@ describe('App', () => {
     const http = TestBed.inject(HttpTestingController);
     http.match('/api/possible-duplicates').forEach((r) => r.flush([]));
     http.match('/api/unclassified').forEach((r) => r.flush([]));
+    http.match('/api/cash-topups').forEach((r) => r.flush({ cashAccountId: null, items: [] }));
     await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelectorAll('.accent-soft').length).toBe(2);

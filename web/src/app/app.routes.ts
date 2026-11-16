@@ -14,8 +14,9 @@ import { NetWorth } from './networth';
 import { Records } from './records';
 import { Settings } from './settings';
 import { Year } from './year';
+import { unsaved } from './ui/config-draft';
 
-export const routes: Routes = [
+const pages: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'month' },
   { path: 'month', component: Month },
   { path: 'analysis/:group', component: Analysis },
@@ -35,3 +36,7 @@ export const routes: Routes = [
   { path: 'etfs', component: CryptoComponent, data: { kind: 'etf', title: 'ETFs', configKey: 'etfs', import: false } },
   { path: 'settings', component: Settings },
 ];
+
+// in-app navigation would otherwise drop a config draft silently; beforeunload only covers reloads
+const keepDraft = () => !unsaved() || confirm('Discard unsaved changes?');
+export const routes: Routes = pages.map((r) => (r.redirectTo ? r : { ...r, canDeactivate: [keepDraft] }));

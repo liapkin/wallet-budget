@@ -2,11 +2,11 @@ import { Component, effect, ElementRef, input, OnDestroy, viewChild } from '@ang
 import { hidden } from './privacy.ts';
 import { isDark } from './theme.ts';
 import { BarChart, LineChart, PieChart } from 'echarts/charts';
-import { DatasetComponent, GridComponent, LegendComponent, MarkLineComponent, TooltipComponent } from 'echarts/components';
+import { AriaComponent, DatasetComponent, GridComponent, LegendComponent, MarkLineComponent, TooltipComponent } from 'echarts/components';
 import * as echarts from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
 
-echarts.use([BarChart, LineChart, PieChart, GridComponent, TooltipComponent, LegendComponent, DatasetComponent, MarkLineComponent, CanvasRenderer]);
+echarts.use([AriaComponent, BarChart, LineChart, PieChart, GridComponent, TooltipComponent, LegendComponent, DatasetComponent, MarkLineComponent, CanvasRenderer]);
 
 const css = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 
@@ -114,7 +114,7 @@ export class ChartView implements OnDestroy {
     }
     const n = Array.isArray(opt.series) ? opt.series.length : opt.series ? 1 : 0;
     if (opt.tooltip && typeof opt.tooltip === 'object') opt = { ...opt, tooltip: { ...opt.tooltip, confine: true } };
-    this.chart.setOption({ tooltip: { show: true, trigger: 'item', confine: true }, legend: { show: n >= 2 }, ...opt, ...(legend ? { legend } : {}) }, true);
+    this.chart.setOption({ aria: { enabled: !hidden() }, tooltip: { show: true, trigger: 'item', confine: true }, legend: { show: n >= 2 }, ...opt, ...(legend ? { legend } : {}) }, true);
   }
 
   private dispose() {
