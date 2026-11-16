@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
+import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { Api } from './api';
 import { Records } from './records';
@@ -20,7 +21,7 @@ describe('Records Wallet guard', () => {
       providers: [
         provideHttpClient(),
         { provide: Api, useValue: api },
-        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({}) } } },
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({}) }, queryParamMap: of(convertToParamMap({})) } },
         { provide: Router, useValue: { navigate: async () => true } },
       ],
     });

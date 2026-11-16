@@ -1,5 +1,7 @@
 import { Component, computed, DestroyRef, effect, ElementRef, inject, resource, signal, viewChild } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
+import { map } from 'rxjs';
 import { currencySymbol, fmt, parseMoney, val } from './format.ts';
 import { Api, type Row } from './api';
 import { athensDay } from '../../../shared/src/month.ts';
@@ -72,8 +74,8 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
           </thead>
           <tbody>
             @for (r of visible(); track r.id) {
-              <tr [class.dim]="r.isDup">
-                <td class="nowrap muted" data-label="Date">{{ day(r.dateUtc) }}</td>
+              <tr [class.dim]="r.isDup" [class.open]="openId() === r.id" [attr.aria-expanded]="phone() ? openId() === r.id : null" (click)="toggleRow(r.id, $event)">
+                <td class="nowrap muted date" data-label="Date">{{ day(r.dateUtc) }}</td>
                 <td class="stack-title">
                   <div class="strong">{{ r.note || '—' }}
                     @if (r.isDup) { <span class="badge" [title]="'duplicate of #' + r.dupOf">duplicate</span> }
@@ -81,6 +83,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
                   <div class="meta">
                     <span class="muted sm">{{ r.account }}</span>
                     @if (r.category) { <span class="muted sm">{{ r.category }}</span> }
+                    <span class="chip sm pg">{{ r.grp || 'Unclassified' }}</span>
                   </div>
                 </td>
                 <td class="gcell" data-label="Group">
@@ -99,7 +102,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
                     </form>
                   }
                 </td>
-                <td class="num strong" data-label="Amount" [class.pos]="r.type === 'Income'">{{ amount(r) }}</td>
+                <td class="num strong amt" data-label="Amount" [class.pos]="r.type === 'Income'">{{ amount(r) }}</td>
                 <td class="nowrap act">
                   @if (r.source === 'manual' || walletDel(r)) {
                     @if (confirmId() === r.id) {
@@ -175,7 +178,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
     .filters { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; margin-bottom: var(--sp-3); }
     .search { flex: 1; min-width: 12rem; max-width: 22rem; }
     .chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: var(--sp-3); }
-    .phone-filters { display: none; }
+    .phone-filters, .pg { display: none; }
     .chip.unclassified:not(.on) { border-style: dashed; }
     .summary { display: flex; gap: var(--sp-4); margin: 0 0 var(--sp-3); }
     .summary .stat { display: flex; flex-direction: column; gap: var(--sp-1); }
@@ -214,9 +217,16 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
       .summary .value { font-size: var(--fs); overflow-wrap: anywhere; }
       .summary .clear { grid-column: 1 / -1; justify-self: start; }
       .search { min-width: 0; max-width: none; flex: 1 1 100%; }
-      .stack tr { display: flex; flex-direction: column; }
-      .stack td { order: 4; }
-      .stack td.stack-title { order: 0; }
+      /* compact two-line row; tap expands the group and delete controls */
+      .stack tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--sp-3); }
+      .stack td.stack-title { grid-area: 1 / 1; }
+      .stack td.amt { grid-area: 1 / 2; width: auto; align-items: flex-start; }
+      .stack td.date { grid-area: 2 / 1 / auto / -1; justify-content: flex-start; font-size: var(--fs-xs); }
+      .stack td.date::before, .stack td.amt::before { content: none; }
+      .stack td.gcell, .stack td.act { display: none; grid-column: 1 / -1; }
+      .stack tr.open td.gcell, .stack tr.open td.act { display: flex; }
+      .meta { flex-wrap: wrap; }
+      .pg { display: inline-flex; min-height: 0; padding: 0 var(--sp-2); border: 1px solid var(--border); }
       .gcell { flex-wrap: wrap; justify-content: flex-start; }
       .stack td.act { justify-content: flex-end; flex-wrap: wrap; }
       .act button.icon { min-width: 44px; min-height: 44px; }
@@ -234,6 +244,11 @@ export class Records {
   protected currencySymbol = currencySymbol;
   protected val = val;
   protected phone = phone;
+  protected openId = signal<number | null>(null);
+  protected toggleRow(id: number, e: Event) {
+    if (!phone() || (e.target as Element).closest('.gcell, .act')) return;
+    this.openId.update((v) => (v === id ? null : id));
+  }
   protected color = groupColor;
   protected hollow = (g: string) => HOLLOW.has(g);
   protected day = dayLabel;
@@ -324,9 +339,10 @@ export class Records {
     if (q.get('month')) this.month.set(q.get('month')!);
     if (q.get('group')) this.group.set(q.get('group')!);
     if (q.get('account')) this.account.set(q.get('account')!);
+    // a signal, not the snapshot: the tab bar's add button also fires while Records is already open
+    const add = toSignal(this.route.queryParamMap.pipe(map((p) => p.get('add'))));
     effect(() => {
-      const add = this.route.snapshot.queryParamMap.get('add');
-      if (add === '1') {
+      if (add() === '1') {
         this.openAdd();
         this.router.navigate([], { queryParams: { add: null }, queryParamsHandling: 'merge', replaceUrl: true });
       }
@@ -432,7 +448,9 @@ export class Records {
       wallet ? 'Added to Wallet' : 'Record added',
     );
     this.busy.set(false);
-    if (done) this.dialogEl().nativeElement.close();
+    if (!done) return;
+    navigator.vibrate?.(10);
+    this.dialogEl().nativeElement.close();
   }
 
   /** The rows on screen as a file; payee is never part of a row. */

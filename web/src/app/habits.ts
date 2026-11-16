@@ -165,6 +165,7 @@ export class HabitsComponent {
   protected async toggle(habit: string, day: string) {
     const on = !this.isDone(habit, day);
     this.mark(habit, day, on);
+    navigator.vibrate?.(10);
     try {
       await this.api.setHabit(day, habit, on);
     } catch {
