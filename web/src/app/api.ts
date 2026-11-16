@@ -24,7 +24,7 @@ export type Row = {
   createdInApp?: boolean;
 };
 export type Meta = {
-  groups: string[]; excludedGroups: string[]; accounts: string[]; months: string[]; demo?: boolean; lastSync?: string | null;
+  groups: string[]; excludedGroups: string[]; accounts: string[]; months: string[]; demo?: boolean; lastSync?: string | null; completeFrom?: string | null;
   currency?: Currency; currencyLocked?: boolean;
 };
 export type MonthClose = { transfers: { key: string; label: string; from: string; to: string; cents: number; gap?: number }[]; done: string[] };

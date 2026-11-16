@@ -2,10 +2,11 @@ import { Component, computed, effect, inject, resource, signal, untracked } from
 import { NgTemplateOutlet } from '@angular/common';
 import { groceryMonthly, weeklyIngredientGrams } from '../../../shared/src/diet.ts';
 import { currencySymbol, fmt, parseMoney, val } from './format.ts';
+import { currentMonth } from './format';
 import type { Config, GroceryItem } from '../../../shared/src/types.ts';
 import { Api } from './api';
 import { Combo } from './ui/combo';
-import { editDraft } from './ui/config-draft';
+import { editDraft, trackUnsaved } from './ui/config-draft';
 import { Icon } from './ui/icons';
 import { MoneyInput } from './ui/money-input';
 import { phone } from './ui/viewport';
@@ -187,6 +188,13 @@ import { Toast } from './ui/toast';
           <div class="value">{{ fmt(monthlyData().monthly) }}</div>
           <div class="sub">{{ fmt(monthlyData().weekly) }} × 52/12 + pantry</div>
         </div>
+        @if (grocerySpent() !== null) {
+          <div class="kpi" [class.bad]="grocerySpent()! > groceryPlan()">
+            <div class="label">Spent this month</div>
+            <div class="value">{{ fmt(grocerySpent()!) }}</div>
+            <div class="sub">from records, of {{ fmt(groceryPlan()) }}</div>
+          </div>
+        }
         <div class="kpi">
           <div class="label">Groceries budget</div>
           <div class="value">{{ fmt(groceryPlan()) }}</div>
@@ -290,6 +298,7 @@ export class GroceriesComponent {
     if (!cfg || !dft) return false;
     return JSON.stringify(cfg) !== JSON.stringify(dft);
   });
+  private guard = trackUnsaved(this.dirty);
 
   constructor() {
     // Keep draft in sync with loaded config
@@ -325,6 +334,15 @@ export class GroceriesComponent {
     this.checks.set({});
     resetChecks();
   }
+
+  private summary = resource({ params: () => this.refresh.tick(), loader: () => this.api.summary() });
+  /** Month-to-date spend of the groups feeding the groceries line; null when the line is typed by hand. */
+  protected grocerySpent = computed(() => {
+    const source = (this.plan.value() ?? this.cfg())?.coreExpenses.find((l) => l.key === 'groceries')?.source ?? '';
+    if (!source.startsWith('wallet:') || !this.summary.hasValue()) return null;
+    const cells = this.summary.value().spend[currentMonth()] ?? {};
+    return source.slice(7).split('+').reduce((s, g) => s + (cells[g]?.cents ?? 0), 0);
+  });
 
   protected groceryPlan = computed(() => {
     const cfg = this.plan.value() ?? this.cfg();

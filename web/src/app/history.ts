@@ -10,7 +10,6 @@ import { Refresh } from './ui/refresh';
 import { phone } from './ui/viewport';
 
 const COUNTED = ['Takeout', 'Kiosk'];
-const FIRST_FEED = '2026-07';
 const FIXED = ['Groceries', 'Takeout', 'Cafes & eating out', 'Kiosk', 'Fuel', 'Transport', 'Housing', 'Shopping'];
 const DAILY = ['Groceries', 'Takeout', 'Cafes & eating out', 'Kiosk', 'Work food', 'Fuel', 'Transport'];
 const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: 'All', n: 0 }];
@@ -48,7 +47,7 @@ const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: '
       </div>
     </div>
     @if (data.error() || meta.error()) {
-      <p class="err">Failed to load history. Check that the server is running, then try Fetch again.</p>
+      <p class="err">Could not load history. <button type="button" (click)="data.reload(); meta.reload()">Retry</button></p>
     } @else if (!data.value() || !meta.value()) {
       <div class="card"><div class="skeleton" style="height: 300px"></div></div>
       <div class="card"><div class="skeleton" style="height: 220px"></div></div>
@@ -76,6 +75,8 @@ const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: '
               }
               <th class="num">Total spend</th>
               <th class="num sep">Invested</th>
+              <th class="num">Income</th>
+              <th class="num">Saved</th>
               @if (yearly()) {
                 <th class="num">Avg / month</th>
               }
@@ -87,7 +88,7 @@ const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: '
                 <td class="nowrap">
                   {{ r.label }}
                   @if (r.lower) {
-                    <span class="badge" title="no bank feed before Jul 2026">lower bound</span>
+                    <span class="badge" title="records are incomplete before the configured month">lower bound</span>
                   }
                 </td>
                 @for (c of cols(); track c) {
@@ -100,6 +101,8 @@ const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: '
                 }
                 <td class="num strong">{{ fmt(r.total) }}</td>
                 <td class="num sep">@if (r.invested) { {{ fmt(r.invested) }} } @else { <span class="zero">–</span> }</td>
+                <td class="num">@if (r.income) { {{ fmt(r.income) }} } @else { <span class="zero">–</span> }</td>
+                <td class="num" [class.err]="r.income > 0 && r.total > r.income">@if (r.income > 0) { {{ saved(r.income, r.total) }} } @else { <span class="zero">–</span> }</td>
                 @if (yearly()) {
                   <td class="num">{{ fmt(r.avg) }}</td>
                 }
@@ -115,6 +118,8 @@ const RANGES = [{ label: '12 mo', n: 12 }, { label: '24 mo', n: 24 }, { label: '
                 }
                 <td class="num">{{ fmt(f.total) }}</td>
                 <td class="num sep">@if (f.invested) { {{ fmt(f.invested) }} } @else { <span class="zero">–</span> }</td>
+                <td class="num">@if (f.income) { {{ fmt(f.income) }} } @else { <span class="zero">–</span> }</td>
+                <td class="num">@if (f.income > 0) { {{ saved(f.income, f.total) }} } @else { <span class="zero">–</span> }</td>
                 @if (yearly()) {
                   <td class="num"></td>
                 }
@@ -157,6 +162,8 @@ export class History {
 
   protected rows = computed(() => {
     const ex = this.excluded();
+    const from = this.meta.value()?.completeFrom;
+    const income = this.data.value()?.income ?? {};
     return this.periods()
       .map(({ period, cells, months }) => {
         const total = Object.entries(cells).reduce((a, [g, c]) => a + (ex.has(g) ? 0 : c.cents), 0);
@@ -165,11 +172,15 @@ export class History {
           label: this.yearly() ? period : shortMonth(period),
           invested: cells['Investing']?.cents ?? 0,
           avg: Math.round(total / months.length),
-          lower: months.some((m) => m < FIRST_FEED),
+          income: months.reduce((s, m) => s + (income[m] ?? 0), 0),
+          lower: !!from && months.some((m) => m < from),
         };
       })
       .reverse();
   });
+
+  /** Share of income not spent; negative when spend exceeds income. */
+  protected saved = (income: number, spend: number) => `${Math.round(((income - spend) / income) * 100)}%`;
 
   private colMax = computed(() => {
     const out: Record<string, number> = {};
@@ -191,6 +202,7 @@ export class History {
       cells: Object.fromEntries(this.cols().map((c) => [c, sum((r) => r.cells[c]?.cents ?? 0)])),
       total: sum((r) => r.total),
       invested: sum((r) => r.invested),
+      income: sum((r) => r.income),
     };
     const avg = (v: number) => Math.round(v / n);
     return [
@@ -200,6 +212,7 @@ export class History {
         cells: Object.fromEntries(Object.entries(total.cells).map(([c, v]) => [c, avg(v)])),
         total: avg(total.total),
         invested: avg(total.invested),
+        income: avg(total.income),
       },
     ];
   });

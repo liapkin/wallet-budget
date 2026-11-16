@@ -148,6 +148,12 @@ const SECTIONS = [
 
           <section class="card" id="classification">
             <h2>Classification</h2>
+            <label class="field">Records complete from (earlier months show as lower bounds in History)
+              <span style="display:flex;flex-wrap:wrap;gap:var(--sp-2)">
+                <input type="month" style="flex:1" [value]="c.wallet.completeFrom ?? ''" (change)="set('wallet.completeFrom', val($event) || null)" />
+                @if (c.wallet.completeFrom) { <button class="ghost" (click)="set('wallet.completeFrom', null)">Clear</button> }
+              </span>
+            </label>
             @for (g of groupSets; track g[0]) {
               <h3 style="margin-top:0">{{ g[1] }}</h3>
               <div class="chips" style="margin-bottom:var(--sp-4)">

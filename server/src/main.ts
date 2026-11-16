@@ -87,7 +87,7 @@ export const getMeta = () => {
     memo(`meta:${c}`, () => (db.prepare(`SELECT DISTINCT ${c} AS v FROM records WHERE ${s.sql} ${order}`).all(...s.args) as { v: string }[]).map((r) => r.v));
   const cfg = getConfig();
   const { groups, excludedGroups } = cfg.wallet;
-  return { demo: isDemo(), currency: cfg.currency, currencyLocked: isDemo() || currencyLocked(), groups, excludedGroups, accounts: col('account', 'ORDER BY 1'), months: col('month', 'ORDER BY 1 DESC'), lastSync: lastSync() };
+  return { demo: isDemo(), currency: cfg.currency, currencyLocked: isDemo() || currencyLocked(), groups, excludedGroups, accounts: col('account', 'ORDER BY 1'), months: col('month', 'ORDER BY 1 DESC'), lastSync: lastSync(), completeFrom: cfg.wallet.completeFrom ?? null };
 };
 
 app.get('/api/meta', (req, res) => {

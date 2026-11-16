@@ -2,6 +2,7 @@ import { Component, computed, DestroyRef, effect, ElementRef, inject, resource, 
 import { ActivatedRoute, Router } from '@angular/router';
 import { currencySymbol, fmt, parseMoney, val } from './format.ts';
 import { Api, type Row } from './api';
+import { athensDay } from '../../../shared/src/month.ts';
 import { athensNow, currentMonth, dayLabel, groupColor, groupDot, HOLLOW } from './format';
 import { Combo, type ComboOption } from './ui/combo';
 import { DateTime } from './ui/date-time';
@@ -21,7 +22,10 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
   template: `
     <div class="page-head">
       <h1>Records</h1>
-      <div class="actions"><button class="primary" (click)="openAdd()"><app-icon name="plus" [size]="16" /> Add expense</button></div>
+      <div class="actions">
+        <button type="button" [disabled]="!visible().length" (click)="exportCsv()">Export CSV</button>
+        <button class="primary" (click)="openAdd()"><app-icon name="plus" [size]="16" /> Add expense</button>
+      </div>
     </div>
 
     <div class="filters">
@@ -52,6 +56,7 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
       <div class="stat"><span class="label">Records</span><span class="value">{{ visible().length }}</span></div>
       <div class="stat"><span class="label">Spend</span><span class="value">{{ fmt(totals().spend) }}</span></div>
       <div class="stat"><span class="label">Income</span><span class="value pos">{{ fmt(totals().income) }}</span></div>
+      @if (searchText()) { <button class="chip" type="button" [class.on]="allMonths()" [attr.aria-pressed]="allMonths()" (click)="allMonths.set(!allMonths())">All months</button> }
       @if (group() || account() || searchText()) { <button class="link clear" (click)="clear()">Clear filters</button> }
     </div>
 
@@ -125,7 +130,8 @@ const errMsg = (e: any) => e?.error?.error ?? (e instanceof Error ? e.message : 
             <span class="affix" [attr.data-pre]="currencySymbol()"><input name="amount" appMoney type="text" placeholder="0.00" autofocus required (blur)="amountTouched.set(true)" /></span>
             @if (amountTouched() && !getAmountValue()) { <div class="hint">Enter an amount</div> }
           </label>
-          <label class="field"><span>Note</span><input name="note" autocomplete="off" /></label>
+          <label class="field"><span>Note</span><input name="note" autocomplete="off" list="note-hints" /></label>
+          <datalist id="note-hints">@for (n of noteHints(); track n) { <option [value]="n"></option> }</datalist>
           <div class="field"><span>Date and time</span><app-date-time [(value)]="when" /></div>
           @if (refresh.walletAvailable()) {
             <label class="switch"><input type="checkbox" [checked]="toWallet()" (change)="setToWallet($event)" /> Also add to Wallet</label>
@@ -239,6 +245,7 @@ export class Records {
   protected search = signal('');
   protected searchText = signal('');
   protected showDups = signal(false);
+  protected allMonths = signal(false);
   protected kw = signal<{ id: number; keyword: string; group: string } | null>(null);
   protected confirmId = signal<number | null>(null);
   protected type = signal<'Expenses' | 'Income'>('Expenses');
@@ -259,7 +266,8 @@ export class Records {
   protected accounts = resource({ params: () => this.refresh.tick(), loader: () => this.api.accounts() });
   protected categories = resource({ params: () => this.refresh.walletAvailable() ? true : undefined, loader: () => this.api.walletCategories() });
   protected rows = resource({
-    params: computed(() => ({ month: this.month(), group: this.group(), account: this.account(), tick: this.refresh.tick() })),
+    // ponytail: all-months search loads every record and filters here; add a server note filter with a limit if it gets slow
+    params: computed(() => ({ month: this.allMonths() && this.search() ? '' : this.month(), group: this.group(), account: this.account(), tick: this.refresh.tick() })),
     loader: ({ params: { tick, ...p } }) => this.api.records(p),
   });
 
@@ -288,6 +296,12 @@ export class Records {
   protected visible = computed(() => {
     const q = this.search().trim().toLowerCase();
     return (this.rows.value() ?? []).filter((r) => (this.showDups() || !r.isDup) && (!q || r.note.toLowerCase().includes(q)));
+  });
+  /** Most used notes of the loaded rows, offered when adding a record. */
+  protected noteHints = computed(() => {
+    const n = new Map<string, number>();
+    for (const r of this.rows.value() ?? []) if (r.note) n.set(r.note, (n.get(r.note) ?? 0) + 1);
+    return [...n].sort((a, b) => b[1] - a[1]).slice(0, 50).map(([note]) => note);
   });
   protected totals = computed(() => {
     let spend = 0, income = 0;
@@ -349,6 +363,7 @@ export class Records {
     clearTimeout(this.timer);
     this.group.set('');
     this.account.set('');
+    this.allMonths.set(false);
     this.search.set('');
     this.searchText.set('');
   }
@@ -418,6 +433,19 @@ export class Records {
     );
     this.busy.set(false);
     if (done) this.dialogEl().nativeElement.close();
+  }
+
+  /** The rows on screen as a file; payee is never part of a row. */
+  protected exportCsv() {
+    // leading ' stops spreadsheets running a bank note that starts with = + - @ as a formula
+    const cell = (v: string) => `"${(/^[=+\-@]/.test(v) ? "'" + v : v).replace(/"/g, '""')}"`;
+    const lines = this.visible().map((r) =>
+      [athensDay(r.dateUtc), r.note, r.grp, r.account, r.category, r.type, r.isDup ? 'duplicate' : ''].map(cell).join(',') + ',' + (r.amountCents / 100).toFixed(2));
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['date,note,group,account,category,type,flag,amount\n' + lines.join('\n')], { type: 'text/csv' }));
+    a.download = `records-${this.allMonths() && this.search() ? 'all' : this.month()}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
   }
 
   protected setGroup = (r: Row, g: string | null) => this.run(() => this.api.setGroup(r.id, g), g ? `Moved to ${g}` : 'Group set to auto');
