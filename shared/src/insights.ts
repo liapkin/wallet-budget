@@ -12,7 +12,7 @@ const addDays = (d: string, n: number): string => new Date((dayNum(d) + n) * DAY
 // lowercase words only: drops card/terminal numbers, #refs and generic payment noise
 const NOISE = new Set(['card', 'pos', 'terminal', 'tid', 'visa', 'mastercard', 'payment']);
 const words = (note: string): string[] => note.toLowerCase().split(/[^a-zͰ-Ͽ]+/).filter((w) => w.length > 2 && !NOISE.has(w));
-const merchantOf = (note: string): string => words(note).join(' ');
+export const merchantOf = (note: string): string => words(note).join(' ');
 
 export type Recurring = {
   merchant: string;

@@ -116,6 +116,12 @@ Fifteen years, yearly steps. Contribution in year n = annual investing × (1 + s
 5. **Core actuals**: month by line, typed cells and Wallet-fed cells visibly different.
 6. **Meal plan** and **Grocery list**.
 7. **Investing**: the projection.
+8. **Analysis** (`/analysis/:group?month=`): group total against its 6-month average, 12-month bars, split by Wallet category, top merchants by note, by account, record list without payee, link to Records.
+
+Month additions:
+- Balance chip in the topbar: sum of EUR Wallet accounts, excluding hidden and `local:*` accounts. Click lists each account; non-EUR accounts are shown separately, not summed.
+- Trend marker on Spend by group rows: this month to date against the average of up to 3 prior months at the same Athens day-of-month.
+- Spend by account card.
 
 ## 8. Phases and acceptance checks
 
