@@ -8,9 +8,20 @@
   <app-brand />
   @if (refresh.demo() === true) { <span class="chip accent-soft">Demo data</span> }
   <span class="grow"></span>
+  @if (narrow()) { <ng-container [ngTemplateOutlet]="balChip" /> }
   <button class="icon ghost eye" type="button" (click)="cycleTheme()" [title]="themeLabel(theme())" [attr.aria-label]="themeLabel(theme())"><app-icon [name]="themeIcon[theme()]" [size]="20" /></button>
   <button class="icon ghost eye" type="button" [class.on]="hidden()" [attr.aria-pressed]="hidden()" (click)="togglePrivacy()" [title]="hidden() ? 'Show amounts (Shift+H)' : 'Hide amounts (Shift+H)'" [attr.aria-label]="hidden() ? 'Show amounts (Shift+H)' : 'Hide amounts (Shift+H)'"><app-icon [name]="hidden() ? 'eyeOff' : 'eye'" [size]="20" /></button>
 </header>
+<ng-template #balChip>
+  @if (shown().length) {
+    <button class="chip bal" type="button" popovertarget="balances" aria-label="Account balances">{{ fmt(total()) }}</button>
+    <div id="balances" popover class="bal-pop">
+      @for (a of shown(); track a.id) {
+        <div class="bal-row"><span>{{ a.name }}</span><span class="num">{{ a.currency === 'EUR' ? fmt(a.balanceCents!) : foreign(a.balanceCents!, a.currency) }}</span></div>
+      }
+    </div>
+  }
+</ng-template>
 <ng-template #navContent>
   <div class="brand"><app-brand class="grow" />
     <button class="icon ghost eye" type="button" (click)="cycleTheme()" [title]="themeLabel(theme())" [attr.aria-label]="themeLabel(theme())"><app-icon [name]="themeIcon[theme()]" [size]="18" /></button>
@@ -51,7 +62,7 @@
     </div>
   </dialog>
 } @else {
-  <aside class="side"><ng-container [ngTemplateOutlet]="navContent" /></aside>
+  <aside class="side"><ng-container [ngTemplateOutlet]="balChip" /><ng-container [ngTemplateOutlet]="navContent" /></aside>
 }
 <main>
   @if (ready()) {

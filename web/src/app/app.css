@@ -39,3 +39,10 @@ main { min-width: 0; overflow-x: clip; max-width: 1680px; margin-inline: auto; p
 .loading { animation: bob 1s steps(1, end) infinite; }
 @keyframes bob { 0%, 49% { transform: translateY(0); } 50%, 100% { transform: translateY(-4px); } }
 @media (prefers-reduced-motion: reduce) { .loading { animation: none; } }
+
+.bal { cursor: pointer; border: 1px solid var(--border); font-weight: 700; color: var(--text); white-space: nowrap; }
+.bal-pop { inset: auto; top: 3.5rem; right: var(--sp-3); margin: 0; width: min(20rem, calc(100vw - 2 * var(--sp-3))); max-height: 70dvh; overflow: auto; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-lg, 10px); background: var(--surface); color: var(--text); }
+.bal-row { display: flex; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-1) 0; }
+.bal-row span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.side .bal { align-self: flex-start; }
+.side .bal-pop { top: var(--sp-4); right: auto; left: calc(232px + var(--sp-3)); }

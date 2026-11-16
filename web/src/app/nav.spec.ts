@@ -20,7 +20,7 @@ async function setup(narrow: boolean, inbox = 0) {
     providers: [
       provideRouter([{ path: 'month', children: [] }, { path: 'records', children: [] }]),
       provideHttpClient(), provideHttpClientTesting(),
-      { provide: Api, useValue: { meta: async () => ({ groups: [], excludedGroups: [], accounts: [], months: [], demo: false }) } },
+      { provide: Api, useValue: { accounts: async () => [], meta: async () => ({ groups: [], excludedGroups: [], accounts: [], months: [], demo: false }) } },
     ],
   });
   const fixture = TestBed.createComponent(App);

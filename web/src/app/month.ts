@@ -3,6 +3,7 @@ import { Component, computed, DestroyRef, effect, inject, resource, signal } fro
 import { RouterLink, Router } from '@angular/router';
 import { allocation, capsFor, monthStatus, savings } from '../../../shared/src/budget.ts';
 import { currencySymbol, fmt } from './format.ts';
+import { breakdown, isSpend, trendToDay } from '../../../shared/src/analysis.ts';
 import { athensDay, athensMonth } from '../../../shared/src/month.ts';
 import { Api } from './api';
 import { dayLabel, groupColor, HOLLOW } from './format';
@@ -28,6 +29,11 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
     .row { display: grid; grid-template-columns: 1fr auto; gap: var(--sp-1) var(--sp-3); align-items: center; }
     .row .name { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
     .row .progress { grid-column: 1 / -1; }
+    a.row { color: inherit; text-decoration: none; cursor: pointer; border-radius: var(--r-md, 6px); }
+    a.row:hover { background: var(--surface-2); }
+    .trend { font-size: var(--fs-xs); margin-left: var(--sp-1); }
+    .trend.worse { color: var(--bad); }
+    .trend.better { color: var(--good); }
     .latest { list-style: none; margin: 0; padding: 0; }
     .latest li { display: grid; grid-template-columns: 1fr auto auto; gap: var(--sp-3); align-items: center; padding: var(--sp-2) 0; border-bottom: 1px solid var(--border); }
     .latest li:last-child { border-bottom: 0; }
@@ -173,11 +179,11 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
           }
           <div class="rows">
             @for (b of v.bars; track b.group) {
-              <div class="row" [style.--dot]="b.color">
+              <a class="row" [style.--dot]="b.color" routerLink="/analysis/{{ b.group }}" [queryParams]="{ month: month() }">
                 <span class="name"><span class="dot" [class.hollow]="b.hollow"></span>{{ b.group }}</span>
-                <span class="num" [class.err]="b.over">{{ fmt(b.cents) }}@if (b.target) { <span class="muted"> / {{ fmt(b.target) }}</span> }</span>
+                <span class="num" [class.err]="b.over">{{ fmt(b.cents) }}@if (b.target) { <span class="muted"> / {{ fmt(b.target) }}</span> }@if (trendOf(b.group); as t) { <span class="trend" [class.worse]="t.worse" [class.better]="!t.worse" title="vs average of prior months at this day">{{ t.text }}</span> }</span>
                 <div class="progress"><i [class.over]="b.over" [style.width.%]="b.pct"></i>@if (b.mark !== null) { <b [style.left.%]="b.mark" title="cap"></b> }</div>
-              </div>
+              </a>
             }
           </div>
           @if (v.st.unplanned) {
@@ -200,6 +206,21 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
             }
           </div>
         </section>
+
+        @if (byAccount().length) {
+          <section class="card">
+            <div class="card-head"><h2>Spend by account</h2></div>
+            <div class="rows">
+              @for (a of byAccount(); track a.key) {
+                <a class="row" routerLink="/records" [queryParams]="{ month: month(), account: a.key }">
+                  <span class="name">{{ a.key }}</span>
+                  <span class="num">{{ fmt(a.cents) }}</span>
+                  <div class="progress"><i [style.width.%]="a.pct"></i></div>
+                </a>
+              }
+            </div>
+          </section>
+        }
       </div>
 
       <section class="card">
@@ -256,6 +277,14 @@ export class Month {
   protected records = resource({
     params: () => ({ month: this.month(), t: this.tick() }),
     loader: ({ params }) => this.api.records({ month: params.month }),
+  });
+  private prevRecords = resource({
+    params: () => ({ month: this.month(), t: this.tick() }),
+    loader: ({ params }) => {
+      const [y, m] = params.month.split('-').map(Number);
+      const months = [1, 2, 3].map((i) => new Date(Date.UTC(y, m - 1 - i, 1)).toISOString().slice(0, 7));
+      return Promise.all(months.map((month) => this.api.records({ month })));
+    },
   });
   private meta = resource({ params: () => this.tick(), loader: () => this.api.meta() });
   protected close = resource({ params: () => ({ month: this.month(), t: this.tick() }), loader: ({ params }) => this.api.monthClose(params.month) });
@@ -351,8 +380,30 @@ export class Month {
   });
 
   private spendRows = computed(() => {
-    const skip = new Set([...(this.cfg.value()?.wallet.excludedGroups ?? []), 'Income']);
-    return (this.records.value() ?? []).filter((r) => !r.isDup && r.type !== 'Income' && !skip.has(r.grp));
+    const cfg = this.cfg.value();
+    return cfg ? (this.records.value() ?? []).filter((r) => isSpend(r, cfg)) : [];
+  });
+
+  private trend = computed(() => {
+    const cfg = this.cfg.value();
+    const prev = this.prevRecords.value();
+    if (!cfg || !prev) return {};
+    const { total, day, isCurrent } = this.elapsed();
+    return trendToDay(this.spendRows(), prev.map((rs) => rs.filter((r) => isSpend(r, cfg))), isCurrent ? day : total);
+  });
+
+  protected trendOf(group: string) {
+    const t = this.trend()[group];
+    if (!t) return null;
+    if (t.avgCents <= 0) return t.cents > 0 ? { text: 'new', worse: true } : null;
+    const p = Math.round(((t.cents - t.avgCents) / t.avgCents) * 100);
+    return p === 0 ? null : { text: `${p > 0 ? '▲' : '▼'} ${Math.abs(p)}%`, worse: p > 0 };
+  }
+
+  protected byAccount = computed(() => {
+    const rows = breakdown(this.spendRows().filter((r) => !r.account.startsWith('local:')), (r) => r.account);
+    const max = Math.max(1, ...rows.map((r) => r.cents));
+    return rows.map((r) => ({ ...r, pct: pct(r.cents, max) }));
   });
 
   protected latest = computed(() =>

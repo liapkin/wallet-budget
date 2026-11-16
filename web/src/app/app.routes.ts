@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { Actuals } from './actuals';
+import { Analysis } from './analysis';
 import { BudgetEdit } from './budget-edit';
 import { CryptoComponent } from './crypto';
 import { GroceriesComponent } from './groceries';
@@ -18,6 +19,7 @@ import { Year } from './year';
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'month' },
   { path: 'month', component: Month },
+  { path: 'analysis/:group', component: Analysis },
   { path: 'history', component: History },
   { path: 'inbox', loadComponent: () => import('./inbox').then((m) => m.Inbox) },
   { path: 'recurring', component: Recurring },

@@ -1,9 +1,9 @@
-import { Component, effect, ElementRef, HostListener, inject, resource, signal, viewChild } from '@angular/core';
+import { Component, computed, effect, ElementRef, HostListener, inject, resource, signal, viewChild } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { dayLabel } from './format';
+import { dayLabel, fmt } from './format';
 import { Api } from './api';
 import { Brand } from './ui/brand';
 import { Icon, IconName } from './ui/icons';
@@ -62,6 +62,11 @@ export class App {
   protected themeIcon = { light: 'sun', dark: 'moon' } as const;
   protected themeLabel = themeLabel;
   protected dayLabel = dayLabel;
+  protected accounts = resource({ params: () => this.refresh.tick(), loader: () => this.api.accounts() });
+  protected shown = computed(() => (this.accounts.value() ?? []).filter((a) => !a.id.startsWith('local:') && a.balanceCents !== null));
+  protected total = computed(() => this.shown().filter((a) => a.currency === 'EUR').reduce((s, a) => s + a.balanceCents!, 0));
+  protected fmt = fmt;
+  protected foreign = (cents: number, cur: string) => (hidden() ? '••••' : new Intl.NumberFormat('en-GB', { style: 'currency', currency: cur }).format(cents / 100));
   protected meta = resource({ params: () => this.refresh.tick(), loader: () => this.api.meta() });
 
   constructor() {

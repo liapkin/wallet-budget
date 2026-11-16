@@ -23,7 +23,7 @@ describe('App', () => {
       imports: [App],
       providers: [
         provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
-        { provide: Api, useValue: { meta: async () => ({ groups: [], excludedGroups: [], accounts: [], months: [], demo: true }) } },
+        { provide: Api, useValue: { accounts: async () => [], meta: async () => ({ groups: [], excludedGroups: [], accounts: [], months: [], demo: true }) } },
       ],
     });
     setTheme('light');

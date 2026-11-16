@@ -1,4 +1,9 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { vi } from 'vitest';
+import { Api } from './api';
 import { Actuals } from './actuals';
 import { BudgetEdit } from './budget-edit';
 import { CryptoComponent } from './crypto';
@@ -9,6 +14,7 @@ import { InvestingComponent } from './investing';
 import { GoalsComponent } from './goals';
 import { MealsComponent } from './meals';
 import { Month } from './month';
+import { App } from './app';
 import { NetWorth } from './networth';
 import { Recurring } from './recurring';
 import { Records } from './records';
@@ -36,6 +42,18 @@ describe('screen smoke tests', () => {
   it('month', async () => {
     const el = await mount(Month);
     expect(el.querySelector('h1')?.textContent).toContain('Overview');
+  });
+  it('balance chip sums EUR accounts', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: Api, useValue: { accounts: async () => accounts, meta: () => new Promise(() => {}) } }],
+    });
+    const f = TestBed.createComponent(App);
+    f.detectChanges();
+    await new Promise((r) => setTimeout(r, 0));
+    f.detectChanges();
+    const el: HTMLElement = f.nativeElement;
+    expect(el.querySelector('.bal')?.textContent).toContain('1,500');
+    expect(el.querySelector('#balances')?.textContent).toContain('Abroad');
   });
   it('history', async () => {
     const el = await mount(History);

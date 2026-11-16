@@ -22,7 +22,9 @@ export const row = (id: number, over: Record<string, unknown> = {}) => ({
 
 export const meta = { groups: [group], excludedGroups: [], accounts: ['Main'], months: [month], demo: false, lastSync: null, currency: 'EUR', currencyLocked: true };
 export const summary = { spend: { [month]: { [group]: { cents: 12500, count: 3 } } }, income: { [month]: 200000 } };
-export const accounts = [{ id: 'a1', name: 'Main', balanceCents: 100000, currency: 'EUR', updatedAt: `${month}-01T00:00:00Z` }];
+export const accounts = [{ id: 'a1', name: 'Main', balanceCents: 100000, currency: 'EUR', updatedAt: `${month}-01T00:00:00Z` },
+  { id: 'a2', name: 'Savings', balanceCents: 50000, currency: 'EUR', updatedAt: `${month}-01T00:00:00Z` },
+  { id: 'a3', name: 'Abroad', balanceCents: 7000, currency: 'GBP', updatedAt: `${month}-01T00:00:00Z` }];
 
 /** Default responses keyed by URL path (query string ignored). Override per test. */
 export const responses = (): Record<string, unknown> => ({

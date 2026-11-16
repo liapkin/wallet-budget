@@ -306,6 +306,10 @@ export class Records {
       this.confirmId.set(null);
       this.kw.set(null);
     });
+    const q = this.route.snapshot.queryParamMap;
+    if (q.get('month')) this.month.set(q.get('month')!);
+    if (q.get('group')) this.group.set(q.get('group')!);
+    if (q.get('account')) this.account.set(q.get('account')!);
     effect(() => {
       const add = this.route.snapshot.queryParamMap.get('add');
       if (add === '1') {
