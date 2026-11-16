@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { recurring, possibleDuplicates, pairKey, suggestGroup, monthClose, yearReview } from './insights.ts';
+import { merchantOf, recurring, possibleDuplicates, pairKey, suggestGroup, monthClose, yearReview } from './insights.ts';
 import { seedToConfig } from './seed.ts';
 import { readFileSync } from 'node:fs';
 import type { Rec } from './types.ts';
@@ -124,4 +124,10 @@ test('yearReview: totals, deltas, best and worst month', () => {
   assert.deepEqual(y.best, { month: '2026-02', cents: 100 });
   assert.deepEqual(y.worst, { month: '2026-01', cents: 350 });
   assert.equal(yearReview({}, 2026, []).best, null);
+});
+
+test('merchantOf folds Greek lookalike capitals in mixed-script words to Latin', () => {
+  assert.equal(merchantOf('\u039cARKET LOCAL A\u039dO'), 'market local ano'); // Greek Mu, Nu among Latin letters
+  assert.equal(merchantOf('\u03a5ES STORES GL\u03a5FADA'), 'yes stores glyfada'); // Greek Upsilon
+  assert.equal(merchantOf('\u03a3\u039f\u03a5\u03a0\u0395\u03a1'), '\u03c3\u03bf\u03c5\u03c0\u03b5\u03c1'); // all-Greek word stays Greek
 });

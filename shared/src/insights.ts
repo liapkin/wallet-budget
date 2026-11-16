@@ -12,7 +12,10 @@ const addDays = (d: string, n: number): string => new Date((dayNum(d) + n) * DAY
 // lowercase words only: drops card/terminal numbers, #refs and generic payment noise
 const NOISE = new Set(['card', 'pos', 'terminal', 'tid', 'visa', 'mastercard', 'payment']);
 const words = (note: string): string[] => note.toLowerCase().split(/[^a-zͰ-Ͽ]+/).filter((w) => w.length > 2 && !NOISE.has(w));
-export const merchantOf = (note: string): string => words(note).join(' ');
+// banks mix Greek capitals that look Latin (Μ, Ν, Υ, Χ...) into Latin words; lowercased they render as odd glyphs, so fold them back
+const LOOKALIKE: Record<string, string> = { α: 'a', β: 'b', ε: 'e', ζ: 'z', η: 'h', ι: 'i', κ: 'k', μ: 'm', ν: 'n', ο: 'o', ρ: 'p', τ: 't', υ: 'y', χ: 'x' };
+const foldWord = (w: string): string => (/[a-z]/.test(w) ? w.replace(/[α-ω]/g, (c) => LOOKALIKE[c] ?? c) : w);
+export const merchantOf = (note: string): string => words(note).map(foldWord).join(' ');
 
 export type Recurring = {
   merchant: string;
