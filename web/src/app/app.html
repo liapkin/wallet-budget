@@ -5,7 +5,8 @@
   </section>
 }
 <header class="topbar">
-  <app-brand />
+  @if (title()) { <h1>{{ title() }}</h1> } @else { <app-brand /> }
+  @if (refresh.syncing()) { <span class="spin" role="status" aria-label="Fetching"></span> }
   @if (refresh.demo() === true) { <span class="chip accent-soft">Demo data</span> }
   <span class="grow"></span>
   @if (narrow()) { <ng-container [ngTemplateOutlet]="balChip" /> }
@@ -52,6 +53,7 @@
   <nav class="tabbar" aria-label="Primary">
     <a routerLink="/month" routerLinkActive="active" ariaCurrentWhenActive="page"><app-icon name="calendar" /> Month</a>
     <a routerLink="/records" routerLinkActive="active" ariaCurrentWhenActive="page"><app-icon name="list" /> Records</a>
+    <a class="add" routerLink="/records" [queryParams]="{ add: 1 }" aria-label="Add expense"><app-icon name="plus" /></a>
     <a routerLink="/inbox" routerLinkActive="active" ariaCurrentWhenActive="page"><app-icon name="inbox" /> Inbox@if (inbox.value()) { <span class="badge">{{ inbox.value() }}</span> }</a>
     <button #moreBtn type="button" [attr.aria-expanded]="menuOpen()" aria-haspopup="dialog" (click)="openMenu()"><app-icon name="menu" /> More</button>
   </nav>
@@ -64,6 +66,7 @@
 } @else {
   <aside class="side"><ng-container [ngTemplateOutlet]="balChip" /><ng-container [ngTemplateOutlet]="navContent" /></aside>
 }
+@if (pull() > 0) { <div class="ptr" [class.go]="pull() >= 60" [style.transform]="'translateY(' + pull() + 'px)'" [style.opacity]="pull() / 60" aria-hidden="true"><app-icon name="refresh" [size]="18" /></div> }
 <main>
   @if (ready()) {
     <router-outlet />

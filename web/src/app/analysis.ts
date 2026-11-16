@@ -27,7 +27,7 @@ const LIST_CAP = 50;
   `,
   template: `
     <div class="page-head">
-      <h1><span class="dot" [style.background]="color()"></span>{{ group }}</h1>
+      <h1 class="keep"><span class="dot" [style.background]="color()"></span>{{ group }}</h1>
       <div class="actions">
         <button [attr.aria-label]="year() ? 'Previous year' : 'Previous month'" (click)="go(-1)">&larr;</button>
         <strong>{{ label() }}</strong>

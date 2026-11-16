@@ -2,7 +2,7 @@ import { Component, computed, effect, ElementRef, HostListener, inject, resource
 import { NgTemplateOutlet } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { dayLabel, fmt } from './format';
 import { Api } from './api';
 import { Brand } from './ui/brand';
@@ -51,6 +51,11 @@ export class App {
   });
   protected narrow = narrow;
   protected menuOpen = signal(false);
+  /** Top bar title on the narrow shell; empty (brand shown) for pages outside the menu. */
+  protected title = signal('');
+  /** Pull-to-refresh distance in px, 0 when idle. */
+  protected pull = signal(0);
+  private pullY: number | null = null;
   private dialog = viewChild<ElementRef<HTMLDialogElement>>('navDialog');
   private moreBtn = viewChild<ElementRef<HTMLButtonElement>>('moreBtn');
   protected ready = signal(false);
@@ -71,7 +76,12 @@ export class App {
   protected meta = resource({ params: () => this.refresh.tick(), loader: () => this.api.meta() });
 
   constructor() {
-    inject(Router).events.subscribe(() => this.closeMenu());
+    const router = inject(Router);
+    const labels = new Map(NAV.flatMap((g) => g.items.map((i) => [i.path, i.label] as const)));
+    router.events.subscribe((e) => {
+      this.closeMenu();
+      if (e instanceof NavigationEnd) this.title.set(labels.get(e.urlAfterRedirects.split(/[/?#]/)[1]) ?? '');
+    });
     effect(() => {
       document.documentElement.classList.toggle('has-tabbar', this.narrow());
     });
@@ -125,6 +135,38 @@ export class App {
       this.api.clearCache();
       this.refresh.tick.update((n) => n + 1);
     }
+  }
+
+  // Pull to refresh: the browser's own gesture is off (overscroll-behavior) and would reload the whole app.
+  @HostListener('document:touchstart', ['$event'])
+  onTouchStart(e: TouchEvent) {
+    let el = e.target as HTMLElement | null;
+    let free = this.narrow() && window.scrollY <= 0 && !document.querySelector('dialog[open]');
+    for (; free && el; el = el.parentElement) free = el.scrollTop <= 0 && !el.hasAttribute('popover') && !el.classList.contains('pop');
+    this.pullY = free ? e.touches[0].clientY : null;
+  }
+
+  @HostListener('document:touchmove', ['$event'])
+  onTouchMove(e: TouchEvent) {
+    if (this.pullY === null) return;
+    if (window.scrollY > 0) return this.endPull(false);
+    this.pull.set(Math.max(0, Math.min((e.touches[0].clientY - this.pullY) / 2, 80)));
+  }
+
+  @HostListener('document:touchend')
+  @HostListener('document:touchcancel')
+  onTouchEnd() {
+    this.endPull(this.pull() >= 60);
+  }
+
+  private endPull(go: boolean) {
+    this.pullY = null;
+    this.pull.set(0);
+    if (!go) return;
+    navigator.vibrate?.(10);
+    if (this.refresh.walletAvailable()) return void this.refresh.fetchWallet();
+    this.api.clearCache();
+    this.refresh.tick.update((n) => n + 1);
   }
 
   @HostListener('window:keydown', ['$event'])

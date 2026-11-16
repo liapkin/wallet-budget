@@ -44,8 +44,15 @@ describe('narrow navigation', () => {
   it('renders the tab bar only when narrow', async () => {
     const f = await setup(true);
     const tabs = f.nativeElement.querySelectorAll('nav.tabbar > *');
-    expect([...tabs].map((t: HTMLElement) => t.textContent!.trim())).toEqual(['Month', 'Records', 'Inbox', 'More']);
+    expect([...tabs].map((t: HTMLElement) => t.textContent!.trim())).toEqual(['Month', 'Records', '', 'Inbox', 'More']);
     expect(f.nativeElement.querySelector('aside.side')).toBeNull();
+  });
+
+  it('shows the page title in the top bar', async () => {
+    const f = await setup(true);
+    await TestBed.inject(Router).navigateByUrl('/records');
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('.topbar h1')?.textContent).toBe('Records');
   });
 
   it('has no tab bar on desktop', async () => {

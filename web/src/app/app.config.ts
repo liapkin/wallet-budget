@@ -1,9 +1,9 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
-import { provideRouter, withViewTransitions } from '@angular/router';
+import { provideRouter, withInMemoryScrolling, withViewTransitions } from '@angular/router';
 import { routes } from './app.routes';
 import { accessInterceptor } from './access';
 
 export const appConfig: ApplicationConfig = {
-  providers: [provideBrowserGlobalErrorListeners(), provideHttpClient(withFetch(), withInterceptors([accessInterceptor])), provideRouter(routes, withViewTransitions({ skipInitialTransition: true }))],
+  providers: [provideBrowserGlobalErrorListeners(), provideHttpClient(withFetch(), withInterceptors([accessInterceptor])), provideRouter(routes, withInMemoryScrolling({ scrollPositionRestoration: 'enabled' }), withViewTransitions({ skipInitialTransition: true }))],
 };
