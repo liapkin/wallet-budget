@@ -12,7 +12,7 @@ import { dietConfigError } from './diet-config.ts';
 import { habitsConfigError } from './habits-config.ts';
 import { athensDay, athensLocalToUtc, athensMonth } from '../../shared/src/month.ts';
 import { capsFor, monthStatus } from '../../shared/src/budget.ts';
-import { monthClose, pairKey, possibleDuplicates, recurring, suggestGroup, yearReview } from '../../shared/src/insights.ts';
+import { monthClose, pairKey, possibleDuplicates, suggestGroup, yearReview } from '../../shared/src/insights.ts';
 import { toCents } from '../../shared/src/money.ts';
 import { holdingsHistory, holdingsSummary, type CryptoQuotes } from '../../shared/src/crypto.ts';
 import type { Config } from '../../shared/src/types.ts';
@@ -176,6 +176,12 @@ app.get('/api/records', (req, res) => {
     if (typeof v !== 'string') bad(`invalid ${q}`);
     where.push(`${col}=?`);
     args.push(v as string);
+  }
+  const year = req.query.year;
+  if (year !== undefined && year !== '') {
+    if (typeof year !== 'string' || !/^\d{4}$/.test(year)) bad('invalid year');
+    where.push('month LIKE ?');
+    args.push(`${year}-%`);
   }
   const rows = memo(`records:${JSON.stringify(req.query)}`, () =>
     db.prepare(`${SELECT} WHERE ${where.join(' AND ')} ORDER BY date_utc DESC, id DESC`).all(...args).map(present));
@@ -342,13 +348,6 @@ const monthsAgo = (n: number): string => {
 const liveRows = (since: string, extra = ''): any[] =>
   memo(`live:${athensDay()}:${since.slice(0, 10)}:${extra}`, () =>
     (db.prepare(`${SELECT} WHERE is_dup=0 AND type='Expenses' AND source IN (?, 'manual') AND date_utc>=? ${extra}`).all(activeSource(), since) as any[]).map(present));
-
-app.get('/api/recurring', (req, res) => {
-  const rows = liveRows(monthsAgo(13));
-  const grp = new Map(rows.map((r) => [r.id, r.grp]));
-  const items = recurring(rows.map(toRec), (r) => grp.get(r.id));
-  res.json({ items, monthlyTotalCents: items.reduce((s, i) => s + i.typicalCents, 0) });
-});
 
 // ATM withdrawals not yet paired as a Wallet transfer to Cash, from either side of the pair.
 const UNPAIRED_ATM = `source='api' AND grp='Cash withdrawal' AND type='Expenses' AND is_dup=0 AND account<>'Cash'

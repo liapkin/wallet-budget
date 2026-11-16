@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, resource, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { athensDay } from '../../../shared/src/month.ts';
 import { fmt, groupColor, monthLabel } from './format';
@@ -15,8 +16,8 @@ type YearData = {
 
 @Component({
   selector: 'app-year',
-  imports: [Icon, Pip],
-  styles: `.kpis { grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); } td .dot { margin-right: var(--sp-2); } .neg { color: var(--good); } .up { color: var(--bad); }`,
+  imports: [Icon, Pip, RouterLink],
+  styles: `.stack-title a { color: inherit; text-decoration: none; cursor: pointer; } .stack-title a:hover { text-decoration: underline; } .kpis { grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); } td .dot { margin-right: var(--sp-2); } .neg { color: var(--good); } .up { color: var(--bad); }`,
   template: `
     <div class="page-head">
       <h1>Year</h1>
@@ -51,7 +52,7 @@ type YearData = {
           <tbody>
             @for (g of groups(); track g.group) {
               <tr>
-                <td class="stack-title"><span class="dot" [style.--dot]="color(g.group)"></span>{{ g.group }}</td>
+                <td class="stack-title"><a [routerLink]="['/analysis', g.group]" [queryParams]="{ year: year() }"><span class="dot" [style.--dot]="color(g.group)"></span>{{ g.group }}</a></td>
                 <td class="num" [attr.data-label]="d.year">{{ fmt(g.cents) }}</td>
                 <td class="num muted" [attr.data-label]="d.year - 1">{{ fmt(g.prevCents) }}</td>
                 <td class="num" data-label="Change" [class.pos]="g.deltaCents < 0" [class.err]="g.deltaCents > 0">{{ sign(g.deltaCents) }}{{ fmt(abs(g.deltaCents)) }}</td>

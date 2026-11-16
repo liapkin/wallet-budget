@@ -29,3 +29,21 @@ test('cash top-ups list only ATM withdrawals not paired as a transfer from eithe
     server.close();
   }
 });
+
+test('records filter by year and reject a malformed year', async () => {
+  const ins = db.prepare(
+    "INSERT INTO records (id, source, ext_id, account, category, amount_cents, type, payment_type, note, date_utc, grp, month, is_dup, raw_json) VALUES (?, 'api', ?, 'Bank', 'x', -100, 'Expenses', 'Card', 'n', '2020-03-01T00:00:00Z', 'G', ?, 0, '{}')",
+  );
+  ins.run(901, 'y1', '2020-03');
+  ins.run(902, 'y2', '2021-03');
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise((r) => server.once('listening', r));
+  try {
+    const base = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/records`;
+    const ids = ((await (await fetch(`${base}?year=2020`)).json()) as { id: number }[]).map((r) => r.id);
+    assert.deepEqual(ids, [901]);
+    assert.equal((await fetch(`${base}?year=20x`)).status, 400);
+  } finally {
+    server.close();
+  }
+});

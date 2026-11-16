@@ -29,9 +29,9 @@ const LIST_CAP = 50;
     <div class="page-head">
       <h1><span class="dot" [style.background]="color()"></span>{{ group }}</h1>
       <div class="actions">
-        <button aria-label="Previous month" (click)="go(-1)">&larr;</button>
+        <button [attr.aria-label]="year() ? 'Previous year' : 'Previous month'" (click)="go(-1)">&larr;</button>
         <strong>{{ label() }}</strong>
-        <button aria-label="Next month" (click)="go(1)">&rarr;</button>
+        <button [attr.aria-label]="year() ? 'Next year' : 'Next month'" (click)="go(1)">&rarr;</button>
       </div>
     </div>
     @if (data.error() || summary.error()) {
@@ -47,16 +47,16 @@ const LIST_CAP = 50;
         </div>
         @if (avg() !== null) {
           <div class="kpi">
-            <div class="label">Average of previous 6 months</div>
+            <div class="label">{{ year() ? 'Total in ' + (+year()! - 1) : 'Average of previous 6 months' }}</div>
             <div class="value">{{ fmt(avg()!) }}</div>
             <div class="sub">
-              {{ total() >= avg()! ? '+' : '−' }}{{ fmt(abs(total() - avg()!)) }} vs avg
+              {{ total() >= avg()! ? '+' : '−' }}{{ fmt(abs(total() - avg()!)) }} vs {{ year() ? +year()! - 1 : 'avg' }}
             </div>
           </div>
         }
       </section>
       <section class="card">
-        <div class="card-head"><h2>Last 12 months</h2></div>
+        <div class="card-head"><h2>{{ year() ? year() : 'Last 12 months' }}</h2></div>
         <app-chart [option]="chart()" [height]="220" />
       </section>
       @if (!rows().length) {
@@ -80,7 +80,9 @@ const LIST_CAP = 50;
         <section class="card">
           <div class="card-head">
             <h2>Records</h2>
-            <a [routerLink]="['/records']" [queryParams]="{ month: month(), group }">Open in Records &rarr;</a>
+            @if (!year()) {
+              <a [routerLink]="['/records']" [queryParams]="{ month: month(), group }">Open in Records &rarr;</a>
+            }
           </div>
           <ul class="list">
             @for (r of shown(); track r.id) {
@@ -107,18 +109,20 @@ export class Analysis {
   private router = inject(Router);
   protected group = this.route.snapshot.paramMap.get('group') ?? '';
   private q = toSignal(this.route.queryParamMap, { requireSync: true });
-  protected month = computed(() => this.q().get('month') ?? currentMonth());
+  private qMonth = computed(() => this.q().get('month'));
+  protected year = computed(() => (this.qMonth() ? null : /^\d{4}$/.exec(this.q().get('year') ?? '')?.[0] ?? null));
+  protected month = computed(() => this.qMonth() ?? currentMonth());
   protected fmt = fmt;
   protected abs = Math.abs;
   protected color = () => groupColor(this.group);
-  protected label = computed(() => monthLabel(this.month()));
+  protected label = computed(() => this.year() ?? monthLabel(this.month()));
   protected day = dayLabel;
 
   protected summary = resource({ loader: () => this.api.summary() });
   protected data = resource({
-    params: () => this.month(),
-    loader: async ({ params: month }) => {
-      const [cfg, recs] = await Promise.all([this.api.config(), this.api.records({ month, group: this.group })]);
+    params: (): Record<string, string> => (this.year() ? { year: this.year()! } : { month: this.month() }),
+    loader: async ({ params }) => {
+      const [cfg, recs] = await Promise.all([this.api.config(), this.api.records({ ...params, group: this.group })]);
       return recs.filter((r) => isSpend(r, cfg)).sort((a, b) => b.dateUtc.localeCompare(a.dateUtc));
     },
   });
@@ -128,6 +132,11 @@ export class Analysis {
   protected total = computed(() => this.rows().reduce((s, r) => s - r.amountCents, 0));
   private cents = (m: string) => this.summary.value()?.spend[m]?.[this.group]?.cents;
   protected avg = computed(() => {
+    const y = this.year();
+    if (y) {
+      const prev = Object.keys(this.summary.value()?.spend ?? {}).filter((m) => m.startsWith(`${+y - 1}-`)).map((m) => this.cents(m)).filter((c) => c !== undefined);
+      return prev.length ? prev.reduce((s, c) => s + c, 0) : null;
+    }
     const xs = [1, 2, 3, 4, 5, 6].map((n) => this.cents(addMonths(this.month(), -n))).filter((c) => c !== undefined);
     return xs.length ? Math.round(xs.reduce((s, c) => s + c, 0) / xs.length) : null;
   });
@@ -142,9 +151,11 @@ export class Analysis {
   });
 
   protected chart = computed(() => {
+    const y = this.year();
     const sel = this.month();
-    const months = Array.from({ length: 12 }, (_, i) => addMonths(sel, i - 11));
-    const avg = this.avg();
+    const months = y ? Array.from({ length: 12 }, (_, i) => `${y}-${String(i + 1).padStart(2, '0')}`) : Array.from({ length: 12 }, (_, i) => addMonths(sel, i - 11));
+    const have = months.map((m) => this.cents(m)).filter((c) => c !== undefined);
+    const avg = y ? (have.length ? Math.round(have.reduce((s, c) => s + c, 0) / have.length) : null) : this.avg();
     const color = chartColor(this.group);
     return {
       grid: { left: 8, right: 16, top: 16, bottom: 8, containLabel: true },
@@ -153,13 +164,14 @@ export class Analysis {
       yAxis: { type: 'value', axisLabel: { formatter: axisEuro(currencySymbol()) }, splitLine: { lineStyle: { type: 'dashed', opacity: 0.35 } } },
       series: [{
         type: 'bar',
-        data: months.map((m) => ({ value: this.cents(m) ?? 0, itemStyle: { color, opacity: m === sel ? 1 : 0.45 } })),
+        data: months.map((m) => ({ value: this.cents(m) ?? 0, itemStyle: { color, opacity: y || m === sel ? 1 : 0.45 } })),
         ...(avg !== null ? { markLine: { silent: true, symbol: 'none', label: { show: false }, data: [{ yAxis: avg }] } } : {}),
       }],
     };
   });
 
   protected go(n: number) {
-    this.router.navigate([], { queryParams: { month: addMonths(this.month(), n) }, queryParamsHandling: 'merge', replaceUrl: true });
+    const y = this.year();
+    this.router.navigate([], { queryParams: y ? { year: +y + n } : { month: addMonths(this.month(), n) }, queryParamsHandling: 'merge', replaceUrl: true });
   }
 }
