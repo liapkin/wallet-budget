@@ -9,7 +9,9 @@ self.addEventListener('notificationclick', (e) => {
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       const open = list.find((c) => 'focus' in c);
-      return open ? open.focus() : self.clients.openWindow(url);
+      if (!open) return self.clients.openWindow(url);
+      // navigate rejects for clients this worker does not control; focusing is still better than nothing
+      return open.navigate(url).then((c) => (c ?? open).focus(), () => open.focus());
     }),
   );
 });

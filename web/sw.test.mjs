@@ -41,3 +41,15 @@ test('service worker keeps push and notificationclick handlers', () => {
   new Function('self', 'caches', 'fetch', 'Response', src)(self, {}, () => {}, {});
   assert.deepEqual(types, ['push', 'notificationclick', 'install', 'activate', 'fetch']);
 });
+
+test('notificationclick navigates the open window to the notification url', async () => {
+  const listeners = {};
+  const calls = [];
+  const client = { navigate: async (url) => { calls.push(url); return client; }, focus: async () => { calls.push('focus'); } };
+  const self = { location: { origin: 'https://x.test' }, addEventListener: (type, fn) => { listeners[type] = fn; }, clients: { matchAll: async () => [client] } };
+  new Function('self', 'caches', 'fetch', 'Response', src)(self, {}, () => {}, {});
+  let promise;
+  listeners.notificationclick({ notification: { close() {}, data: { url: '/habits' } }, waitUntil(p) { promise = p; } });
+  await promise;
+  assert.deepEqual(calls, ['/habits', 'focus']);
+});
