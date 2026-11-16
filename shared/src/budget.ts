@@ -44,17 +44,28 @@ export function coreActuals(cfg: Config, groupSpend: Cents, typed: Cents) {
     .map((l) => {
       const groups = walletGroups(l.source);
       const t = typed[l.key] as number | undefined;
-      const actual = groups ? groups.reduce((s, g) => s + (groupSpend[g] ?? 0), t ?? 0) : (t ?? null);
-      return { key: l.key, label: l.label, plan: l.plan, wallet: !!groups, actual };
+      // a hand-entered line nobody has typed yet counts at its plan, so the month is not overstated until it is entered
+      const assumed = !groups && t === undefined && l.inPlan !== false;
+      const actual = groups ? groups.reduce((s, g) => s + (groupSpend[g] ?? 0), t ?? 0) : (t ?? (assumed ? l.plan : null));
+      return { key: l.key, label: l.label, plan: l.plan, wallet: !!groups, actual, assumed };
     });
 }
+
+/** Groups accounted for by the plan (core-fed, fun, covered by core) or not spending at all; spend anywhere else is unplanned. */
+export function plannedGroups(cfg: Config): Set<string> {
+  const a = cfg.allocation;
+  const fed = cfg.coreExpenses.flatMap((l) => walletGroups(l.source) ?? []);
+  return new Set([...fed, ...a.funGroups, ...a.coveredByCoreGroups, ...cfg.wallet.excludedGroups, 'Income']);
+}
+
+/** Months until a goal is met at its monthly cap; null when there is no cap. */
+export const goalEta = (gap: number, perMonth: number): number | null => (perMonth <= 0 ? null : gap <= 0 ? 0 : Math.ceil(gap / perMonth));
 
 export function monthStatus(cfg: Config, groupSpend: Cents, typed: Cents) {
   const a = cfg.allocation;
   const lines = coreActuals(cfg, groupSpend, typed);
   const sum = (gs: string[]) => gs.reduce((s, g) => s + (groupSpend[g] ?? 0), 0);
-  const fed = cfg.coreExpenses.flatMap((l) => walletGroups(l.source) ?? []);
-  const skip = new Set([...fed, ...a.funGroups, ...a.coveredByCoreGroups, ...cfg.wallet.excludedGroups, 'Income']);
+  const skip = plannedGroups(cfg);
   const fun = sum(a.funGroups);
   const unplanned = sum(Object.keys(groupSpend).filter((g) => !skip.has(g)));
   const core = lines.reduce((s, l) => s + (l.actual ?? 0), 0);

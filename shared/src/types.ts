@@ -81,6 +81,7 @@ export type Config = {
     categoryMap: { walletCategory: string; group: string }[];
     excludedGroups: string[]; // non-spending groups, left out of spend totals
     incomeGroups: string[]; // groups counted as income; 'Income' is the fallback
+    completeFrom?: string | null; // 'YYYY-MM'; earlier months hold partial records and are lower bounds
     precedence: string;
     groups: string[];
   };

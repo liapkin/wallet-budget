@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isSpend, breakdown, trendToDay } from './analysis.ts';
+import { isSpend, breakdown, projectMonthEnd, trendToDay } from './analysis.ts';
 import type { Config } from './types.ts';
 
 const cfg = { wallet: { incomeGroups: ['Income'], excludedGroups: ['Transfers'] } } as Config;
@@ -50,4 +50,10 @@ test('trendToDay: average skips months without the group, zero if none', () => {
   assert.equal(t.Food.avgCents, 450);
   assert.equal(t.Fun.avgCents, 10);
   assert.equal(trendToDay([row()], [[]], 31).Food.avgCents, 0);
+});
+
+test('projectMonthEnd: average daily spend so far carried to month end', () => {
+  assert.equal(projectMonthEnd(3000, 10, 30), 9000);
+  assert.equal(projectMonthEnd(3000, 0, 30), 3000);
+  assert.equal(projectMonthEnd(3000, 30, 30), 3000);
 });

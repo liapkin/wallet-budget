@@ -33,3 +33,7 @@ export function trendToDay(cur: Dated[], prev: Dated[][], day: number): Record<s
   }
   return out;
 }
+
+/** Month-end total at the average daily spend so far; unchanged outside a running month. */
+export const projectMonthEnd = (cumToDay: number, day: number, total: number): number =>
+  day <= 0 || day >= total ? cumToDay : Math.round((cumToDay / day) * total);

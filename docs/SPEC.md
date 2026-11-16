@@ -77,7 +77,7 @@ Fixed amounts in the database currency, not percentages.
 - Annual investing = monthly investing × 12 + bonuses (when they go to investing).
 - Goals: emergency, sinking and business each have a fixed target (cents), the accounts that count toward it, a deposit-into account, and a monthly cap (0 = no cap). Progress = sum of the goal's account balances against its target. Savings accounts = union of the three goals' accounts. Savings total = their balances plus cash savings, or the manual bank-savings fallback when there are none.
 - Month-end transfers all leave the payroll account (none when it is unset). In order emergency, sinking, business: amount = min(gap, monthly cap if set, payroll balance left). Invest comes last: min(investing so far floored at 0, balance left) into the first investment account. Steps whose deposit account is the payroll account are skipped. Transfers never sum to more than the payroll balance.
-- Core actuals per month: each core line has an actual. Lines whose source is `wallet:Group+Group` are read from the groups, plus any typed amount; the rest are typed. Non-standing lines show only in months where a value is typed.
+- Core actuals per month: each core line has an actual. Lines whose source is `wallet:Group+Group` are read from the groups, plus any typed amount; the rest are typed; a standing, in-plan typed line with no value yet counts at its plan and is marked assumed (a typed 0 overrides). Non-standing lines show only in months where a value is typed.
 - Month status: fun = sum of the fun groups; unplanned = spend in groups that are not fed to a core line, fun, covered by core, excluded, or income; investing so far = salary − core actuals − fun − unplanned − sinking monthly cap.
 - Caps: takeout and kiosk have monthly caps from the `applyFrom` date. Both sit inside fun. An optional buffer month (nullable) has no target.
 - Optional config: investment accounts (their balances sum to "invested so far") and a payroll account, both chosen from the synced accounts.
@@ -122,6 +122,17 @@ Month additions:
 - Balance chip in the topbar: sum of EUR Wallet accounts, excluding hidden and `local:*` accounts. Click lists each account; non-EUR accounts are shown separately, not summed.
 - Trend marker on Spend by group rows: this month to date against the average of up to 3 prior months at the same Athens day-of-month.
 - Spend by account card.
+- Hero: core actuals plus fun against core plan plus fun plan. Unplanned spend is listed separately.
+- Pace chart: cumulative fun and unplanned spend against the fun budget spread evenly over the month. In the current month a projection carries the average daily spend so far to month end; the Fun card shows the same projection for fun alone.
+- Goal rows show months to go = ceil(gap / monthly cap) when the goal has a cap.
+
+Other additions:
+- History: `wallet.completeFrom` (`YYYY-MM`, optional, set in Budget) marks earlier months as lower bounds. Income and Saved columns: Saved = (income − total spend) / income.
+- Records: "All months" widens a note search beyond the selected month. Export CSV writes the rows on screen (date, note, group, account, category, type, flag, amount); payee is never included.
+- Groceries: month-to-date spend of the groups feeding the groceries core line, beside the planned cost.
+- Net worth: change in Savings and Total against the latest snapshot at least 30 days old.
+- The app reloads its data when it returns to the foreground after more than 5 minutes. Month marks the sync stale when the last sync is over 3 hours old.
+- Pages with unsaved config edits ask before in-app navigation.
 
 ## 8. Phases and acceptance checks
 

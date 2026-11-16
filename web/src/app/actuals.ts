@@ -41,12 +41,13 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0
             <div class="amt">
               <span class="big" [class.bad]="over(a)">{{ fmt(a.actual ?? 0) }}</span>
               <span class="muted">of {{ fmt(a.plan) }}</span>
+              @if (a.assumed) { <span class="muted sm">assumed</span> }
             </div>
             <div class="progress"><i [class.over]="over(a)" [style.width.%]="pct(a)"></i></div>
             <label class="entry">
               <span class="muted sm">{{ a.wallet ? '+ cash' : 'Actual' }}</span>
               <span class="affix" [attr.data-pre]="currencySymbol()">
-                <input appMoney type="text" [placeholder]="a.wallet ? '0' : ''" [value]="eur(typed()[month()]?.[a.key])" (change)="save(month(), a.key, $event)" (keydown.enter)="blur($event)" />
+                <input appMoney type="text" [placeholder]="a.wallet ? '0' : a.assumed ? eur(a.plan) : ''" [value]="eur(typed()[month()]?.[a.key])" (change)="save(month(), a.key, $event)" (keydown.enter)="blur($event)" />
               </span>
               @if (saved() === month() + a.key) { <span class="ok"><app-icon name="check" [size]="14" /> saved</span> }
             </label>

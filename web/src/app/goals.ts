@@ -1,5 +1,6 @@
 import { Component, computed, inject, resource } from '@angular/core';
 import { currencySymbol, fmt, parseMoney } from './format.ts';
+import { goalEta } from '../../../shared/src/budget.ts';
 import type { Config } from '../../../shared/src/types.ts';
 import { Api } from './api';
 import { MoneyInput } from './ui/money-input';
@@ -32,7 +33,7 @@ const GOALS: { key: Key; label: string }[] = [
     @if (draft(); as c) {
       @for (g of goals; track g.key) {
         <section class="card">
-          <div class="card-head"><h2>{{ g.label }}</h2><span class="muted">{{ fmt(have(g.key)) }} of {{ fmt(c.allocation.goals[g.key].target) }}</span></div>
+          <div class="card-head"><h2>{{ g.label }}</h2><span class="muted">{{ fmt(have(g.key)) }} of {{ fmt(c.allocation.goals[g.key].target) }}@if (eta(g.key); as n) { , {{ n }} {{ n === 1 ? 'month' : 'months' }} to go }</span></div>
           <div class="progress"><i [style.width.%]="pct(g.key)"></i></div>
           <h3>Accounts</h3>
           <div class="acct">
@@ -115,6 +116,10 @@ export class GoalsComponent {
   protected hideable = computed(() => [...new Set([...(this.accounts.value() ?? []).map((a) => a.name), ...(this.draft()?.allocation.hiddenAccounts ?? [])])]);
   protected eur = (c: number) => String(c / 100);
   protected have = (k: Key) => this.draft()!.allocation.goals[k].accounts.reduce((s, n) => s + (this.balances()[n] ?? 0), 0);
+  protected eta = (k: Key) => {
+    const g = this.draft()!.allocation.goals[k];
+    return goalEta(g.target - this.have(k), g.perMonth);
+  };
   protected pct = (k: Key) => {
     const t = this.draft()!.allocation.goals[k].target;
     return t > 0 ? Math.min(100, (this.have(k) / t) * 100) : 0;

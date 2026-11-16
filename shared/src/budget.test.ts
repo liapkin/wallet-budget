@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { allocation, annualInvesting, capsFor, coreActuals, monthStatus, savings, savingsAccounts } from './budget.ts';
+import { allocation, annualInvesting, capsFor, coreActuals, goalEta, monthStatus, plannedGroups, savings, savingsAccounts } from './budget.ts';
 import { seedToConfig } from './seed.ts';
 
 const seed = () => seedToConfig(JSON.parse(readFileSync(new URL('../../config/seed-config.example.json', import.meta.url), 'utf8')));
@@ -51,13 +51,19 @@ test('savingsAccounts: union of goal accounts', () => {
   assert.deepEqual(savingsAccounts(c), ['A', 'B', 'C']);
 });
 
-test('core actuals: wallet-fed plus typed, manual null, non-standing hidden', () => {
+test('core actuals: wallet-fed plus typed, untyped manual assumed at plan, non-standing hidden', () => {
   const r = coreActuals(real, { Groceries: 30000, Fuel: 2000, Transport: 500 }, { groceries: 5000, rent: 40000 });
   const by = Object.fromEntries(r.map((x) => [x.key, x.actual]));
   assert.equal(by['groceries'], 35000);
   assert.equal(by['transport'], 2500);
   assert.equal(by['rent'], 40000);
-  assert.equal(by['gym'], null);
+  const gym = r.find((x) => x.key === 'gym')!;
+  assert.equal(gym.actual, gym.plan);
+  assert.equal(gym.assumed, true);
+  assert.equal(r.find((x) => x.key === 'rent')!.assumed, false);
+  assert.equal(coreActuals(real, {}, { gym: 0 }).find((x) => x.key === 'gym')!.actual, 0);
+  const st = monthStatus(real, {}, {});
+  assert.equal(st.core, st.lines.filter((l) => l.assumed).reduce((s, l) => s + l.plan, 0));
   assert.ok(!('training' in by));
   assert.equal(coreActuals(real, {}, { training: 6000 }).find((x) => x.key === 'training')!.actual, 6000);
 });
@@ -66,6 +72,21 @@ test('month status', () => {
   const s = monthStatus(real, { Groceries: 10000, Takeout: 2000, Car: 3000, Transfer: 5000, Income: 100 }, { rent: 40000 });
   assert.equal(s.fun, 2000);
   assert.equal(s.unplanned, 3000);
-  assert.equal(s.core, 50000);
-  assert.equal(s.investingSoFar, 200000 - 50000 - 2000 - 3000 - 20000);
+  // typed rent + wallet groceries + untyped utilities, household, gym and phone at plan
+  assert.equal(s.core, 50000 + 21000);
+  assert.equal(s.investingSoFar, 200000 - 71000 - 2000 - 3000 - 20000);
+});
+
+test('goalEta: months to close the gap at the monthly cap', () => {
+  assert.equal(goalEta(50000, 0), null);
+  assert.equal(goalEta(0, 25000), 0);
+  assert.equal(goalEta(50000, 25000), 2);
+  assert.equal(goalEta(25001, 25000), 2);
+});
+
+test('plannedGroups: everything outside it is unplanned', () => {
+  const p = plannedGroups(real);
+  for (const g of [...real.allocation.funGroups, ...real.wallet.excludedGroups, 'Income']) assert.ok(p.has(g));
+  assert.equal(p.has('Never planned'), false);
+  assert.equal(monthStatus(real, { 'Never planned': 700 }, {}).unplanned, 700);
 });

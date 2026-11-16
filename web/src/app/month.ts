@@ -1,9 +1,9 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, DestroyRef, effect, inject, resource, signal } from '@angular/core';
 import { RouterLink, Router } from '@angular/router';
-import { allocation, capsFor, monthStatus, savings } from '../../../shared/src/budget.ts';
+import { allocation, capsFor, goalEta, monthStatus, plannedGroups, savings } from '../../../shared/src/budget.ts';
 import { currencySymbol, fmt } from './format.ts';
-import { breakdown, isSpend, trendToDay } from '../../../shared/src/analysis.ts';
+import { breakdown, isSpend, projectMonthEnd, trendToDay } from '../../../shared/src/analysis.ts';
 import { athensDay, athensMonth } from '../../../shared/src/month.ts';
 import { Api } from './api';
 import { dayLabel, groupColor, HOLLOW } from './format';
@@ -67,11 +67,11 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
       <div class="actions">
         <button class="primary" (click)="addExpense()"><app-icon name="plus" [size]="16" /> Add expense</button>
         <app-month-picker [(month)]="month" />
-        @if (updated()) { <span class="muted">{{ updated() }}</span> }
+        @if (updated()) { <span [class.muted]="!stale()" [class.err]="stale()">{{ stale() ? 'Sync stale, ' + updated().toLowerCase() : updated() }}</span> }
       </div>
     </div>
     @if (error()) {
-      <p class="err">Failed to load data. Check that the server is running, then try Fetch again.</p>
+      <p class="err">Could not load data. <button type="button" (click)="cfg.reload(); summary.reload()">Retry</button></p>
     }
     <ng-template #xfer let-key="key">
       @if (showClose() && transfer(key); as t) {
@@ -83,11 +83,11 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
     @if (v(); as v) {
       <div class="hero">
         <div class="kpi big">
-          <span class="label">Spend this month</span>
+          <span class="label">{{ current() ? 'Spend this month' : 'Spent in ' + label() }}</span>
           <span class="value">{{ fmt(v.spend) }}</span>
           <div class="progress"><i [class.over]="v.spend > v.budget" [style.width.%]="v.spendPct"></i></div>
           <span class="sub">of {{ fmt(v.budget) }} (core {{ fmt(v.alloc.core) }} + fun {{ fmt(v.alloc.fun) }})</span>
-          <span class="sub">{{ daysLeft() }} days left</span>
+          @if (current()) { <span class="sub">{{ daysLeft() }} days left</span> }
         </div>
         <div class="kpi" [class.bad]="v.funLeft < 0" [class.good]="v.funLeft >= 0">
           <span class="label">Fun left</span>
@@ -97,6 +97,7 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
             @else if (v.funLeft < 0) { over by {{ fmt(-v.funLeft) }} }
             @else { {{ fmt(v.st.fun) }} of {{ fmt(v.alloc.fun) }} used }
           </span>
+          @if (v.funProjected !== null) { <span class="sub" [class.over]="v.funProjected > v.alloc.fun">on track for {{ fmt(v.funProjected) }}</span> }
         </div>
         <div class="kpi" [class.bad]="v.takeoutOver">
           <span class="label">Takeout</span>
@@ -112,7 +113,7 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
           }
         </div>
         <div class="kpi" [class.good]="v.st.investingSoFar >= 0" [class.bad]="v.st.investingSoFar < 0">
-          <span class="label">Investing remainder so far</span>
+          <span class="label">Investing remainder{{ current() ? ' so far' : '' }}</span>
           <span class="value">{{ fmt(v.st.investingSoFar) }}</span>
           <div class="progress" [class.over]="v.st.investingSoFar < 0"><i [class.over]="v.st.investingSoFar < 0" [style.width.%]="v.invPct"></i></div>
           <span class="sub">plan {{ fmt(v.alloc.investing) }}</span>
@@ -121,7 +122,7 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
 
       <section class="card">
         <div class="card-head">
-          <h2>Cumulative spend vs pace</h2>
+          <h2>Discretionary spend vs pace</h2>
         </div>
         @if (records.error()) {
           <p class="err">Failed to load records.</p>
@@ -148,7 +149,7 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
         <div class="rows">
           @for (g of v.goals; track g.key) {
             <div class="row goal" [class.done]="doneKeys().includes(g.key)">
-              <span class="name">{{ g.label }}</span>
+              <span class="name">{{ g.label }}@if (g.set && g.eta) { <small class="muted">{{ g.eta }} {{ g.eta === 1 ? 'month' : 'months' }} to go</small> }</span>
               @if (g.set) {
                 <span class="num" [class.met]="g.met">{{ fmt(g.have) }} @if (g.met) { met } @else { <span class="muted">/ {{ fmt(g.target) }}</span> }</span>
               } @else {
@@ -185,10 +186,13 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
                 <div class="progress"><i [class.over]="b.over" [style.width.%]="b.pct"></i>@if (b.mark !== null) { <b [style.left.%]="b.mark" title="cap"></b> }</div>
               </a>
             }
+            @if (v.st.unplanned) {
+              <a class="row" routerLink="/records" [queryParams]="{ month: month() }">
+                <span class="name">Unplanned <small class="muted">reduces investing</small></span>
+                <span class="num" [class.err]="v.st.unplanned > 0">{{ fmt(v.st.unplanned) }}</span>
+              </a>
+            }
           </div>
-          @if (v.st.unplanned) {
-            <p class="muted">Unplanned: {{ fmt(v.st.unplanned) }}</p>
-          }
         </section>
 
         <section class="card">
@@ -196,7 +200,7 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
           <div class="rows">
             @for (l of v.st.lines; track l.key) {
               <div class="row">
-                <span class="name">{{ l.label }}@if (l.wallet) { <span class="src" title="From records" aria-label="From records"><app-icon name="wallet" [size]="14" /></span> } @else { <span class="src muted" title="Entered by hand" aria-label="Entered by hand"><app-icon name="pencil" [size]="14" /></span> }</span>
+                <span class="name">{{ l.label }}@if (l.wallet) { <span class="src" title="From records" aria-label="From records"><app-icon name="wallet" [size]="14" /></span> } @else { <span class="src muted" title="Entered by hand" aria-label="Entered by hand"><app-icon name="pencil" [size]="14" /></span> }@if (l.assumed) { <small class="muted">assumed</small> }</span>
                 <span class="num">
                   <span [class.err]="l.actual !== null && l.actual > l.plan">{{ l.actual === null ? '—' : fmt(l.actual) }}</span>
                   <span class="muted"> / {{ fmt(l.plan) }}</span>
@@ -304,6 +308,11 @@ export class Month {
     const min = Math.max(0, Math.floor((this.now() - new Date(t).getTime()) / 60000));
     return min < 1 ? 'Updated just now' : min < 60 ? `Updated ${min} min ago` : min < 1440 ? `Updated ${Math.floor(min / 60)} h ago` : `Updated ${Math.floor(min / 1440)} d ago`;
   });
+  // sync runs hourly; three missed runs means it is failing, which is otherwise only logged server-side
+  protected stale = computed(() => {
+    const t = this.meta.value()?.lastSync;
+    return !!t && this.refresh.walletAvailable() && this.now() - new Date(t).getTime() > 3 * 3_600_000;
+  });
   protected error = computed(() => !!(this.cfg.error() || this.summary.error()));
 
   constructor() {
@@ -335,6 +344,7 @@ export class Month {
     return { total, day, cur, isCurrent: cur === this.month() };
   });
   protected daysLeft = computed(() => this.elapsed().total - this.elapsed().day);
+  protected current = computed(() => this.elapsed().isCurrent);
 
   protected v = computed(() => {
     const cfg = this.cfg.value();
@@ -345,7 +355,8 @@ export class Month {
     const st = monthStatus(cfg, groupSpend, this.actuals.value()?.[this.month()] ?? {});
     const skip = new Set([...cfg.wallet.excludedGroups, 'Income']);
     const shown = Object.entries(groupSpend).filter(([g, c]) => !skip.has(g) && c > 0);
-    const spend = shown.reduce((s, [, c]) => s + c, 0);
+    // same sources as the budget it is measured against: typed core actuals count, unplanned does not
+    const spend = st.core + st.fun;
     const caps = capsFor(this.month(), cfg);
     const max = Math.max(1, ...shown.map(([, c]) => c), ...Object.values(caps ?? {}));
     const bars = shown
@@ -360,16 +371,18 @@ export class Month {
     const sav = savings(cfg, byName);
     const g = cfg.allocation.goals;
     const goals = [
-      { key: 'emergency', label: 'Emergency fund', ...sav.emergency, accounts: g.emergency.accounts },
-      { key: 'sinking', label: 'Sinking fund', ...sav.sinking, accounts: g.sinking.accounts },
-      { key: 'business', label: 'Business', have: g.business.accounts.reduce((s, n) => s + (byName[n] ?? 0), 0), target: g.business.target, accounts: g.business.accounts },
-    ].map((x) => ({ ...x, set: x.target > 0 && x.accounts.length > 0, met: x.target > 0 && x.have >= x.target, pct: pct(x.have, x.target) }));
+      { key: 'emergency', label: 'Emergency fund', ...sav.emergency, ...g.emergency },
+      { key: 'sinking', label: 'Sinking fund', ...sav.sinking, ...g.sinking },
+      { key: 'business', label: 'Business', have: g.business.accounts.reduce((s, n) => s + (byName[n] ?? 0), 0), ...g.business },
+    ].map((x) => ({ ...x, set: x.target > 0 && x.accounts.length > 0, met: x.target > 0 && x.have >= x.target, pct: pct(x.have, x.target), eta: goalEta(x.target - x.have, x.perMonth) }));
     const alloc = allocation(cfg);
     const budget = alloc.core + alloc.fun;
     const funLeft = alloc.fun - st.fun;
+    const { total, day, isCurrent } = this.elapsed();
     return {
       st, spend, bars, caps, takeout, alloc, goals, sav, budget, funLeft,
       funPerDay: Math.round(funLeft / Math.max(1, this.daysLeft())),
+      funProjected: isCurrent && day < total ? projectMonthEnd(st.fun, day, total) : null,
       invested: investmentAccounts.length ? investmentAccounts.reduce((s, n) => s + (byName[n] ?? 0), 0) : null,
       payroll: payrollAccount && payrollAccount in byName ? byName[payrollAccount] : null,
       spendPct: pct(spend, budget),
@@ -416,7 +429,11 @@ export class Month {
   protected daily = computed(() => {
     const { total, day, isCurrent } = this.elapsed();
     const perDay = new Array<number>(total).fill(0);
+    const cfg = this.cfg.value();
+    const planned = cfg ? plannedGroups(cfg) : new Set<string>();
+    // fun and unplanned only: core lines such as rent land on one day and make a linear pace meaningless
     for (const r of this.spendRows()) {
+      if (planned.has(r.grp) && !cfg!.allocation.funGroups.includes(r.grp)) continue;
       const d = Number(athensDay(r.dateUtc).slice(8));
       if (d >= 1 && d <= total) perDay[d - 1] -= r.amountCents;
     }
@@ -429,14 +446,15 @@ export class Month {
   protected chart = computed(() => {
     const symbol = currencySymbol();
     const d = this.daily();
-    const budget = this.v()?.budget ?? 0;
+    const budget = this.v()?.alloc.fun ?? 0;
+    const at = d.today !== null && d.today < d.total ? d.today : null;
     const days = Array.from({ length: d.total }, (_, i) => String(i + 1));
     const css = (n: string) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
     const accent = css('--accent'), muted = css('--muted');
     const eur = (c: number) => fmt(Math.round(c));
     return {
       grid: { left: 8, right: 16, top: 40, bottom: 8, containLabel: true },
-      tooltip: { trigger: 'axis', valueFormatter: (c: number) => eur(c) },
+      tooltip: { trigger: 'axis', valueFormatter: (c: number | null) => (c == null ? '—' : eur(c)) },
       xAxis: { type: 'category', data: days, boundaryGap: false },
       yAxis: { type: 'value', axisLabel: { formatter: (c: number) => symbol + Math.round(c / 100) } },
       series: [
@@ -448,6 +466,10 @@ export class Month {
             : undefined,
         },
         { name: 'Budget pace', type: 'line', data: days.map((_, i) => Math.round((budget * (i + 1)) / d.total)), color: muted, symbol: 'none', lineStyle: { type: 'dashed', width: 1.5 } },
+        ...(at === null ? [] : [{
+          name: 'Projected', type: 'line', color: accent, symbol: 'none', connectNulls: true, lineStyle: { type: 'dotted', width: 1.5 },
+          data: days.map((_, i) => (i === at - 1 ? d.cum[at - 1] : i === d.total - 1 ? projectMonthEnd(d.cum[at - 1], at, d.total) : null)),
+        }]),
       ],
     };
   });
