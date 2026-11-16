@@ -30,7 +30,7 @@ const pct = (a: number, b: number) => (b > 0 ? Math.max(0, Math.min(100, (a / b)
     .row .name { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
     .row .progress { grid-column: 1 / -1; }
     a.row { color: inherit; text-decoration: none; cursor: pointer; border-radius: var(--r-md, 6px); }
-    a.row:hover { background: var(--surface-2); }
+    @media (hover: hover) { a.row:hover { background: var(--surface-2); } }
     .trend { font-size: var(--fs-xs); margin-left: var(--sp-1); }
     .trend.worse { color: var(--bad); }
     .trend.better { color: var(--good); }

@@ -31,7 +31,7 @@ import { Toast } from './ui/toast';
     .items-table input[type='number'] { appearance: textfield; }
     .items-table input::-webkit-inner-spin-button, .items-table input::-webkit-outer-spin-button { display: none; }
     .items-table .note { color: var(--muted); text-overflow: ellipsis; }
-    .items-table tr.row:hover td { background: var(--surface-2); }
+    @media (hover: hover) { .items-table tr.row:hover td { background: var(--surface-2); } }
     .items-table tr.group td { background: var(--surface-2); font-weight: 600; padding: var(--sp-2); }
     .group-line { display: flex; align-items: center; gap: var(--sp-3); }
     .group-line .sub { margin-left: auto; }

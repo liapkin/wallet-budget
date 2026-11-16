@@ -100,7 +100,7 @@ const HOURS = Array.from({ length: 24 }, (_, i) => pad(i));
     .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: var(--sp-2); }
     .wd { text-align: center; color: var(--muted); font-size: var(--fs-xs); }
     .d { height: 2rem; padding: 0; border-color: transparent; box-shadow: none; background: none; color: var(--text); font-weight: 400; }
-    .d:hover:not(.on) { background: var(--surface-2); }
+    @media (hover: hover) { .d:hover:not(.on) { background: var(--surface-2); } }
     .d.fut:not(.on) { color: var(--muted); }
     .d.today { box-shadow: inset 0 0 0 1.5px var(--accent); }
     .d.on { background: var(--accent); color: var(--accent-text); font-weight: 700; }

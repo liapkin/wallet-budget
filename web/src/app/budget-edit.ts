@@ -26,7 +26,7 @@ const SECTIONS = [
     .layout { display: grid; grid-template-columns: 11rem 1fr; gap: var(--sp-5); align-items: start; }
     nav { position: sticky; top: var(--sp-4); display: flex; flex-direction: column; gap: 2px; }
     nav button { text-align: left; border: 0; box-shadow: none; background: none; color: var(--muted); }
-    nav button:hover { background: var(--surface-2); color: var(--text); border-color: transparent; }
+    @media (hover: hover) { nav button:hover { background: var(--surface-2); color: var(--text); border-color: transparent; } }
     section.card { scroll-margin-top: var(--sp-4); }
     .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3) var(--sp-4); }
     .grid .affix { display: flex; }

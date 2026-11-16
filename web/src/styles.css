@@ -144,22 +144,22 @@ input, select, button, textarea {
   border-radius: var(--r-sm); padding: 0.35rem 0.7rem; box-shadow: var(--shadow-sm);
 }
 input, select, textarea { min-height: 2rem; max-width: 100%; }
-input:hover, select:hover, textarea:hover { border-color: color-mix(in srgb, var(--muted) 50%, var(--border)); }
+@media (hover: hover) { input:hover, select:hover, textarea:hover { border-color: color-mix(in srgb, var(--muted) 50%, var(--border)); } }
 input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
 input[type='checkbox'] { min-height: 0; accent-color: var(--accent); box-shadow: none; }
 button { cursor: pointer; font-weight: 700; transition: background 0.12s, border-color 0.12s; }
-button:hover:not(:disabled) { border-color: var(--accent); }
+@media (hover: hover) { button:hover:not(:disabled) { border-color: var(--accent); } }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 button.on, button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
-button.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 85%, var(--bg)); border-color: var(--accent); }
+@media (hover: hover) { button.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 85%, var(--bg)); border-color: var(--accent); } }
 button.ghost { background: none; border-color: transparent; box-shadow: none; color: var(--muted); }
-button.ghost:hover:not(:disabled) { background: var(--surface-2); color: var(--text); border-color: transparent; }
+@media (hover: hover) { button.ghost:hover:not(:disabled) { background: var(--surface-2); color: var(--text); border-color: transparent; } }
 button.link { border: 0; background: none; box-shadow: none; color: var(--accent); padding: 0.2rem 0.4rem; }
 button.danger { color: var(--bad); }
-button.danger:hover:not(:disabled) { border-color: var(--bad); background: var(--bad-bg); }
+@media (hover: hover) { button.danger:hover:not(:disabled) { border-color: var(--bad); background: var(--bad-bg); } }
 button.danger.primary { background: var(--bad); border-color: var(--bad); color: #fff; }
 button.icon { display: inline-grid; place-items: center; width: 2rem; height: 2rem; padding: 0; background: none; border-color: transparent; box-shadow: none; color: var(--muted); }
-button.icon:hover:not(:disabled) { background: var(--surface-2); color: var(--text); border-color: transparent; }
+@media (hover: hover) { button.icon:hover:not(:disabled) { background: var(--surface-2); color: var(--text); border-color: transparent; } }
 
 .field { display: flex; flex-direction: column; gap: var(--sp-1); font-size: var(--fs-sm); color: var(--muted); }
 .field input, .field select { color: var(--text); }
@@ -175,7 +175,7 @@ button.icon:hover:not(:disabled) { background: var(--surface-2); color: var(--te
 /* Segmented control */
 .seg { display: inline-flex; padding: 2px; gap: 2px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r); }
 .seg button { border: 0; box-shadow: none; background: none; color: var(--muted); border-radius: calc(var(--r) - 2px); padding: 0.25rem 0.75rem; }
-.seg button:hover:not(:disabled) { color: var(--text); }
+@media (hover: hover) { .seg button:hover:not(:disabled) { color: var(--text); } }
 .seg button.on, .seg button[aria-pressed='true'] { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
 
 /* Switch: <label class="switch"><input type="checkbox"> text</label> */
@@ -224,10 +224,10 @@ table { border-collapse: separate; border-spacing: 0; width: 100%; }
 th, td { padding: 0.5rem 0.8rem; text-align: left; border-bottom: 1px dashed var(--border); }
 tbody tr:last-child td { border-bottom: 1px dashed var(--border); }
 thead th { position: sticky; top: 0; background: var(--surface); z-index: 2; font-weight: 700; color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
-tbody tr:hover td { background: var(--surface-2); }
+@media (hover: hover) { tbody tr:hover td { background: var(--surface-2); } }
 .sticky-first th:first-child, .sticky-first td:first-child { position: sticky; left: 0; background: var(--surface); z-index: 1; }
 .sticky-first thead th:first-child { z-index: 3; }
-.sticky-first tbody tr:hover td:first-child { background: var(--surface-2); }
+@media (hover: hover) { .sticky-first tbody tr:hover td:first-child { background: var(--surface-2); } }
 .card td input:not([type]), .card td select { width: 100%; }
 td app-combo { display: block; }
 th.num, td.num, .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -303,3 +303,33 @@ dialog .actions { display: flex; justify-content: flex-end; gap: var(--sp-2); ma
 :root.has-tabbar .savebar { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + var(--sp-2)); }
 :root.has-tabbar .toast-stack { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + var(--sp-2)); }
 body:has(dialog[open]) { overflow: hidden; }
+
+/* Touch feel: pressed feedback instead of hover, chrome is not selectable text in the installed app. */
+@media (hover: none) and (prefers-reduced-motion: no-preference) {
+  button, a.row, .tabbar a { transition: transform 0.08s, opacity 0.08s; }
+  button:active:not(:disabled), a.row:active, .tabbar a:active { transform: scale(0.97); opacity: 0.8; }
+}
+@media (hover: none) {
+  /* the keyboard takes the space the tab bar would sit in */
+  :root:has(:is(input:not([type='checkbox']):not([type='radio']), textarea):focus) .tabbar { display: none; }
+  :root.has-tabbar:has(:is(input:not([type='checkbox']):not([type='radio']), textarea):focus) { --tabbar-h: 0rem; }
+}
+@media (display-mode: standalone) and (hover: none) {
+  body { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  input, textarea { user-select: text; -webkit-user-select: text; }
+}
+::view-transition-group(root) { animation-duration: 0.15s; }
+
+/* Narrow shell: the top bar carries the page title, so pages drop their own. */
+:root.has-tabbar main h1:not(.keep), :root.has-tabbar .page-head:has(> h1:only-child) { display: none; }
+
+/* Phone: dialogs are bottom sheets. */
+@keyframes sheet-up { from { transform: translateY(100%); } }
+@media (max-width: 800px) and (prefers-reduced-motion: no-preference) { dialog[open] { animation: sheet-up 0.2s ease-out; } }
+@media (max-width: 640px) {
+  /* bottom border stands in for safe-area padding so sticky action rows keep their offsets */
+  dialog:is(dialog) { margin: auto 0 0; width: 100vw; max-width: 100vw; border-radius: 14px 14px 0 0; border-width: 1px 0 env(safe-area-inset-bottom); border-bottom-color: var(--surface); }
+  dialog::before { content: ''; display: block; width: 36px; height: 4px; border-radius: 2px; background: var(--border); margin: calc(-1 * var(--sp-2)) auto var(--sp-3); }
+  .toast-stack { left: var(--sp-3); right: var(--sp-3); max-width: none; }
+  .toast { text-align: center; }
+}
